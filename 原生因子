@@ -125,6 +125,16 @@ df.loc[df.close < 100, 'filter'] = True  # 排除价格
 最优参数下的目标函数值： 0.23462269252864432
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 1 # 轮动阈值
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'mod_conv_prem', 'weight': 2, 'ascending': True},
+ {'name': 'ps_ttm', 'weight': 3, 'ascending': False},
+ {'name': 'turnover', 'weight': 4, 'ascending': False},
+ {'name': 'theory_bias', 'weight': 2, 'ascending': True}]
+ 最优参数下的目标函数值： 0.23686144738606374
 
 
 
