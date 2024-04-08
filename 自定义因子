@@ -733,5 +733,67 @@ df.loc[df.close < 100, 'filter'] = True  # 排除价格
  最优参数下的目标函数值： 0.28756410165253876
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 125, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'low', 'weight': 1, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 3, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 5, 'ascending': False},
+ {'name': 'stoch2', 'weight': 4, 'ascending': True},
+ {'name': 'turnover', 'weight': 3, 'ascending': False},
+ {'name': 'rsi3', 'weight': 2, 'ascending': False}]
+ 最优参数下的目标函数值： 0.22930509441696278
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'amount', 'weight': 5, 'ascending': False},
+ {'name': 'theory_bias', 'weight': 3, 'ascending': True},
+ {'name': 'stoch2', 'weight': 3, 'ascending': True},
+ {'name': 'remain_cap', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.21732007484229388
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'dblow', 'weight': 2, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 3, 'ascending': False},
+ {'name': 'stoch1', 'weight': 4, 'ascending': True},
+ {'name': 'amount', 'weight': 5, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 5, 'ascending': False}]
+最优参数下的目标函数值： 0.25500377055296153
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'volatility_stk5', 'weight': 3, 'ascending': False},
+ {'name': 'bond_prem', 'weight': 5, 'ascending': True},
+ {'name': 'rsi5', 'weight': 2, 'ascending': True},
+ {'name': 'amount', 'weight': 5, 'ascending': False},
+ {'name': 'remain_cap', 'weight': 5, 'ascending': True},
+ {'name': 'stoch_signal2', 'weight': 4, 'ascending': True}]
+ 最优参数下的目标函数值： 0.24124574524851017
+
+
+
+
+
+
+
 
 

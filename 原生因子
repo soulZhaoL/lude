@@ -426,3 +426,41 @@ df.loc[df.close < 100, 'filter'] = True  # 排除价格
 最优参数下的目标函数值： 0.2439324663692306
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'mod_conv_prem', 'weight': 1, 'ascending': True},
+ {'name': 'ps_ttm', 'weight': 1, 'ascending': False},
+ {'name': 'turnover', 'weight': 5, 'ascending': False},
+ {'name': 'pe_ttm', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.2488299437789483
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 3 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'amount', 'weight': 4, 'ascending': False},
+ {'name': 'mod_conv_prem', 'weight': 5, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 3, 'ascending': True},
+ {'name': 'turnover', 'weight': 5, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21181241120852978
+
+
+
+
+
+
+
+
+
+
+
+
+
