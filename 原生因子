@@ -591,6 +591,7 @@ df.loc[df.close < 100, 'filter'] = True  # 排除价格
  最优参数下的目标函数值： 0.2897078965452524
 
 
+https://a230733-a5f1-cc8d76e1.westb.seetacloud.com:8443/jupyter/lab/tree/bayesian/130_3/1_bayesian_optuna_6.ipynb
 
 
 

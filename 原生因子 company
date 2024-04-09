@@ -1,0 +1,114 @@
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'turnover', 'weight': 2, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 5, 'ascending': False},
+ {'name': 'conv_prem', 'weight': 2, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2214585198210246
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'remain_size', 'weight': 4, 'ascending': True},
+ {'name': 'ps_ttm', 'weight': 5, 'ascending': False},
+ {'name': 'mod_conv_prem', 'weight': 3, 'ascending': True},
+ {'name': 'theory_value', 'weight': 1, 'ascending': False}]
+ 最优参数下的目标函数值： 0.22059784234285984
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'vol', 'weight': 2, 'ascending': False},
+ {'name': 'turnover', 'weight': 5, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 5, 'ascending': False},
+ {'name': 'high', 'weight': 2, 'ascending': True},
+ {'name': 'conv_prem', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.32793475327000965
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'bond_prem', 'weight': 2, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 5, 'ascending': False},
+ {'name': 'close', 'weight': 1, 'ascending': True},
+ {'name': 'mod_conv_prem', 'weight': 2, 'ascending': True},
+ {'name': 'amount', 'weight': 3, 'ascending': False},
+ {'name': 'pure_value', 'weight': 1, 'ascending': False}]
+ 最优参数下的目标函数值： 0.2520242225563891
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'dblow', 'weight': 3, 'ascending': True},
+ {'name': 'pb', 'weight': 2, 'ascending': False},
+ {'name': 'remain_cap', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.24134187084720415
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'turnover', 'weight': 1, 'ascending': False},
+ {'name': 'pb', 'weight': 1, 'ascending': False},
+ {'name': 'pure_value', 'weight': 2, 'ascending': False},
+ {'name': 'remain_cap', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.2455342432018186
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'amount', 'weight': 3, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 1, 'ascending': True},
+ {'name': 'dblow', 'weight': 5, 'ascending': True},
+ {'name': 'turnover', 'weight': 5, 'ascending': False},
+ {'name': 'cap_mv_rate', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.27731556393079715
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 4 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'pure_value', 'weight': 1, 'ascending': False},
+ {'name': 'pb', 'weight': 4, 'ascending': False},
+ {'name': 'open', 'weight': 2, 'ascending': True},
+ {'name': 'turnover', 'weight': 4, 'ascending': False},
+ {'name': 'volatility_stk', 'weight': 2, 'ascending': False},
+ {'name': 'conv_prem', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.23344922250967737
+
+
+
+
+
+
+
+
