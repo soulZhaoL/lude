@@ -1143,16 +1143,237 @@ df.loc[df.close < 100, 'filter'] = True  # 排除价格
  最优参数下的目标函数值： 0.32773750081977115
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 125, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'macd_signal', 'weight': 1, 'ascending': False},
+ {'name': 'stoch_signal1', 'weight': 5, 'ascending': True},
+ {'name': 'amount', 'weight': 2, 'ascending': False},
+ {'name': 'bond_prem', 'weight': 1, 'ascending': True},
+ {'name': 'trend_strength', 'weight': 3, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21398669759743938
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 125, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'amount', 'weight': 2, 'ascending': False},
+ {'name': 'macd_signal', 'weight': 2, 'ascending': False},
+ {'name': 'volatility_stk5', 'weight': 3, 'ascending': False},
+ {'name': 'dema21', 'weight': 1, 'ascending': False},
+ {'name': 'stoch1', 'weight': 5, 'ascending': True},
+ {'name': 'vol', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.2318973325087057
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'remain_size', 'weight': 2, 'ascending': True},
+ {'name': 'volatility_stk10', 'weight': 5, 'ascending': False},
+ {'name': 'dblow', 'weight': 2, 'ascending': True},
+ {'name': 'stoch_signal1', 'weight': 4, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2136806418901569
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'volatility_stk10', 'weight': 4, 'ascending': False},
+ {'name': 'ytm', 'weight': 2, 'ascending': True},
+ {'name': 'stoch2', 'weight': 3, 'ascending': True},
+ {'name': 'theory_value', 'weight': 2, 'ascending': False},
+ {'name': 'vol', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.25405295937243233
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 130, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'stoch2', 'weight': 2, 'ascending': True},
+ {'name': 'stoch_signal1', 'weight': 3, 'ascending': True},
+ {'name': 'pc3', 'weight': 1, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 2, 'ascending': False},
+ {'name': 'theory_conv_prem', 'weight': 2, 'ascending': True},
+ {'name': 'amount', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.28581742489360695
 
 
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 135, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'stoch_signal1', 'weight': 2, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 5, 'ascending': False},
+ {'name': 'turnover', 'weight': 1, 'ascending': False}]
+ 最优参数下的目标函数值： 0.25174547363853694
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 135, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'vol', 'weight': 1, 'ascending': False},
+ {'name': 'open', 'weight': 2, 'ascending': False},
+ {'name': 'theory_bias', 'weight': 2, 'ascending': True},
+ {'name': 'stoch_signal2', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2140833415953658
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 135, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'trend_strength', 'weight': 5, 'ascending': False},
+ {'name': 'stoch2', 'weight': 5, 'ascending': True},
+ {'name': 'theory_conv_prem', 'weight': 1, 'ascending': False},
+ {'name': 'theory_bias', 'weight': 3, 'ascending': True},
+ {'name': 'turnover', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.2335958662404638
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 135, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'stoch1', 'weight': 3, 'ascending': True},
+ {'name': 'amount', 'weight': 4, 'ascending': False},
+ {'name': 'open', 'weight': 2, 'ascending': False},
+ {'name': 'stoch2', 'weight': 1, 'ascending': True},
+ {'name': 'stoch3', 'weight': 3, 'ascending': True},
+ {'name': 'trend_strength', 'weight': 1, 'ascending': False}]
+ 最优参数下的目标函数值： 0.2582224629828198
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'theory_value', 'weight': 3, 'ascending': False},
+ {'name': 'low', 'weight': 1, 'ascending': True},
+ {'name': 'stoch3', 'weight': 1, 'ascending': True}]
+ 最优参数下的目标函数值： 0.270349063421947
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'volatility_stk10', 'weight': 4, 'ascending': False},
+ {'name': 'stoch3', 'weight': 3, 'ascending': True},
+ {'name': 'open', 'weight': 2, 'ascending': True},
+ {'name': 'theory_value', 'weight': 2, 'ascending': False}]
+ 最优参数下的目标函数值： 0.27170323607921376
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'theory_bias', 'weight': 3, 'ascending': True},
+ {'name': 'rsi5', 'weight': 1, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 3, 'ascending': False},
+ {'name': 'stoch3', 'weight': 3, 'ascending': True},
+ {'name': 'dema5', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.278190064614946
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 140, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'adx14', 'weight': 1, 'ascending': True},
+ {'name': 'stoch3', 'weight': 3, 'ascending': True},
+ {'name': 'rsi3', 'weight': 2, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 5, 'ascending': False},
+ {'name': 'rsi1', 'weight': 2, 'ascending': False},
+ {'name': 'theory_bias', 'weight': 5, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2932044086626875
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'stoch_signal1', 'weight': 1, 'ascending': True},
+ {'name': 'adx7', 'weight': 2, 'ascending': False},
+ {'name': 'volatility_stk5', 'weight': 3, 'ascending': False}]
+ 最优参数下的目标函数值： 0.2886672879766323
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'pre_close', 'weight': 2, 'ascending': False},
+ {'name': 'stoch_signal3', 'weight': 5, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 5, 'ascending': True},
+ {'name': 'momentum6', 'weight': 1, 'ascending': True}]
+ 最优参数下的目标函数值： 0.3047265759314437
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'volatility_stk5', 'weight': 4, 'ascending': False},
+ {'name': 'open', 'weight': 1, 'ascending': False},
+ {'name': 'stoch2', 'weight': 1, 'ascending': True},
+ {'name': 'stoch3', 'weight': 1, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 2, 'ascending': True}]
+ 最优参数下的目标函数值： 0.32356238391786585
+
+
+hold_num = 5 # 持有数量
+threadhold_num = 5 # 轮动阈值
+df.loc[df.list_days <= 3, 'filter'] = True # 排除新债
+df.loc[df.left_years < 0.5, 'filter'] = True # 排除到期日小于1年的标的
+df.loc[df.close > 145, 'filter'] = True  # 排除价格
+df.loc[df.close < 100, 'filter'] = True  # 排除价格
+[{'name': 'conv_prem', 'weight': 1, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 1, 'ascending': True},
+ {'name': 'stoch_signal1', 'weight': 4, 'ascending': True},
+ {'name': 'volatility_stk10', 'weight': 4, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 1, 'ascending': False},
+ {'name': 'trend_strength', 'weight': 2, 'ascending': False}]
+ 最优参数下的目标函数值： 0.413490656765666
 
 
 
