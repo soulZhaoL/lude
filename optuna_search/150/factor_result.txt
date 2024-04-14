@@ -1,0 +1,28 @@
+5-5
+自定义
+[{'name': 'low', 'weight': 4, 'ascending': False},
+ {'name': 'theory_conv_prem', 'weight': 4, 'ascending': False},
+ {'name': 'stoch_signal1', 'weight': 4, 'ascending': False},
+ {'name': 'velocity7', 'weight': 5, 'ascending': True}]
+ 最优参数下的目标函数值： 0.21098976823231186
+
+[{'name': 'conv_prem', 'weight': 1, 'ascending': False},
+ {'name': 'option_value', 'weight': 2, 'ascending': True},
+ {'name': 'dblow', 'weight': 4, 'ascending': False},
+ {'name': 'momentum12', 'weight': 3, 'ascending': False},
+ {'name': 'velocity7', 'weight': 5, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21457810839039482
+
+
+[{'name': 'conv_prem', 'weight': 2, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 5, 'ascending': False},
+ {'name': 'theory_conv_prem', 'weight': 2, 'ascending': False},
+ {'name': 'stoch3', 'weight': 5, 'ascending': False},
+ {'name': 'momentum6', 'weight': 1, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.22946932517089413
+
+
+
+
+

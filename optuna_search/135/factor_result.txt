@@ -20,3 +20,32 @@
  {'name': 'remain_size', 'weight': 5, 'ascending': False},
  {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
  最优参数下的目标函数值： 0.2126919122215809
+
+
+自定义因子
+[{'name': 'volatility_stk', 'weight': 1, 'ascending': True},
+ {'name': 'conv_prem', 'weight': 3, 'ascending': False},
+ {'name': 'volatility_stk20', 'weight': 2, 'ascending': True}]
+
+ [{'name': 'pre_close', 'weight': 2, 'ascending': True},
+ {'name': 'conv_prem', 'weight': 5, 'ascending': False},
+ {'name': 'dblow', 'weight': 2, 'ascending': False},
+ {'name': 'pc7', 'weight': 4, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21491139516859725
+
+
+[{'name': 'amount', 'weight': 1, 'ascending': True},
+ {'name': 'cap_mv_rate', 'weight': 1, 'ascending': False},
+ {'name': 'stoch1', 'weight': 2, 'ascending': False},
+ {'name': 'adx7', 'weight': 2, 'ascending': True},
+ {'name': 'velocity7', 'weight': 1, 'ascending': True}]
+ 最优参数下的目标函数值： 0.25586902565028535
+
+
+[{'name': 'high', 'weight': 1, 'ascending': False},
+ {'name': 'pct_chg', 'weight': 1, 'ascending': True},
+ {'name': 'conv_prem', 'weight': 1, 'ascending': False},
+ {'name': 'cap_mv_rate', 'weight': 4, 'ascending': False},
+ {'name': 'stoch2', 'weight': 3, 'ascending': False},
+ {'name': 'volatility_stk5', 'weight': 4, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2144089336375017

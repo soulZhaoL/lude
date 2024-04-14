@@ -1,0 +1,55 @@
+5-5
+[{'name': 'amount', 'weight': 1, 'ascending': True},
+ {'name': 'conv_prem', 'weight': 3, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.25840870391652193
+
+
+[{'name': 'high', 'weight': 4, 'ascending': True},
+ {'name': 'volatility_stk', 'weight': 3, 'ascending': True},
+ {'name': 'theory_value', 'weight': 4, 'ascending': True},
+ {'name': 'dblow', 'weight': 5, 'ascending': False},
+ {'name': 'bond_prem', 'weight': 3, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21847364910687106
+
+
+[{'name': 'vol', 'weight': 3, 'ascending': True},
+ {'name': 'volatility_stk', 'weight': 2, 'ascending': True},
+ {'name': 'remain_cap', 'weight': 4, 'ascending': False},
+ {'name': 'theory_value', 'weight': 4, 'ascending': True},
+ {'name': 'remain_size', 'weight': 3, 'ascending': False},
+ {'name': 'ps_ttm', 'weight': 4, 'ascending': True}]
+ 最优参数下的目标函数值： 0.23892278670002565
+
+
+自定义因子
+[{'name': 'theory_value', 'weight': 3, 'ascending': True},
+ {'name': 'dblow', 'weight': 1, 'ascending': False},
+ {'name': 'stoch3', 'weight': 2, 'ascending': False}]
+ 最优参数下的目标函数值： 0.24033141028648397
+
+[{'name': 'theory_value', 'weight': 5, 'ascending': True},
+ {'name': 'ps_ttm', 'weight': 1, 'ascending': True},
+ {'name': 'velocity7', 'weight': 4, 'ascending': False},
+ {'name': 'dema21', 'weight': 1, 'ascending': False}]
+ 最优参数下的目标函数值： 0.21535019992774895
+
+[{'name': 'theory_bias', 'weight': 5, 'ascending': False},
+ {'name': 'ytm', 'weight': 4, 'ascending': False},
+ {'name': 'remain_size', 'weight': 2, 'ascending': False},
+ {'name': 'stoch3', 'weight': 2, 'ascending': False},
+ {'name': 'trend_strength', 'weight': 1, 'ascending': True}]
+ 最优参数下的目标函数值： 0.23130856549027068
+
+[{'name': 'low', 'weight': 2, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 4, 'ascending': False},
+ {'name': 'rsi5', 'weight': 3, 'ascending': False},
+ {'name': 'stoch2', 'weight': 3, 'ascending': False},
+ {'name': 'macd_diff', 'weight': 3, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+ 最优参数下的目标函数值： 0.30222880863955215
+
+
+
+
+
