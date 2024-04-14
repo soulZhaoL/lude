@@ -118,14 +118,12 @@ def cal_cagr(df, start_date, end_date, hold_num, threshold_num, min, max, rank_f
 
 
 if __name__ == '__main__':
-    df = pd.read_parquet('../../cb_data.pq')
-    index = pd.read_parquet('../../index.pq')
+    df = pd.read_parquet('cb_data.pq')
+    index = pd.read_parquet('index.pq')
     # 基础设置
     start_date = '20220801'  # 开始日期
     end_date = '20240325'  # 结束日期
-    factors = [{'name': 'high', 'weight': 4, 'ascending': True},
-               {'name': 'pb', 'weight': 1, 'ascending': False},
-               {'name': 'mod_conv_prem', 'weight': 1, 'ascending': True},
-               {'name': 'volatility_stk', 'weight': 5, 'ascending': True}]
-    cagr = cal_cagr(df, start_date, end_date, 5, 1, 100, 150, factors)
+    factors = [{'name': 'pre_close', 'weight': 2, 'ascending': True}, {'name': 'high', 'weight': 2, 'ascending': False},
+               {'name': 'pb', 'weight': 3, 'ascending': False}]
+    cagr = cal_cagr(df, start_date, end_date, 5, 5, 100, 150, factors)
     print(cagr)

@@ -1,0 +1,10 @@
+5-5
+[{'name': 'vol', 'weight': 3, 'ascending': True},
+ {'name': 'pb', 'weight': 3, 'ascending': True},
+ {'name': 'ps_ttm', 'weight': 1, 'ascending': True}]
+ 最优参数下的目标函数值： 0.23957021704085313
+
+
+
+
+

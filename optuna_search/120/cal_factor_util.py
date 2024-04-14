@@ -1,6 +1,7 @@
 # import pandas as pd
 import ta
 
+
 # df = pd.read_parquet('cb_data.pq')
 # index = pd.read_parquet('index.pq')
 
@@ -14,9 +15,11 @@ def simple_momentum(data, period=1):
     """
     return data.pct_change(periods=period)
 
+
 def rsi(data, period=1):
     """RSI相对强弱指标"""
     return ta.momentum.RSIIndicator(data['close'], window=period).rsi()
+
 
 def stochastic_oscillator(data, k_period=14, d_period=3):
     """
@@ -26,8 +29,10 @@ def stochastic_oscillator(data, k_period=14, d_period=3):
     :param d_period:
     :return:
     """
-    stoch = ta.momentum.StochasticOscillator(data['high'], data['low'], data['close'], window=k_period, smooth_window=d_period)
+    stoch = ta.momentum.StochasticOscillator(data['high'], data['low'], data['close'], window=k_period,
+                                             smooth_window=d_period)
     return stoch.stoch(), stoch.stoch_signal()
+
 
 def macd(data, fast_period=12, slow_period=26, signal_period=9):
     """
@@ -38,8 +43,10 @@ def macd(data, fast_period=12, slow_period=26, signal_period=9):
     :param signal_period:
     :return:
     """
-    macd_indicator = ta.trend.MACD(data['close'], window_slow=slow_period, window_fast=fast_period, window_sign=signal_period)
+    macd_indicator = ta.trend.MACD(data['close'], window_slow=slow_period, window_fast=fast_period,
+                                   window_sign=signal_period)
     return macd_indicator.macd(), macd_indicator.macd_signal(), macd_indicator.macd_diff()
+
 
 def adx(data, period=14):
     """
@@ -50,6 +57,7 @@ def adx(data, period=14):
     """
     return ta.trend.ADXIndicator(data['high'], data['low'], data['close'], window=period).adx()
 
+
 def momentum(data, period=12):
     """
     动量指标
@@ -58,6 +66,7 @@ def momentum(data, period=12):
     :return:
     """
     return data.diff(periods=period)
+
 
 def velocity(data, period=5):
     """
@@ -68,6 +77,7 @@ def velocity(data, period=5):
     """
     return data.diff(periods=period) / period
 
+
 def pvt(data):
     """
     价格和成交量趋势指标
@@ -75,6 +85,7 @@ def pvt(data):
     :return:
     """
     return (data['vol'] * ((data['close'] - data['close'].shift(1)) / data['close'].shift(1))).cumsum()
+
 
 def volatility_breakout(data, period=20):
     """
@@ -85,6 +96,7 @@ def volatility_breakout(data, period=20):
     """
     high_low = data['high'] - data['low']
     return high_low.rolling(window=period).mean()
+
 
 def trend_strength(data, short_window=12, long_window=26):
     """
@@ -97,6 +109,7 @@ def trend_strength(data, short_window=12, long_window=26):
     short_ma = data['close'].rolling(window=short_window).mean()
     long_ma = data['close'].rolling(window=long_window).mean()
     return short_ma - long_ma
+
 
 def dema(data, period=21):
     """
