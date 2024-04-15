@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings('ignore')  # 忽略警告
 import pandas as pd
 from numpy import nan
+from cal_factor_util import add_custom_factors
 
 # 基础设置
 benchmark = 'index_jsl'  # 选择基准，集思录等权:index_jsl, 沪深300:index_300, 中证1000:index_1000, 国证2000:index_2000
@@ -120,11 +121,15 @@ def cal_cagr(df, start_date, end_date, hold_num, threshold_num, min, max, rank_f
 if __name__ == '__main__':
     df = pd.read_parquet('cb_data.pq')
     index = pd.read_parquet('index.pq')
+    df = add_custom_factors(df)
     # 基础设置
     start_date = '20220801'  # 开始日期
     end_date = '20240325'  # 结束日期
-    factors = [{'name': 'vol', 'weight': 3, 'ascending': True},
- {'name': 'pb', 'weight': 3, 'ascending': True},
- {'name': 'ps_ttm', 'weight': 1, 'ascending': True}]
-    cagr = cal_cagr(df, start_date, end_date, 5, 5, 100, 120, factors)
+    factors = [{'name': 'low', 'weight': 2, 'ascending': True},
+               {'name': 'theory_bias', 'weight': 4, 'ascending': False},
+               {'name': 'rsi5', 'weight': 3, 'ascending': False},
+               {'name': 'stoch2', 'weight': 3, 'ascending': False},
+               {'name': 'macd_diff', 'weight': 3, 'ascending': False},
+               {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+    cagr = cal_cagr(df, start_date, end_date, 5, 5, 100, 150, factors)
     print(cagr)

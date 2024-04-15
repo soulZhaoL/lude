@@ -121,47 +121,45 @@ def dema(data, period=21):
     ema1 = ta.trend.ema_indicator(data['close'], window=period)
     ema2 = ta.trend.ema_indicator(ema1, window=period)
     return 2 * ema1 - ema2
-#
-# df['pc1'] = simple_momentum(df['close'], period=1)
-# df['pc3'] = simple_momentum(df['close'], period=3)
-# df['pc5'] = simple_momentum(df['close'], period=5)
-# df['pc7'] = simple_momentum(df['close'], period=7)
-#
-# df['rsi1'] = rsi(df, period=1)
-# df['rsi3'] = rsi(df, period=3)
-# df['rsi5'] = rsi(df, period=5)
-# df['rsi7'] = rsi(df, period=7)
-#
-# df['stoch1'], df['stoch_signal1'] = stochastic_oscillator(df, k_period=3, d_period=1)
-# df['stoch2'], df['stoch_signal2'] = stochastic_oscillator(df, k_period=7, d_period=2)
-# df['stoch3'], df['stoch_signal3'] = stochastic_oscillator(df, k_period=14, d_period=3)
-#
-# df['macd'], df['macd_signal'], df['macd_diff'] = macd(df, fast_period=12, slow_period=26, signal_period=9)
-#
-# df['adx7'] = adx(df, period=7)
-# df['adx14'] = adx(df, period=14)
-#
-# df['momentum3'] = momentum(df['close'], period=3)
-# df['momentum6'] = momentum(df['close'], period=6)
-# df['momentum12'] = momentum(df['close'], period=12)
-#
-# df['velocity3'] = velocity(df['close'], period=3)
-# df['velocity5'] = velocity(df['close'], period=5)
-# df['velocity7'] = velocity(df['close'], period=7)
-#
-# df['pvt'] = pvt(df)
-#
-# df['volatility_stk5'] = volatility_breakout(df, period=5)
-# df['volatility_stk10'] = volatility_breakout(df, period=10)
-# df['volatility_stk20'] = volatility_breakout(df, period=20)
-#
-# df['trend_strength'] = trend_strength(df, short_window=12, long_window=26)
-#
-# df['dema5'] = dema(df, period=5)
-# df['dema21'] = dema(df, period=21)
-#
-#
-#
-#
-# print(df.head())
-# print(df.columns)
+
+
+def add_custom_factors(df):
+    df['pc1'] = simple_momentum(df['close'], period=1)
+    df['pc3'] = simple_momentum(df['close'], period=3)
+    df['pc5'] = simple_momentum(df['close'], period=5)
+    df['pc7'] = simple_momentum(df['close'], period=7)
+
+    df['rsi1'] = rsi(df, period=1)
+    df['rsi3'] = rsi(df, period=3)
+    df['rsi5'] = rsi(df, period=5)
+    df['rsi7'] = rsi(df, period=7)
+
+    df['stoch1'], df['stoch_signal1'] = stochastic_oscillator(df, k_period=3, d_period=1)
+    df['stoch2'], df['stoch_signal2'] = stochastic_oscillator(df, k_period=7, d_period=2)
+    df['stoch3'], df['stoch_signal3'] = stochastic_oscillator(df, k_period=14, d_period=3)
+
+    df['macd'], df['macd_signal'], df['macd_diff'] = macd(df, fast_period=12, slow_period=26, signal_period=9)
+
+    df['adx7'] = adx(df, period=7)
+    df['adx14'] = adx(df, period=14)
+
+    df['momentum3'] = momentum(df['close'], period=3)
+    df['momentum6'] = momentum(df['close'], period=6)
+    df['momentum12'] = momentum(df['close'], period=12)
+
+    df['velocity3'] = velocity(df['close'], period=3)
+    df['velocity5'] = velocity(df['close'], period=5)
+    df['velocity7'] = velocity(df['close'], period=7)
+
+    df['pvt'] = pvt(df)
+
+    df['volatility_stk5'] = volatility_breakout(df, period=5)
+    df['volatility_stk10'] = volatility_breakout(df, period=10)
+    df['volatility_stk20'] = volatility_breakout(df, period=20)
+
+    df['trend_strength'] = trend_strength(df, short_window=12, long_window=26)
+
+    df['dema5'] = dema(df, period=5)
+    df['dema21'] = dema(df, period=21)
+    return df
+
