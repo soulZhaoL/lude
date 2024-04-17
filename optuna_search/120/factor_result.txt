@@ -4,7 +4,9 @@
  {'name': 'ps_ttm', 'weight': 1, 'ascending': True}]
  最优参数下的目标函数值： 0.23957021704085313
 
-
+5-4
+[{'name': 'amount', 'weight': 5, 'ascending': True}, {'name': 'conv_prem', 'weight': 1, 'ascending': False}, {'name': 'turnover', 'weight': 2, 'ascending': True}, {'name': 'pb', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.24118897484322033
 
 
 

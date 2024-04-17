@@ -22,6 +22,47 @@
  {'name': 'trend_strength', 'weight': 1, 'ascending': True}]
  最优参数下的目标函数值： 0.2762426103299873
 
+[{'name': 'theory_bias', 'weight': 1, 'ascending': False},
+ {'name': 'theory_conv_prem', 'weight': 2, 'ascending': False},
+ {'name': 'stoch2', 'weight': 2, 'ascending': False},
+ {'name': 'stoch_signal3', 'weight': 5, 'ascending': False},
+ {'name': 'macd_signal', 'weight': 1, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 4, 'ascending': True}]
+ 最优参数下的目标函数值： 0.2804412431354273
+
+
+
+5-4
+[{'name': 'remain_cap', 'weight': 3, 'ascending': False}, {'name': 'conv_prem', 'weight': 3, 'ascending': False}, {'name': 'cap_mv_rate', 'weight': 1, 'ascending': False}, {'name': 'remain_size', 'weight': 5, 'ascending': False}]
+最优参数下的目标函数值： 0.23963645136331158
+
+[{'name': 'vol', 'weight': 2, 'ascending': True}, {'name': 'remain_cap', 'weight': 2, 'ascending': False}, {'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'bond_prem', 'weight': 2, 'ascending': False}, {'name': 'ps_ttm', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.23472100322681166
+
+[{'name': 'amount', 'weight': 3, 'ascending': True}, {'name': 'turnover', 'weight': 1, 'ascending': False}, {'name': 'option_value', 'weight': 2, 'ascending': True}, {'name': 'ytm', 'weight': 5, 'ascending': False}, {'name': 'cap_mv_rate', 'weight': 2, 'ascending': False}, {'name': 'remain_size', 'weight': 3, 'ascending': False}]
+最优参数下的目标函数值： 0.2305540702624449
+
+自定义
+[{'name': 'stoch_signal1', 'weight': 3, 'ascending': False}, {'name': 'adx14', 'weight': 3, 'ascending': True}, {'name': 'volatility_stk10', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.2671795739823555
+
+[{'name': 'theory_value', 'weight': 4, 'ascending': True},
+{'name': 'theory_bias', 'weight': 4, 'ascending': False},
+{'name': 'stoch3', 'weight': 5, 'ascending': False},
+{'name': 'volatility_stk10', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.3043213924174468
+
+[{'name': 'pre_close', 'weight': 4, 'ascending': True}, {'name': 'vol', 'weight': 2, 'ascending': True}, {'name': 'rsi7', 'weight': 5, 'ascending': False}, {'name': 'velocity7', 'weight': 5, 'ascending': False}, {'name': 'pvt', 'weight': 4, 'ascending': False}]
+最优参数下的目标函数值： 0.2464962559355146
+
+[{'name': 'open', 'weight': 4, 'ascending': True}, {'name': 'remain_cap', 'weight': 1, 'ascending': True}, {'name': 'conv_prem', 'weight': 5, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 2, 'ascending': False}, {'name': 'macd_diff', 'weight': 5, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.25271955064957385
+
+
+
+
+
+
 
 
 
