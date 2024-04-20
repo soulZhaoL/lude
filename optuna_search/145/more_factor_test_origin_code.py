@@ -125,11 +125,6 @@ if __name__ == '__main__':
     # 基础设置
     start_date = '20220801'  # 开始日期
     end_date = '20240325'  # 结束日期
-    factors = [{'name': 'low', 'weight': 2, 'ascending': True},
-               {'name': 'theory_bias', 'weight': 4, 'ascending': False},
-               {'name': 'rsi5', 'weight': 3, 'ascending': False},
-               {'name': 'stoch2', 'weight': 3, 'ascending': False},
-               {'name': 'macd_diff', 'weight': 3, 'ascending': False},
-               {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
-    cagr = cal_cagr(df, start_date, end_date, 5, 5, 100, 150, factors)
+    factors = [{'name': 'dblow', 'weight': 1, 'ascending': True}, {'name': 'ytm', 'weight': 1, 'ascending': True}, {'name': 'theory_conv_prem', 'weight': 5, 'ascending': False}, {'name': 'pe_ttm', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+    cagr = cal_cagr(df, start_date, end_date, 5, 3, 100, 145, factors)
     print(cagr)

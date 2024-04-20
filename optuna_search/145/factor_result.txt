@@ -22,7 +22,35 @@
  {'name': 'trend_strength', 'weight': 1, 'ascending': True}]
  最优参数下的目标函数值： 0.2762426103299873
 
+5-3
+[{'name': 'turnover', 'weight': 3, 'ascending': True}, {'name': 'remain_size', 'weight': 4, 'ascending': False}, {'name': 'ps_ttm', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.21508214943848492
+
+[{'name': 'amount', 'weight': 1, 'ascending': True},
+{'name': 'remain_cap', 'weight': 3, 'ascending': False},
+{'name': 'ytm', 'weight': 3, 'ascending': False},
+{'name': 'bond_prem', 'weight': 2, 'ascending': False},
+{'name': 'pb', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.29266949143481535
+
+[{'name': 'remain_cap', 'weight': 4, 'ascending': False},
+{'name': 'ytm', 'weight': 1, 'ascending': False},
+{'name': 'bond_prem', 'weight': 3, 'ascending': False},
+ {'name': 'remain_size', 'weight': 2, 'ascending': False},
+ {'name': 'theory_conv_prem', 'weight': 4, 'ascending': False},
+ {'name': 'pb', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.2646050855551416
 
 
+自定义
+[{'name': 'ytm', 'weight': 5, 'ascending': False}, {'name': 'stoch_signal1', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk20', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.2705910413788801
 
+[{'name': 'theory_value', 'weight': 5, 'ascending': True}, {'name': 'stoch_signal1', 'weight': 2, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.2506384108440971
 
+[{'name': 'amount', 'weight': 3, 'ascending': True}, {'name': 'stoch_signal2', 'weight': 4, 'ascending': False}, {'name': 'macd_signal', 'weight': 1, 'ascending': True}, {'name': 'macd_diff', 'weight': 4, 'ascending': True}, {'name': 'volatility_stk10', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.22558060611427555
+
+[{'name': 'dblow', 'weight': 1, 'ascending': True}, {'name': 'ytm', 'weight': 1, 'ascending': True}, {'name': 'theory_conv_prem', 'weight': 5, 'ascending': False}, {'name': 'pe_ttm', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.22790447523589008

@@ -50,6 +50,48 @@
  最优参数下的目标函数值： 0.30222880863955215
 
 
+5-3
+[{'name': 'vol', 'weight': 4, 'ascending': True}, {'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.2468059481831517
+
+[{'name': 'turnover', 'weight': 5, 'ascending': True}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'pb', 'weight': 1, 'ascending': False}, {'name': 'ps_ttm', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.2986024461372103
+
+[{'name': 'amount', 'weight': 3, 'ascending': True}, {'name': 'conv_prem', 'weight': 4, 'ascending': False}, {'name': 'option_value', 'weight': 1, 'ascending': False}, {'name': 'theory_conv_prem', 'weight': 3, 'ascending': False}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.27315430068833235
+
+[{'name': 'mod_conv_prem', 'weight': 1, 'ascending': False}, {'name': 'remain_cap', 'weight': 4, 'ascending': False}, {'name': 'option_value', 'weight': 3, 'ascending': True}, {'name': 'bond_prem', 'weight': 4, 'ascending': False}, {'name': 'remain_size', 'weight': 2, 'ascending': False}, {'name': 'ps_ttm', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.26348587196069606
+
+自定义
+[{'name': 'theory_value', 'weight': 2, 'ascending': True}, {'name': 'stoch3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.28614254635986414
+
+[{'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'theory_conv_prem', 'weight': 5, 'ascending': False}, {'name': 'stoch2', 'weight': 1, 'ascending': False}, {'name': 'velocity7', 'weight': 3, 'ascending': False}]
+最优参数下的目标函数值： 0.2537174732313763
+
+[{'name': 'open', 'weight': 2, 'ascending': True},
+{'name': 'close', 'weight': 1, 'ascending': False},
+{'name': 'dblow', 'weight': 4, 'ascending': False},
+{'name': 'macd_diff', 'weight': 3, 'ascending': False},
+{'name': 'volatility_stk20', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.23301923660787027
+
+[{'name': 'close', 'weight': 1, 'ascending': True},
+{'name': 'amount', 'weight': 1, 'ascending': False},
+{'name': 'dblow', 'weight': 1, 'ascending': False},
+{'name': 'theory_bias', 'weight': 2, 'ascending': False},
+{'name': 'stoch_signal3', 'weight': 2, 'ascending': False},
+{'name': 'dema21', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.24180199416264525
+
+
+
+
+
+
+
+
 
 
 

@@ -11,3 +11,14 @@
 自定义
 [{'name': 'dblow', 'weight': 1, 'ascending': False}, {'name': 'rsi5', 'weight': 3, 'ascending': False}, {'name': 'momentum6', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 5, 'ascending': True}, {'name': 'trend_strength', 'weight': 1, 'ascending': True}]
 最优参数下的目标函数值： 0.21574990542741146
+
+5-3
+[{'name': 'remain_cap', 'weight': 3, 'ascending': False}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'theory_bias', 'weight': 1, 'ascending': False}, {'name': 'pb', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.2404167318169188
+
+[{'name': 'high', 'weight': 2, 'ascending': True}, {'name': 'remain_cap', 'weight': 4, 'ascending': False}, {'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'bond_prem', 'weight': 4, 'ascending': False}, {'name': 'ps_ttm', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.23265888192612127
+
+自定义
+[{'name': 'turnover', 'weight': 5, 'ascending': True}, {'name': 'cap_mv_rate', 'weight': 5, 'ascending': False}, {'name': 'stoch2', 'weight': 3, 'ascending': False}, {'name': 'adx7', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.24652222634031618

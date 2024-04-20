@@ -5,6 +5,8 @@
  最优参数下的目标函数值： 0.23957021704085313
 
 
-
+5-3
+[{'name': 'amount', 'weight': 1, 'ascending': True}, {'name': 'turnover', 'weight': 4, 'ascending': True}, {'name': 'dblow', 'weight': 2, 'ascending': False}, {'name': 'theory_bias', 'weight': 1, 'ascending': False}, {'name': 'pb', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.22761511560371783
 
 
