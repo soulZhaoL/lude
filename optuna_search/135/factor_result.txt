@@ -88,5 +88,10 @@
 最优参数下的目标函数值： 0.21869000443949882
 
 
+5-2
+自定义
+[{'name': 'high', 'weight': 2, 'ascending': True}, {'name': 'option_value', 'weight': 5, 'ascending': True}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'ytm', 'weight': 2, 'ascending': False}, {'name': 'pc7', 'weight': 5, 'ascending': False}, {'name': 'stoch3', 'weight': 3, 'ascending': False}]
+最优参数下的目标函数值： 0.24084173683409604
+
 
 

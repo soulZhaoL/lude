@@ -85,8 +85,16 @@
 {'name': 'dema21', 'weight': 2, 'ascending': True}]
 最优参数下的目标函数值： 0.24180199416264525
 
+5-2
+自定义
+[{'name': 'option_value', 'weight': 2, 'ascending': True}, {'name': 'theory_bias', 'weight': 3, 'ascending': False}, {'name': 'stoch3', 'weight': 3, 'ascending': False}]
+最优参数下的目标函数值： 0.23132414509209398
 
+[{'name': 'option_value', 'weight': 4, 'ascending': True}, {'name': 'theory_bias', 'weight': 4, 'ascending': False}, {'name': 'pb', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 5, 'ascending': False}]
+最优参数下的目标函数值： 0.2590253391073152
 
+[{'name': 'theory_value', 'weight': 3, 'ascending': True}, {'name': 'theory_bias', 'weight': 3, 'ascending': False}, {'name': 'stoch3', 'weight': 4, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 3, 'ascending': False}, {'name': 'adx14', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.24067834542502275
 
 
 
