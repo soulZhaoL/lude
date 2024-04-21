@@ -30,3 +30,11 @@
 自定义
 [{'name': 'amount', 'weight': 3, 'ascending': True}, {'name': 'conv_prem', 'weight': 4, 'ascending': False}, {'name': 'cap_mv_rate', 'weight': 2, 'ascending': False}, {'name': 'stoch_signal1', 'weight': 3, 'ascending': False}, {'name': 'stoch3', 'weight': 2, 'ascending': False}, {'name': 'adx14', 'weight': 5, 'ascending': True}]
 最优参数下的目标函数值： 0.26783894099619876
+
+5-1
+[{'name': 'remain_cap', 'weight': 3, 'ascending': False}, {'name': 'theory_value', 'weight': 2, 'ascending': True}, {'name': 'dblow', 'weight': 5, 'ascending': False}, {'name': 'ps_ttm', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.26255044731023514
+
+[{'name': 'amount', 'weight': 5, 'ascending': True}, {'name': 'mod_conv_prem', 'weight': 4, 'ascending': False}, {'name': 'theory_value', 'weight': 2, 'ascending': True}, {'name': 'pb', 'weight': 3, 'ascending': True}, {'name': 'ps_ttm', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.21178719972373816
+
