@@ -86,6 +86,18 @@
 最优参数下的目标函数值： 0.24180199416264525
 
 5-2
+[{'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'pe_ttm', 'weight': 1, 'ascending': True}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.22745136843248637
+
+[{'name': 'volatility_stk', 'weight': 2, 'ascending': True}, {'name': 'conv_prem', 'weight': 5, 'ascending': False}, {'name': 'option_value', 'weight': 1, 'ascending': False}, {'name': 'ps_ttm', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.25971635853671216
+
+[{'name': 'volatility_stk', 'weight': 2, 'ascending': True}, {'name': 'remain_cap', 'weight': 1, 'ascending': False}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'ytm', 'weight': 2, 'ascending': False}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.25655429604146684
+
+[{'name': 'volatility_stk', 'weight': 2, 'ascending': True}, {'name': 'remain_cap', 'weight': 1, 'ascending': False}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'ytm', 'weight': 2, 'ascending': False}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.25655429604146684
+
 自定义
 [{'name': 'option_value', 'weight': 2, 'ascending': True}, {'name': 'theory_bias', 'weight': 3, 'ascending': False}, {'name': 'stoch3', 'weight': 3, 'ascending': False}]
 最优参数下的目标函数值： 0.23132414509209398
@@ -96,7 +108,8 @@
 [{'name': 'theory_value', 'weight': 3, 'ascending': True}, {'name': 'theory_bias', 'weight': 3, 'ascending': False}, {'name': 'stoch3', 'weight': 4, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 3, 'ascending': False}, {'name': 'adx14', 'weight': 1, 'ascending': True}]
 最优参数下的目标函数值： 0.24067834542502275
 
-
+[{'name': 'pre_close', 'weight': 2, 'ascending': True}, {'name': 'dblow', 'weight': 1, 'ascending': False}, {'name': 'rsi5', 'weight': 2, 'ascending': False}, {'name': 'stoch3', 'weight': 3, 'ascending': False}, {'name': 'momentum12', 'weight': 3, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.25882127811826416
 
 
 

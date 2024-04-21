@@ -54,3 +54,29 @@
 
 [{'name': 'dblow', 'weight': 1, 'ascending': True}, {'name': 'ytm', 'weight': 1, 'ascending': True}, {'name': 'theory_conv_prem', 'weight': 5, 'ascending': False}, {'name': 'pe_ttm', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 5, 'ascending': True}]
 最优参数下的目标函数值： 0.22790447523589008
+
+5-2
+[{'name': 'remain_cap', 'weight': 2, 'ascending': False}, {'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'ps_ttm', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.22191459741652975
+
+[{'name': 'volatility_stk', 'weight': 4, 'ascending': True}, {'name': 'conv_prem', 'weight': 2, 'ascending': False}, {'name': 'dblow', 'weight': 5, 'ascending': False}, {'name': 'ytm', 'weight': 4, 'ascending': False}]
+最优参数下的目标函数值： 0.23711710622123006
+
+自定义
+[{'name': 'stoch_signal1', 'weight': 3, 'ascending': False},
+ {'name': 'adx14', 'weight': 2, 'ascending': True},
+ {'name': 'volatility_stk5', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.25859967510171455
+
+自定义
+[{'name': 'vol', 'weight': 2, 'ascending': True}, {'name': 'pure_value', 'weight': 3, 'ascending': True}, {'name': 'stoch_signal1', 'weight': 5, 'ascending': False}, {'name': 'adx7', 'weight': 4, 'ascending': True}, {'name': 'volatility_stk10', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.27004406474767073
+
+
+自定义
+[{'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'cap_mv_rate', 'weight': 1, 'ascending': False}, {'name': 'stoch_signal1', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk20', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.26803806944278863
+
+自定义
+[{'name': 'option_value', 'weight': 4, 'ascending': True}, {'name': 'pc7', 'weight': 4, 'ascending': False}, {'name': 'rsi3', 'weight': 1, 'ascending': False}, {'name': 'stoch1', 'weight': 1, 'ascending': False}, {'name': 'pvt', 'weight': 5, 'ascending': False}, {'name': 'volatility_stk20', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.2996163788030175
