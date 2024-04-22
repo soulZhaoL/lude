@@ -38,3 +38,10 @@
 [{'name': 'amount', 'weight': 5, 'ascending': True}, {'name': 'mod_conv_prem', 'weight': 4, 'ascending': False}, {'name': 'theory_value', 'weight': 2, 'ascending': True}, {'name': 'pb', 'weight': 3, 'ascending': True}, {'name': 'ps_ttm', 'weight': 2, 'ascending': True}]
 最优参数下的目标函数值： 0.21178719972373816
 
+自定义
+[{'name': 'turnover', 'weight': 3, 'ascending': True}, {'name': 'cap_mv_rate', 'weight': 2, 'ascending': False}, {'name': 'stoch1', 'weight': 1, 'ascending': False}]
+最优参数下的目标函数值： 0.21160385583795693
+
+自定义
+[{'name': 'dblow', 'weight': 2, 'ascending': False}, {'name': 'stoch1', 'weight': 3, 'ascending': False}, {'name': 'macd_diff', 'weight': 2, 'ascending': False}, {'name': 'velocity3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 2, 'ascending': True}, {'name': 'dema5', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.2196594779775587
