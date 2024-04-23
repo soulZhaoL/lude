@@ -118,7 +118,14 @@
 最优参数下的目标函数值： 0.2996163788030175
 
 
+5-1
 
+自定义
+[{'name': 'volatility_stk', 'weight': 2, 'ascending': True}, {'name': 'bond_prem', 'weight': 1, 'ascending': False}, {'name': 'remain_size', 'weight': 3, 'ascending': False}, {'name': 'stoch2', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.23055763920520733
+
+[{'name': 'mod_conv_prem', 'weight': 3, 'ascending': True}, {'name': 'conv_prem', 'weight': 5, 'ascending': False}, {'name': 'dblow', 'weight': 4, 'ascending': False}, {'name': 'rsi5', 'weight': 2, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk20', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.2468255772948078
 
 
 

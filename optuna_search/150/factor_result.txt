@@ -81,6 +81,14 @@
 最优参数下的目标函数值： 0.29377657918472067
 
 
+5-1
+自定义
+[{'name': 'remain_cap', 'weight': 1, 'ascending': True}, {'name': 'theory_bias', 'weight': 1, 'ascending': False}, {'name': 'remain_size', 'weight': 1, 'ascending': False}, {'name': 'theory_conv_prem', 'weight': 2, 'ascending': False}, {'name': 'velocity7', 'weight': 5, 'ascending': False}]
+最优参数下的目标函数值： 0.21352592399582027
+
+自定义
+[{'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'pb', 'weight': 2, 'ascending': True}, {'name': 'rsi5', 'weight': 2, 'ascending': False}, {'name': 'momentum12', 'weight': 3, 'ascending': False}, {'name': 'pvt', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.23357968166169818
 
 
 
