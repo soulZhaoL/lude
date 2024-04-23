@@ -114,3 +114,25 @@
 自定义
 [{'name': 'theory_value', 'weight': 4, 'ascending': True}, {'name': 'theory_conv_prem', 'weight': 1, 'ascending': False}, {'name': 'stoch_signal2', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 1, 'ascending': True}]
 最优参数下的目标函数值： 0.21400426382706406
+
+5-0
+[{'name': 'turnover', 'weight': 5, 'ascending': True}, {'name': 'dblow', 'weight': 1, 'ascending': False}, {'name': 'ps_ttm', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.21816851520104086
+
+[{'name': 'mod_conv_prem', 'weight': 1, 'ascending': False}, {'name': 'turnover', 'weight': 4, 'ascending': True}, {'name': 'pb', 'weight': 1, 'ascending': True}, {'name': 'ps_ttm', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.25441903412848355
+
+[{'name': 'amount', 'weight': 4, 'ascending': True}, {'name': 'conv_prem', 'weight': 4, 'ascending': False}, {'name': 'option_value', 'weight': 1, 'ascending': False}, {'name': 'remain_size', 'weight': 5, 'ascending': False}, {'name': 'pb', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.24096642286297532
+
+[{'name': 'low', 'weight': 3, 'ascending': True}, {'name': 'volatility_stk', 'weight': 1, 'ascending': True}, {'name': 'mod_conv_prem', 'weight': 3, 'ascending': False}, {'name': 'remain_cap', 'weight': 5, 'ascending': False}, {'name': 'bond_prem', 'weight': 4, 'ascending': False}, {'name': 'pb', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.2905123280984021
+
+自定义
+[{'name': 'vol', 'weight': 4, 'ascending': True}, {'name': 'stoch_signal1', 'weight': 5, 'ascending': False}, {'name': 'volatility_stk20', 'weight': 5, 'ascending': True}]
+最优参数下的目标函数值： 0.2109348539740823
+
+[{'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'stoch2', 'weight': 4, 'ascending': False}, {'name': 'velocity7', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 4, 'ascending': True}]
+最优参数下的目标函数值： 0.22227948874826642
+
+
