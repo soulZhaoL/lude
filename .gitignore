@@ -1,6 +1,6 @@
 cb_data.pq
 index.pq
 .idea
-util/merge/excel_merge/*,py
-util/merge/format2basket/*,py
+util/merge/excel_merge/*,csv
+util/merge/format2basket/*,csv
 
