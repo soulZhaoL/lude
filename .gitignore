@@ -4,3 +4,4 @@ index.pq
 util/merge/excel_merge/*,csv
 util/merge/format2basket/*,csv
 
+*.csv
