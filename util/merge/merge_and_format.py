@@ -4,7 +4,7 @@
 """
 合并脚本：整合format_basket.py和excel_merge_util.py的功能
 1. 首先处理禄得可转债行情表，生成basket_strategy.csv
-2. 然后合并excel_merge目录下的所有csv文件，生成最终的result.csv
+2. 然后合并csv目录下的所有csv文件，生成最终的result.csv
 """
 
 import csv
@@ -23,12 +23,12 @@ def format_basket(script_dir: str) -> str:
     Returns:
         str: 生成的basket_strategy.csv的完整路径
     """
-    # 切换到format2basket目录
-    format_basket_dir = os.path.join(script_dir, 'format2basket')
-    os.chdir(format_basket_dir)
+    # 设置CSV文件夹路径
+    csv_dir = os.path.join(script_dir, 'csv')
+    os.makedirs(csv_dir, exist_ok=True)
     
-    # 获取当前目录下所有以"禄得可转债行情表"开头的csv文件
-    input_files = glob.glob('禄得可转债行情表*.csv')
+    # 获取CSV文件夹下所有以"禄得可转债行情表"开头的csv文件
+    input_files = glob.glob(os.path.join(csv_dir, '禄得可转债行情表*.csv'))
     
     if len(input_files) == 0:
         raise FileNotFoundError("未找到以'禄得可转债行情表'开头的CSV文件")
@@ -36,12 +36,7 @@ def format_basket(script_dir: str) -> str:
         raise ValueError(f"找到多个符合条件的CSV文件: {input_files}，请确保只有一个文件")
     
     input_file = input_files[0]
-    
-    # 输出CSV文件路径（在excel_merge目录下）
-    output_dir = os.path.join(script_dir, 'excel_merge')
-    # 确保输出目录存在
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, 'basket_strategy.csv')
+    output_file = os.path.join(csv_dir, 'basket_strategy.csv')
     
     # 读取原始文件
     with open(input_file, 'r', encoding='utf-8-sig') as f:
@@ -77,19 +72,20 @@ def format_basket(script_dir: str) -> str:
     
     return output_file
 
-def merge_excel(excel_merge_dir: str, output_path: str) -> None:
+def merge_excel(csv_dir: str, output_path: str) -> None:
     """
-    合并excel_merge目录下的所有csv文件，生成最终的result.csv
+    合并csv目录下的所有csv文件，生成最终的result.csv
+    注意：会排除掉"禄得可转债行情表"开头的文件
     
     Args:
-        excel_merge_dir: excel_merge目录的路径
+        csv_dir: csv目录的路径
         output_path: 输出文件的完整路径
     """
-    # 切换到excel_merge目录
-    os.chdir(excel_merge_dir)
-    
     # 获取所有CSV文件
-    csv_files = glob.glob(os.path.join(os.getcwd(), "*.csv"))
+    csv_files = glob.glob(os.path.join(csv_dir, "*.csv"))
+    
+    # 排除"禄得可转债行情表"开头的文件
+    csv_files = [f for f in csv_files if not os.path.basename(f).startswith('禄得可转债行情表')]
     
     # 创建一个空的DataFrame用于存储合并后的数据
     merged_df = pd.DataFrame()
@@ -129,10 +125,38 @@ def merge_excel(excel_merge_dir: str, output_path: str) -> None:
     else:
         print("警告：没有找到可以合并的数据")
 
-def main():
-    """主函数：按顺序执行所有操作"""
+def recalculate_weights(file_path: str) -> None:
+    """
+    重新计算CSV文件中的权重（第四列）
+    
+    Args:
+        file_path: CSV文件路径
+    """
+    try:
+        # 读取CSV文件
+        df = pd.read_csv(file_path, encoding='utf-8-sig')
+        
+        # 重新计算权重（第四列）
+        if df.shape[1] >= 4 and len(df) > 0:
+            weight = 1 / len(df)
+            df.iloc[:, 3] = weight
+            print(f"已重新计算权重: {weight}")
+            
+            # 保存文件
+            df.to_csv(file_path, index=False, encoding='utf-8-sig')
+            print(f"文件已保存: {file_path}")
+        else:
+            print("警告：文件列数不足或没有数据，无法计算权重")
+            
+    except Exception as e:
+        print(f"处理文件时发生错误: {str(e)}")
+        raise
+
+def merge_files():
+    """执行文件合并操作"""
     # 获取脚本所在目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_dir = os.path.join(script_dir, 'csv')
     
     try:
         # 第一步：处理禄得可转债行情表
@@ -142,13 +166,51 @@ def main():
         
         # 第二步：合并CSV文件
         print("\n开始合并CSV文件...")
-        excel_merge_dir = os.path.join(script_dir, 'excel_merge')
         output_path = "/Users/zhaolei/Downloads/result.csv"
-        merge_excel(excel_merge_dir, output_path)
+        merge_excel(csv_dir, output_path)
+        print(f"\n合并完成！结果文件：{output_path}")
         
     except Exception as e:
         print(f"错误：{str(e)}")
         raise
+
+def show_menu():
+    """显示操作菜单"""
+    print("\n=== 可转债数据处理工具 ===")
+    print("1. 合并文件")
+    print("2. 重新计算权重")
+    print("0. 退出")
+    print("=====================")
+
+def main():
+    """主函数：提供交互式菜单"""
+    while True:
+        show_menu()
+        choice = input("请选择操作 (0-2): ").strip()
+        
+        if choice == "0":
+            print("程序已退出")
+            break
+            
+        elif choice == "1":
+            print("\n执行文件合并操作...")
+            merge_files()
+            
+        elif choice == "2":
+            print("\n执行重新计算权重...")
+            try:
+                file_path = "/Users/zhaolei/Downloads/result.csv"
+                if not os.path.exists(file_path):
+                    print(f"错误：文件不存在：{file_path}")
+                    continue
+                recalculate_weights(file_path)
+            except Exception as e:
+                print(f"错误：{str(e)}")
+            
+        else:
+            print("\n无效的选择，请重试")
+        
+        input("\n按回车键继续...")
 
 if __name__ == "__main__":
     main()
