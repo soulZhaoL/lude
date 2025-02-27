@@ -59,3 +59,16 @@
 
 [{'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'rsi5', 'weight': 2, 'ascending': False}, {'name': 'stoch3', 'weight': 5, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 4, 'ascending': True}]
 最优参数下的目标函数值： 0.29377657918472067
+
+
+5-1
+[{'name': 'remain_cap', 'weight': 4, 'ascending': False}, {'name': 'dblow', 'weight': 5, 'ascending': False}, {'name': 'cap_mv_rate', 'weight': 1, 'ascending': False}, {'name': 'pure_value', 'weight': 1, 'ascending': True}, {'name': 'pb', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.21027754156669198
+
+自定义
+[{'name': 'dblow', 'weight': 1, 'ascending': False}, {'name': 'theory_conv_prem', 'weight': 4, 'ascending': False}, {'name': 'stoch_signal3', 'weight': 3, 'ascending': False}]
+最优参数下的目标函数值： 0.24855563078997878
+
+自定义
+[{'name': 'stoch_signal1', 'weight': 5, 'ascending': False}, {'name': 'momentum3', 'weight': 1, 'ascending': True}, {'name': 'momentum12', 'weight': 2, 'ascending': True}, {'name': 'dema5', 'weight': 1, 'ascending': True}]
+最优参数下的目标函数值： 0.3552315556852774
