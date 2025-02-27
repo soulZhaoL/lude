@@ -1,3 +1,12 @@
+5-5
+自定义
+[{'name': 'vol', 'weight': 5, 'ascending': True},
+ {'name': 'theory_bias', 'weight': 1, 'ascending': False},
+ {'name': 'stoch1', 'weight': 5, 'ascending': False},
+ {'name': 'adx14', 'weight': 2, 'ascending': True},
+ {'name': 'velocity5', 'weight': 1, 'ascending': False},
+ {'name': 'volatility_stk10', 'weight': 3, 'ascending': True}]
+ 最优参数下的目标函数值： 0.22712724511294913
 5-4
 [{'name': 'amount', 'weight': 4, 'ascending': True}, {'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'pure_value', 'weight': 5, 'ascending': False}, {'name': 'ps_ttm', 'weight': 5, 'ascending': True}]
 最优参数下的目标函数值： 0.21898716553725417
@@ -45,3 +54,16 @@
 自定义
 [{'name': 'dblow', 'weight': 2, 'ascending': False}, {'name': 'stoch1', 'weight': 3, 'ascending': False}, {'name': 'macd_diff', 'weight': 2, 'ascending': False}, {'name': 'velocity3', 'weight': 1, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 2, 'ascending': True}, {'name': 'dema5', 'weight': 4, 'ascending': True}]
 最优参数下的目标函数值： 0.2196594779775587
+
+
+5-0
+[{'name': 'dblow', 'weight': 5, 'ascending': False}, {'name': 'remain_size', 'weight': 3, 'ascending': False}, {'name': 'pb', 'weight': 2, 'ascending': True}]
+最优参数下的目标函数值： 0.21755265891212128
+
+[{'name': 'vol', 'weight': 2, 'ascending': False}, {'name': 'amount', 'weight': 5, 'ascending': True}, {'name': 'dblow', 'weight': 3, 'ascending': False}, {'name': 'theory_bias', 'weight': 5, 'ascending': False}, {'name': 'pe_ttm', 'weight': 2, 'ascending': True}, {'name': 'ps_ttm', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.21626366030236155
+
+
+自定义
+[{'name': 'turnover', 'weight': 2, 'ascending': True}, {'name': 'remain_size', 'weight': 1, 'ascending': True}, {'name': 'theory_conv_prem', 'weight': 4, 'ascending': False}, {'name': 'pc7', 'weight': 1, 'ascending': False}, {'name': 'stoch3', 'weight': 4, 'ascending': False}, {'name': 'volatility_stk10', 'weight': 3, 'ascending': True}]
+最优参数下的目标函数值： 0.2200681227331618
