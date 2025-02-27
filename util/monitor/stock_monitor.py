@@ -11,12 +11,13 @@ import time
 import random
 import datetime
 import sys
+import json
 
 # ============ 1. 配置参数与全局变量 ==============
 
 WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=5f19c101-363f-4c8e-a5c9-db57ba4513af"  # 企业微信机器人Webhook
 THRESHOLD = 0.05  # 收益率阈值: 5%
-MONITOR_INTERVAL = 60  # 监控间隔: 1分钟 (秒)
+MONITOR_INTERVAL = 10  # 监控间隔: 1分钟 (秒)
 DEBUG_MODE = True  # 调试模式: 打印详细日志
 
 # 用于避免短时间内重复提醒
@@ -48,35 +49,44 @@ def log_message(level, message):
 
 def send_wecom_notification(title, content):
     """
-    使用企业微信Webhook发送text类型通知
-
-    :param title: 通知标题
-    :param content: 通知正文
+    发送企业微信通知
     """
-    data = {
-        "msgtype": "text",
-        "text": {
-            "content": f"{title}\n{content}"
-        }
-    }
-    
     try:
-        # 记录尝试发送通知
-        log_message("INFO", f"尝试发送企业微信通知: {title}")
+        # 检查WEBHOOK_URL是否配置
+        if not WEBHOOK_URL or WEBHOOK_URL == "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY_HERE":
+            log_message("ERROR", "企业微信Webhook URL未正确配置，请设置正确的WEBHOOK_URL")
+            return False
             
-        r = requests.post(WEBHOOK_URL, json=data, timeout=5)
-        if r.status_code != 200:
-            err_msg = f"发送企业微信失败: code={r.status_code}, response={r.text}"
-            log_message("ERROR", err_msg)
-        else:
-            success_msg = f"已发送通知: {title} - {content}"
-            log_message("INFO", success_msg)
+        # 构建请求数据
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "content": f"## {title}\n{content}\n\n> 发送时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            }
+        }
+        
+        # 记录发送前的日志
+        log_message("INFO", f"正在发送企业微信通知: {title}")
+        
+        # 发送请求
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(WEBHOOK_URL, headers=headers, data=json.dumps(data), timeout=5)
+        
+        # 检查响应
+        response_json = response.json()
+        if response.status_code == 200 and response_json.get('errcode') == 0:
+            log_message("INFO", f"企业微信通知发送成功: {title}")
             return True
+        else:
+            log_message("ERROR", f"企业微信通知发送失败: 状态码={response.status_code}, 错误信息={response_json}")
+            return False
+            
+    except requests.RequestException as e:
+        log_message("ERROR", f"企业微信通知网络请求异常: {str(e)}")
+        return False
     except Exception as e:
-        err_msg = f"通知异常: {e}\n{traceback.format_exc()}"
-        log_message("ERROR", err_msg)
-    
-    return False
+        log_message("ERROR", f"企业微信通知发送异常: {str(e)}\n{traceback.format_exc()}")
+        return False
 
 # ============ 3. 模拟持仓类 ==============
 
@@ -227,7 +237,9 @@ def monitor_positions(context):
                 
                 if SIMULATION_MODE:
                     log_message("INFO", f"\n{'-'*50}\n{title}\n{content}\n{'-'*50}")
+                    send_wecom_notification(title, content)
                 else:
+                    log_message("INFO", f"\n{'-'*50}\n{title}\n{content}\n{'-'*50}")
                     send_wecom_notification(title, content)
                 
                 # 标记已提醒
@@ -359,20 +371,21 @@ def run_quick_test():
 
 def test_send_notification():
     """
-    测试企业微信通知功能
+    测试企业微信通知发送
     """
-    print("开始测试企业微信通知功能...")
+    title = "测试通知"
+    content = f"这是一条测试通知，发送时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     
-    # 测试发送通知
-    print("\n测试: 发送企业微信通知")
-    result = send_wecom_notification("测试标题", "这是一条测试内容")
+    print(f"正在发送测试通知...")
+    print(f"WEBHOOK_URL: {WEBHOOK_URL}")
+    
+    # 尝试发送通知
+    result = send_wecom_notification(title, content)
     
     if result:
-        print("通知发送成功！")
+        print("测试通知发送成功！")
     else:
-        print("通知发送失败！")
-    
-    print("\n企业微信通知测试完成")
+        print("测试通知发送失败，请检查日志和配置。")
 
 # 如果直接运行此脚本，则启动模拟模式
 if __name__ == "__main__":
