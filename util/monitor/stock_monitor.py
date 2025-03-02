@@ -19,19 +19,33 @@ THRESHOLD = 0.05  # 收益率阈值: 5%
 MONITOR_INTERVAL = 60  # 监控间隔: 1分钟 (秒)
 DEBUG_MODE = True  # 调试模式: 打印详细日志
 
-# 用于避免短时间内重复提醒
-notified_dict = {}  # key: symbol, value: bool
-
+# 通知控制参数
+RENOTIFY_INTERVAL = 300  # 重复通知间隔: 5分钟 (秒)
+# 是否强制执行（无论是否在交易时间）
+FORCE_MONITOR = True  # 设置为True时，无论是否在交易时间都会执行监控
 # 模拟模式配置
 SIMULATION_MODE = True  # 设置为True启用模拟模式
+
+
+# 用于避免短时间内重复提醒 - 改为记录上次通知时间
+notified_dict = {}  # 格式: {symbol: {"last_time": timestamp, "notified": True/False}}
 SIM_POSITIONS = [
     # 股票持仓 - 成本价设置较低，使其更容易触发收益率阈值
     {"code": "600519", "name": "贵州茅台", "cost": 1700.0, "volume": 100},  # 成本价设低一些
-    {"code": "000858", "name": "五粮液", "cost": 130.0, "volume": 200},      # 成本价设低一些
+    # {"code": "000858", "name": "五粮液", "cost": 130.0, "volume": 200},      # 成本价设低一些
     # 可转债持仓 - 成本价设置较低，使其更容易触发收益率阈值
     {"code": "113009", "name": "广汽转债", "cost": 95.0, "volume": 10, "is_cb": True},  # 成本价设低一些
-    {"code": "123111", "name": "东财转3", "cost": 90.0, "volume": 10, "is_cb": True},   # 成本价设低一些
+    # {"code": "123111", "name": "东财转3", "cost": 90.0, "volume": 10, "is_cb": True},   # 成本价设低一些
 ]
+
+# 交易时间配置
+TRADING_HOURS = [
+    # 上午交易时段
+    {"start": "09:30", "end": "11:30"},
+    # 下午交易时段
+    {"start": "13:00", "end": "15:00"}
+]
+
 
 # ============ 2. 企业微信发送函数 ==============
 
@@ -182,7 +196,37 @@ class SimulationContext:
                 task["func"](self)
                 task["last_run"] = now
 
-# ============ 6. 持仓监控函数 ==============
+# ============ 6. 交易时间检查函数 ==============
+
+def is_trading_time():
+    """
+    检查当前是否是交易时间
+    
+    返回:
+        bool: 如果当前时间在交易时段内返回True，否则返回False
+    """
+    # 如果强制执行，直接返回True
+    if FORCE_MONITOR:
+        return True
+        
+    # 获取当前时间
+    now = datetime.datetime.now()
+    current_time = now.strftime("%H:%M")
+    
+    # 检查是否是工作日（周一至周五）
+    if now.weekday() >= 5:  # 5是周六，6是周日
+        log_message("INFO", f"当前是周末 ({now.strftime('%A')}), 非交易时间")
+        return False
+    
+    # 检查是否在交易时段内
+    for period in TRADING_HOURS:
+        if period["start"] <= current_time <= period["end"]:
+            return True
+    
+    log_message("INFO", f"当前时间 {current_time} 不在交易时段内")
+    return False
+
+# ============ 7. 持仓监控函数 ==============
 
 def monitor_positions(context):
     """
@@ -192,14 +236,23 @@ def monitor_positions(context):
     """
     global notified_dict
 
-    print("[STOCK_MONITOR]开始监控持仓...")
-    print("[STOCK_MONITOR]模拟模式: " + ("已启用" if SIMULATION_MODE else "未启用"))
-    print("[STOCK_MONITOR]阈值设置: " + str(THRESHOLD * 100) + "%")
+    # print("[STOCK_MONITOR]开始监控持仓...")
+    # print("[STOCK_MONITOR]模拟模式: " + ("已启用" if SIMULATION_MODE else "未启用"))
+    # print("[STOCK_MONITOR]阈值设置: " + str(THRESHOLD * 100) + "%")
+    
+    # 检查是否是交易时间
+    if not is_trading_time() and not SIMULATION_MODE:
+        log_message("INFO", "当前不是交易时间，跳过监控")
+        print("[STOCK_MONITOR]当前不是交易时间，跳过监控")
+        return
+    
+    if not is_trading_time():
+        print("[STOCK_MONITOR]当前不是交易时间，但模拟模式下继续执行")
     
     try:
         # 获取当前账户对象
         account = context.account()
-        print("[STOCK_MONITOR]成功获取账户对象")
+        # print("[STOCK_MONITOR]成功获取账户对象")
         
         # 获取持仓信息 - 使用迅投QMT API
         positions = account.positions()  # 直接调用positions()方法获取持仓列表
@@ -209,20 +262,23 @@ def monitor_positions(context):
         
         # 打印所有持仓的基本信息
         if pos_count > 0:
-            print("[STOCK_MONITOR]持仓概览:")
+            # print("[STOCK_MONITOR]持仓概览:")
             for i, pos in enumerate(positions):
                 try:
                     symbol = getattr(pos, 'm_strInstrumentID', '未知代码')
                     name = getattr(pos, 'm_strInstrumentName', '未知名称')
-                    print(f"[STOCK_MONITOR]  {i+1}. {symbol} {name}")
+                    # print(f"[STOCK_MONITOR]  {i+1}. {symbol} {name}")
                 except:
                     print(f"[STOCK_MONITOR]  {i+1}. 无法获取持仓信息")
         
         if not positions:
-            log_message("INFO", "当前没有持仓或持仓数据为空。")
+            # log_message("INFO", "当前没有持仓或持仓数据为空。")
             print("[STOCK_MONITOR]当前没有持仓或持仓数据为空")
-            print("[STOCK_MONITOR]监控持仓结束")
+            # print("[STOCK_MONITOR]监控持仓结束")
             return
+        
+        # 获取当前时间戳，用于判断是否需要重新通知
+        current_time = datetime.datetime.now().timestamp()
         
         # 遍历每只持仓
         for pos in positions:
@@ -233,7 +289,7 @@ def monitor_positions(context):
             cost_price = pos.m_dOpenPrice  # 成本价
             last_price = pos.m_dLastPrice  # 当前价
             
-            print(f"[STOCK_MONITOR]分析持仓: {symbol} {name}, 成本价: {cost_price}, 现价: {last_price}")
+            # print(f"[STOCK_MONITOR]分析持仓: {symbol} {name}, 成本价: {cost_price}, 现价: {last_price}")
             
             # 检查是否为可转债
             is_convertible_bond = getattr(pos, 'is_convertible_bond', 
@@ -245,43 +301,60 @@ def monitor_positions(context):
             
             # 计算收益率 / 涨跌幅
             profit_rate = (last_price - cost_price) / cost_price
+            
             print(f"[STOCK_MONITOR]{symbol} {name} 收益率: {(profit_rate*100):.2f}%，阈值: {(THRESHOLD*100):.2f}%")
             
             # 明确输出判断结果
-            if profit_rate >= THRESHOLD:
-                print(f"[STOCK_MONITOR]>>> {symbol} {name} 收益率 {(profit_rate*100):.2f}% 超过阈值 {(THRESHOLD*100):.2f}% <<<")
-            else:
-                print(f"[STOCK_MONITOR]{symbol} {name} 收益率未达到阈值")
+            # if profit_rate >= THRESHOLD:
+            #     print(f"[STOCK_MONITOR]>>> {symbol} {name} 收益率 {(profit_rate*100):.2f}% 超过阈值 {(THRESHOLD*100):.2f}% <<<")
+            # else:
+            #     print(f"[STOCK_MONITOR]{symbol} {name} 收益率未达到阈值")
             
             # 判断是否超过阈值
-            if profit_rate >= THRESHOLD and not notified_dict.get(symbol, False):
-                # 发送企业微信通知
-                security_type = "可转债" if is_convertible_bond else "股票"
-                title = f"[提醒] {symbol} {name}({security_type})收益率达 {(profit_rate*100):.2f}%"
-                content = f"当前价: {last_price:.2f}, 成本价: {cost_price:.2f}, 持仓: {volume}"
+            if profit_rate >= THRESHOLD:
+                # 获取该股票的通知状态
+                notify_info = notified_dict.get(symbol, {"notified": False, "last_time": 0})
                 
-                print(f"[STOCK_MONITOR]准备发送通知: {title}")
+                # 判断是否需要发送通知：
+                # 1. 从未通知过 (notified=False)
+                # 2. 已经通知过，但已经超过了重复通知的时间间隔
+                time_since_last_notify = current_time - notify_info.get("last_time", 0)
                 
-                if SIMULATION_MODE:
-                    log_message("INFO", f"\n{'-'*50}\n{title}\n{content}\n{'-'*50}")
-                    print(f"[STOCK_MONITOR]模拟模式下发送真实通知")
-                    send_wecom_notification(title, content)
+                if not notify_info.get("notified", False) or time_since_last_notify >= RENOTIFY_INTERVAL:
+                    # 发送企业微信通知
+                    security_type = "可转债" if is_convertible_bond else "股票"
+                    title = f"[提醒] {symbol} {name}({security_type})收益率达 {(profit_rate*100):.2f}%"
+                    content = f"当前价: {last_price:.2f}, 成本价: {cost_price:.2f}, 持仓: {volume}"
+                    
+                    # 添加重复通知的提示
+                    if notify_info.get("notified", False):
+                        minutes_since_last = time_since_last_notify / 60
+                        content += f"\n\n注: 该证券已持续超过阈值 {minutes_since_last:.1f} 分钟"
+                    
+                    print(f"[STOCK_MONITOR]准备发送通知: {title}")
+                    
+                    if SIMULATION_MODE:
+                        log_message("INFO", f"\n{'-'*50}\n{title}\n{content}\n{'-'*50}")
+                        print(f"[STOCK_MONITOR]模拟模式下发送真实通知")
+                        send_wecom_notification(title, content)
+                    else:
+                        send_wecom_notification(title, content)
+                    
+                    # 更新通知状态和时间
+                    notified_dict[symbol] = {"notified": True, "last_time": current_time}
+                    print(f"[STOCK_MONITOR]已将 {symbol} 标记为已通知，时间: {datetime.datetime.fromtimestamp(current_time).strftime('%H:%M:%S')}")
                 else:
-                    send_wecom_notification(title, content)
-                
-                # 标记已提醒
-                notified_dict[symbol] = True
-                print(f"[STOCK_MONITOR]已将 {symbol} 标记为已通知")
+                    # 已通知但未到重新通知时间
+                    time_left = RENOTIFY_INTERVAL - time_since_last_notify
+                    minutes_left = int(time_left / 60)
+                    print(f"[STOCK_MONITOR]{symbol} {name} 收益率超过阈值，但距离上次通知仅过去 {(time_since_last_notify/60):.1f} 分钟")
+                    print(f"[STOCK_MONITOR]将在 {minutes_left} 分钟后重新通知")
             
-            # 如果收益率又低于阈值，则重置(若需在再次突破时继续提醒)
-            elif profit_rate < THRESHOLD and notified_dict.get(symbol, False):
-                notified_dict[symbol] = False
-                log_message("INFO", f"{symbol} {name} 收益率回落至 {(profit_rate*100):.2f}%，低于阈值 {(THRESHOLD*100):.2f}%")
+            # 如果收益率又低于阈值，则重置通知状态
+            elif profit_rate < THRESHOLD and symbol in notified_dict and notified_dict[symbol].get("notified", False):
+                # 重置通知状态
+                notified_dict[symbol] = {"notified": False, "last_time": 0}
                 print(f"[STOCK_MONITOR]重置通知状态: {symbol} {name} 收益率回落至 {(profit_rate*100):.2f}%，低于阈值 {(THRESHOLD*100):.2f}%")
-            
-            # 如果收益率超过阈值但已经通知过，提示已通知
-            elif profit_rate >= THRESHOLD and notified_dict.get(symbol, False):
-                print(f"[STOCK_MONITOR]{symbol} {name} 收益率 {(profit_rate*100):.2f}% 超过阈值，但已经通知过，不再重复通知")
     
     except Exception as ex:
         err_msg = f"监控持仓异常: {ex}\n{traceback.format_exc()}"
@@ -290,7 +363,7 @@ def monitor_positions(context):
     
     print("[STOCK_MONITOR]监控持仓结束")
 
-# ============ 7. 启动及调度 ==============
+# ============ 8. 启动及调度 ==============
 
 def on_start(context):
     """
@@ -454,11 +527,11 @@ def main(context=None):
     
     print("[STOCK_MONITOR]持仓监控任务已启动")
 
-# ============ 8. 模拟模式运行函数 ==============
+# ============ 9. 模拟模式运行函数 ==============
 
 def run_simulation():
     """
-    在模拟模式下运行脚本
+    模拟模式运行函数
     """
     global SIMULATION_MODE
     SIMULATION_MODE = True
@@ -478,35 +551,38 @@ def run_simulation():
     
     # 模拟运行，每秒检查一次是否有定时任务需要执行
     try:
-        print("模拟运行中，按Ctrl+C终止...")
+        print("模拟模式运行中，按Ctrl+C终止...")
         while True:
             context.run_scheduled_tasks()
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\n模拟运行已终止")
+        print("\n模拟已终止")
 
 # 快速测试模式 - 加速价格波动以快速触发通知
 def run_quick_test():
     """
     快速测试模式 - 加速价格波动以快速触发通知
     """
-    global SIMULATION_MODE, SIM_POSITIONS
+    global SIMULATION_MODE, SIM_POSITIONS, FORCE_MONITOR, RENOTIFY_INTERVAL
     SIMULATION_MODE = True
+    FORCE_MONITOR = True  # 强制执行监控，无论是否在交易时间
+    RENOTIFY_INTERVAL = 60  # 快速测试模式下，设置为1分钟就重新通知
     
     # 修改模拟持仓，使其更容易触发通知
     SIM_POSITIONS = [
         # 股票持仓 - 成本价设置更低，使其立即触发收益率阈值
         {"code": "600519", "name": "贵州茅台", "cost": 1600.0, "volume": 100},  # 成本价设更低
-        {"code": "000858", "name": "五粮液", "cost": 120.0, "volume": 200},      # 成本价设更低
+        # {"code": "000858", "name": "五粮液", "cost": 120.0, "volume": 200},      # 成本价设更低
         # 可转债持仓 - 成本价设置更低，使其立即触发收益率阈值
         {"code": "113009", "name": "广汽转债", "cost": 90.0, "volume": 10, "is_cb": True},  # 成本价设更低
-        {"code": "123111", "name": "东财转3", "cost": 85.0, "volume": 10, "is_cb": True},   # 成本价设更低
+        # {"code": "123111", "name": "东财转3", "cost": 85.0, "volume": 10, "is_cb": True},   # 成本价设更低
     ]
     
     print(f"{'='*20} 快速测试模式启动 {'='*20}")
     print(f"当前时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"收益率阈值: {THRESHOLD*100}%")
     print(f"监控间隔: {MONITOR_INTERVAL}秒")
+    print(f"重复通知间隔: {RENOTIFY_INTERVAL}秒")
     print(f"模拟持仓数量: {len(SIM_POSITIONS)}")
     print(f"{'='*50}\n")
     
@@ -532,7 +608,7 @@ def run_quick_test():
     except KeyboardInterrupt:
         print("\n快速测试已终止")
 
-# ============ 9. 测试函数 ==============
+# ============ 10. 测试函数 ==============
 
 def test_send_notification():
     """
@@ -625,14 +701,17 @@ try:
         for i, pos in enumerate(positions):
             print(f"[STOCK_MONITOR]  {i+1}. {pos.m_strInstrumentID} {pos.m_strInstrumentName}")
         
-        print(f"[STOCK_MONITOR]开始循环监控，间隔: {MONITOR_INTERVAL}秒")
-        print(f"[STOCK_MONITOR]按Ctrl+C或关闭控制台可停止监控")
-        print(f"[STOCK_MONITOR]脚本使用说明:")
-        print(f"[STOCK_MONITOR]1. 当前模式是自动每{MONITOR_INTERVAL}秒监控一次持仓")
-        print(f"[STOCK_MONITOR]2. 如果需要手动测试通知功能，可以在QMT控制台执行:")
-        print(f"[STOCK_MONITOR]   import stock_monitor")
-        print(f"[STOCK_MONITOR]   stock_monitor.test_notification_trigger()")
-        print(f"[STOCK_MONITOR]3. 这将模拟一个持仓收益率超过{THRESHOLD*100:.2f}%的情况，并触发通知")
+        # print(f"[STOCK_MONITOR]开始循环监控，间隔: {MONITOR_INTERVAL}秒")
+        # print(f"[STOCK_MONITOR]按Ctrl+C或关闭控制台可停止监控")
+        # print(f"[STOCK_MONITOR]脚本使用说明:")
+        # print(f"[STOCK_MONITOR]1. 当前模式是自动每{MONITOR_INTERVAL}秒监控一次持仓")
+        # print(f"[STOCK_MONITOR]2. 如果需要手动测试通知功能，可以在QMT控制台执行:")
+        # print(f"[STOCK_MONITOR]   import stock_monitor")
+        # print(f"[STOCK_MONITOR]   stock_monitor.test_notification_trigger()")
+        # print(f"[STOCK_MONITOR]3. 这将模拟一个持仓收益率超过{THRESHOLD*100:.2f}%的情况，并触发通知")
+        # print(f"[STOCK_MONITOR]4. 只在交易时间内执行监控，当前交易时间设置为:")
+        for period in TRADING_HOURS:
+            print(f"[STOCK_MONITOR]   {period['start']} - {period['end']}")
         
         # 循环执行监控，模拟定时任务
         counter = 1
@@ -653,7 +732,7 @@ try:
                 if counter % 3 == 0 and random.random() > 0.5:
                     pos.m_dLastPrice = pos.m_dOpenPrice * (1 + THRESHOLD + 0.01)
                 
-            print(f"[STOCK_MONITOR]等待{MONITOR_INTERVAL}秒后执行下一次监控...")
+            # print(f"[STOCK_MONITOR]等待{MONITOR_INTERVAL}秒后执行下一次监控...")
             time.sleep(MONITOR_INTERVAL)
 
 except KeyboardInterrupt:
