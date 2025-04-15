@@ -1,6 +1,0 @@
-
-5-0
-自定义
-[{'name': 'turnover', 'weight': 4, 'ascending': True}, {'name': 'cap_mv_rate', 'weight': 3, 'ascending': False}, {'name': 'stoch1', 'weight': 2, 'ascending': False}, {'name': 'volatility_stk5', 'weight': 4, 'ascending': True}]
-最优参数下的目标函数值： 0.2434988071579529
-

@@ -6,7 +6,7 @@ pd.set_option('display.max_columns', None)  # 当列太多时不换行
 df = pd.read_parquet('../cb_data.pq') # 导入转债数据
 index = pd.read_parquet('../index.pq') # 导入指数数据
 from numpy import exp, nan
-# df.head()
+print(df.head())
 
 
 # 基础设置
