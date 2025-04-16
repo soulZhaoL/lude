@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--price_min', type=int, default=100, help='价格下限')
     parser.add_argument('--price_max', type=int, default=150, help='价格上限')
     parser.add_argument('--hold_num', type=int, default=5, help='持仓数量')
-    parser.add_argument('--n_jobs', type=int, default=10, help='并行任务数')
+    parser.add_argument('--n_jobs', type=int, default=5, help='并行任务数')
     parser.add_argument('--strategy', type=str, default='multistage', 
                         choices=['domain', 'prescreen', 'multistage', 'filter'],
                         help='优化策略: domain(领域知识分组), prescreen(预筛选), multistage(多阶段), filter(过滤冗余)')
@@ -34,13 +34,9 @@ def parse_args():
     return parser.parse_args()
 
 def load_data():
-    """加载数据并添加自定义因子"""
+    """加载数据"""
     print("正在加载数据...")
-    df = pd.read_parquet('cb_data.pq')
-    
-    # print("正在计算自定义因子...")
-    # df = add_custom_factors(df)
-    
+    df = pd.read_parquet('optuna_search/new_test/cb_data.pq')
     return df
 
 def domain_knowledge_factors():
