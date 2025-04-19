@@ -5,8 +5,8 @@
 # 日期: 2025-04-18
 
 # 激活conda环境（如果需要）
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate lude
+# source ~/miniconda3/etc/profile.d/conda.sh
+# conda activate lude
 
 # 定义颜色
 GREEN='\033[0;32m'
