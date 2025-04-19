@@ -6,9 +6,13 @@
 # 或者
 # ~/batch_init_env.sh lude_100_150_hold5_fac3_num1
 # 或者
-# while read h f n; do    ~/batch_init_env.sh "$h" "$f" "$n";  done < batch_init_env_param.txt
-# while read h f n; do    ~/batch_init_env.sh -n "$h" "$f" "$n";  done < batch_init_env_param.txt
+# while read h f n; do    ~/batch_init_env.sh "$h" "$f" "$n";  done <= batch_init_env_param.txt
+# while read h f n; do    ~/batch_init_env.sh -n "$h" "$f" "$n";  done <= batch_init_env_param.txt
 set -euo pipefail
+
+# —— 先做 Git 协议层面优化 —— #
+git config --global http.version HTTP/1.1
+git config --global http.postBuffer 524288000
 
 # —— 配置区 —— #
 BASE_DIR="/root/autodl-tmp"                                # 所有项目目录的根目录
@@ -58,7 +62,7 @@ fi
 
 # ——— 路径设置 ——— #
 DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}"
-REPO_DIR="${DIR}/lude"    # 仓库克隆到子目录 repo/
+REPO_DIR="${DIR}/lude"    # 仓库克隆到子目录
 WORKDIR="${REPO_DIR}/optuna_search/new_test"
 
 echo "▶▶▶ 处理目标：${DIR}"
@@ -78,6 +82,7 @@ fi
 # ——— 复制 .pq 文件 —— #
 echo "→ 复制 .pq 到：${WORKDIR}"
 mkdir -p "${WORKDIR}"
+cd "${WORKDIR}"
 cp ${PQ_SOURCE} "${WORKDIR}/"
 
 # ——— Conda 环境激活 —— #
