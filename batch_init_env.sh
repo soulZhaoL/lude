@@ -6,6 +6,7 @@
 # 或者
 # ~/batch_init_env.sh lude_100_150_hold5_fac3_num1
 # 或者
+# while read h f n; do    ~/batch_init_env.sh "$h" "$f" "$n";  done < batch_init_env_param.txt
 # while read h f n; do    ~/batch_init_env.sh -n "$h" "$f" "$n";  done < batch_init_env_param.txt
 set -euo pipefail
 
@@ -15,6 +16,7 @@ REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
 PQ_SOURCE="/root/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
 CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
+PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
 # ================ #
 
 usage() {
@@ -85,6 +87,10 @@ if [ "${SKIP_CONDA}" = false ]; then
   # 确保 conda 初始化脚本已经加载
   source "$(conda info --base)/etc/profile.d/conda.sh"
   conda activate "${ENV_NAME}"
+  # 安装依赖
+  echo "→ 安装 Python 依赖 requirements.txt"
+  cd "${REPO_DIR}"
+  pip install -r requirements.txt -i "${PIP_INDEX_URL}"
 else
   echo "→ 跳过 Conda 环境激活"
 fi
