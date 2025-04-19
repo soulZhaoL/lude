@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# chmod +x ~/batch_init_env.sh ~/run_opt.shchmod +x ~/batch_init_env.sh ~/run_opt.sh
+# /root/run_opt.sh 5 3 1
+#
+#
+#
 
 # ----------------------------------
 #  usage 函数
