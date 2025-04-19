@@ -2,11 +2,40 @@
 
 # 可转债多因子优化脚本
 # 作者: Cascade
-# 日期: 2025-04-18
+# 日期: 2025-04-19
 
-# 激活conda环境（如果需要）
-# source ~/miniconda3/etc/profile.d/conda.sh
-# conda activate lude
+# 定义函数：检测环境并激活conda环境
+setup_conda_environment() {
+    # 获取当前脚本的完整路径
+    SCRIPT_PATH=$(cd "$(dirname "$0")" && pwd)
+    FULL_PATH=$(cd "$SCRIPT_PATH" && cd ../.. && pwd)
+    
+    echo "当前工作路径: $FULL_PATH"
+    
+    # 检查是否为服务器环境（判断是否含有autodl-tmp目录）
+    if [[ "$FULL_PATH" == *"autodl-tmp"* ]]; then
+        echo "检测到服务器环境"
+        
+        # 从路径中提取环境名称（例如从/root/autodl-tmp/lude_100_150_hold5_fac3_num1/lude提取lude_100_150_hold5_fac3_num1）
+        ENV_NAME=$(echo "$FULL_PATH" | grep -o 'lude_[^/]*')
+        
+        if [[ -n "$ENV_NAME" ]]; then
+            echo "尝试激活服务器conda环境: $ENV_NAME"
+            source /root/miniconda3/etc/profile.d/conda.sh
+            conda activate "$ENV_NAME" || echo "警告: 无法激活环境 $ENV_NAME"
+        else
+            echo "警告: 无法从路径解析出conda环境名称，将使用默认环境"
+        fi
+    else
+        echo "检测到本地环境"
+        # 本地环境使用固定的conda环境
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate lude || echo "警告: 无法激活本地环境 lude"
+    fi
+}
+
+# 调用函数激活conda环境
+setup_conda_environment
 
 # 定义颜色
 GREEN='\033[0;32m'
