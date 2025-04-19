@@ -119,7 +119,7 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   --end 20250328 \
   --min 100 \
   --max 150 \
-  --jobs 15 \
+  --jobs 5 \
   --trials ${TRIALS} \
   --hold ${HOLD} \
   --seed-start 42 \
