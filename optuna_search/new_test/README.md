@@ -27,6 +27,14 @@ python view_best_model.py --list
 python view_best_model.py --model <model_path>
 ```
 
+
+# 假设要创建 num=2,3,4,5 四个环境
+for num in 2 3 4 5; do
+  env_name="lude_100_150_hold5_fac5_num${num}"
+  echo "▶️ 创建环境：${env_name}"
+  conda create -n "${env_name}" python=3.12 -y
+done
+
 ```
 conda create --name lude_100_150_hold5_fac3_num1  python=3.12
 conda activate lude_100_150_hold5_fac3_num1

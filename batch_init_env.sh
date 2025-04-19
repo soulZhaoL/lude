@@ -7,7 +7,9 @@
 # 或者
 # ~/batch_init_env.sh lude_100_150_hold5_fac3_num1
 # 或者
+# 切换conda 并初始化pip 环境
 # while read h f n; do    ~/batch_init_env.sh "$h" "$f" "$n";  done < ~/batch_init_env_param.txt
+# 跳过conda
 # while read h f n; do    ~/batch_init_env.sh -n "$h" "$f" "$n";  done < ~/batch_init_env_param.txt
 set -euo pipefail
 
