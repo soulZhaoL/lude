@@ -26,17 +26,17 @@ def parse_args():
     parser.add_argument('--price_min', type=int, default=100, help='价格下限')
     parser.add_argument('--price_max', type=int, default=150, help='价格上限')
     parser.add_argument('--hold_num', type=int, default=5, help='持仓数量')
-    parser.add_argument('--n_jobs', type=int, default=5, help='并行任务数')
+    parser.add_argument('--n_jobs', type=int, default=15, help='并行任务数')
     parser.add_argument('--strategy', type=str, default='multistage', 
                         choices=['domain', 'prescreen', 'multistage', 'filter'],
                         help='优化策略: domain(领域知识分组), prescreen(预筛选), multistage(多阶段), filter(过滤冗余)')
-    
+    parser.add_argument('--seed', type=int, default=42, help='随机种子')
     return parser.parse_args()
 
 def load_data():
     """加载数据"""
     print("正在加载数据...")
-    df = pd.read_parquet('optuna_search/new_test/cb_data.pq')
+    df = pd.read_parquet('cb_data.pq')
     return df
 
 def domain_knowledge_factors():
@@ -629,7 +629,7 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         all_combinations = list(itertools.combinations(range(len(best_factors)), num_factors))
         print(f"预筛选因子组合数量: {len(all_combinations)}")
         if len(all_combinations) > max_combinations:
-            np.random.seed(42)
+            np.random.seed(args.seed)  # 使用参数中的随机种子
             indices = np.random.choice(len(all_combinations), max_combinations, replace=False)
             all_combinations = [all_combinations[i] for i in indices]
         return best_factors, all_combinations
@@ -640,7 +640,7 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         filtered_factors = filter_redundant_factors(factors)
         all_combinations = list(itertools.combinations(range(len(filtered_factors)), num_factors))
         if len(all_combinations) > max_combinations:
-            np.random.seed(42)
+            np.random.seed(args.seed)  # 使用参数中的随机种子
             indices = np.random.choice(len(all_combinations), max_combinations, replace=False)
             all_combinations = [all_combinations[i] for i in indices]
         return filtered_factors, all_combinations
@@ -676,21 +676,14 @@ def objective(trial, df, factors, factor_combinations, args):
         print(f"计算CAGR时出错: {e}")
         return -1.0  # 返回一个很差的值
 
-def create_sampler(method):
+def create_sampler(method, seed=None):
     """创建采样器"""
     if method == 'tpe':
-        return optuna.samplers.TPESampler(seed=42)
-    elif method == 'random':
-        return optuna.samplers.RandomSampler(seed=42)
+        return optuna.samplers.TPESampler(seed=seed)
     elif method == 'cmaes':
-        try:
-            return optuna.samplers.CmaEsSampler(seed=42, warn_independent_sampling=False)
-        except (ImportError, ModuleNotFoundError):
-            print("警告: cmaes 模块未安装，自动切换为 TPE 采样器")
-            print("如需使用 CMA-ES，请运行: pip install cmaes")
-            return optuna.samplers.TPESampler(seed=42)
-    else:
-        raise ValueError(f"不支持的优化方法: {method}")
+        return optuna.samplers.CmaEsSampler(seed=seed)
+    else:  # 默认随机采样
+        return optuna.samplers.RandomSampler(seed=seed)
 
 def run_optimization(df, args):
     """运行优化过程"""
@@ -769,7 +762,7 @@ def run_optimization(df, args):
     storage_path = f"{RESULTS_DIR}/{study_name}.db"
     
     # 创建采样器
-    sampler = create_sampler(args.method)
+    sampler = create_sampler(args.method, seed=args.seed)  # 使用参数中的随机种子
     
     if study is None:
         study = optuna.create_study(
@@ -847,6 +840,14 @@ def main():
     # 加载数据
     df = load_data()
     
+    print(f"\n开始优化， 参数信息:")
+    print(f"  迭代次数: {args.n_trials}")
+    print(f"  持仓数: {args.hold_num}")
+    print(f"  价格区间: {args.price_min}-{args.price_max}")
+    print(f"  因子数量: {args.n_factors}")
+    print(f"  优化方法: {args.method}")
+    print(f"  策略: {args.strategy}")
+    print(f"  随机种子: {args.seed}")
     # 运行优化
     study, best_model = run_optimization(df, args)
     
