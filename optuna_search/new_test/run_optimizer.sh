@@ -28,6 +28,8 @@ PRICE_MAX=150        # 价格上限
 HOLD_NUM=5           # 持仓数量
 N_JOBS=15            # 并行任务数
 SEED=42              # 随机种子
+SEED_START=42        # 起始随机种子
+SEED_STEP=1000       # 种子递增步长
 ITERATIONS=10        # 持续优化模式下的运行次数
 BACKGROUND=false     # 是否在后台运行
 LOG_FILE=""          # 日志文件
@@ -50,7 +52,9 @@ show_help() {
     echo "  --max <price>            价格上限, 默认: 150"
     echo "  --hold <n>               持仓数量, 默认: 5"
     echo "  --jobs <n>               并行任务数, 默认: 15"
-    echo "  --seed <n>               随机种子, 默认: 42"
+    echo "  --seed <n>               随机种子(单次模式), 默认: 42"
+    echo "  --seed-start <n>         起始随机种子(持续模式), 默认: 42"
+    echo "  --seed-step <n>          种子递增步长(持续模式), 默认: 1000"
     echo "  --iterations <n>         持续模式下的运行次数, 默认: 10"
     echo "  -b, --background         在后台运行脚本"
     echo "  -l, --log <filename>     指定日志文件(用于后台运行)"
@@ -113,6 +117,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --seed)
             SEED="$2"
+            shift 2
+            ;;
+        --seed-start)
+            SEED_START="$2"
+            shift 2
+            ;;
+        --seed-step)
+            SEED_STEP="$2"
             shift 2
             ;;
         --iterations)
@@ -187,12 +199,12 @@ fi
 if [[ "$MODE" = "single" ]]; then
     CMD="python domain_knowledge_optimizer.py --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed $SEED"
 else
-    CMD="python continuous_optimizer.py --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed $SEED"
+    CMD="python continuous_optimizer.py --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed_start $SEED_START --seed_step $SEED_STEP"
 fi
 
 # 显示将执行的命令
 echo -e "${BLUE}将执行以下命令:${NC}"
-echo -e "${GREEN}$CMD${NC}"
+echo -e "${GREEN}\"$CMD\"${NC}"
 
 # 确认执行
 if [[ "$BACKGROUND" = false ]]; then

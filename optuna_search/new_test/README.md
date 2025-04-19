@@ -30,7 +30,9 @@ python view_best_model.py --model <model_path>
 ```
 conda create --name lude_100_150_hold5_fac3_num1  python=3.12
 
-./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start_date 20220729 --end_date 20250328 --price_min 100 --price_max 150 --n_jobs 15 --trials 3000 --hold_num 5  --seed 42 --iterations 10 --n_factors 3 
+./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start_date 20220729 --end_date 20250328 --price_min 100 --price_max 150 --n_jobs 15 --trials 3000 --hold_num 5 --seed_start 42 --seed_step 1000 --iterations 10 --n_factors 3 
 
-./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start_date 20220729 --end_date 20250328 --price_min 100 --price_max 150 --n_jobs 15 --trials 3000 --hold_num 5  --seed 42 --iterations 10 --n_factors 3 
+./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start_date 20220729 --end_date 20250328 --price_min 100 --price_max 150 --n_jobs 15 --trials 3000 --hold_num 5 --seed_start 42 --seed_step 1000 --iterations 10 --n_factors 4 
 ```
+
+cp /root/*.pq /root/autodl-tmp/lude_100_150_hold5_fac3_num1/lude/optuna_search/new_test/

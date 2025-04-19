@@ -74,16 +74,33 @@ def extract_cagr_from_output(output):
         return 0
     return 0
 
-def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trials=1500, 
+def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trials=3000, 
                      n_factors=3, start_date="20220729", end_date="20250328", 
-                     price_min=100, price_max=150, hold_num=5, n_jobs=5, seed=42):
-    """运行连续优化过程"""
+                     price_min=100, price_max=150, hold_num=5, n_jobs=15,
+                     seed_start=42, seed_step=1000):
+    """运行连续优化过程
+    
+    Args:
+        iterations: 优化迭代次数
+        strategy: 优化策略(multistage, domain, prescreen, filter)
+        method: 优化方法(tpe, random, cmaes)
+        n_trials: 每次优化的迭代次数
+        n_factors: 因子数量
+        start_date: 回测开始日期
+        end_date: 回测结束日期
+        price_min: 价格下限
+        price_max: 价格上限
+        hold_num: 持仓数量
+        n_jobs: 并行任务数
+        seed_start: 起始种子值
+        seed_step: 种子递增步长
+    """
     
     # 加载最佳记录
     best_record = load_best_record()
     print(f"历史最佳CAGR: {best_record['best_cagr']:.4f}, 记录时间: {best_record['timestamp']}")
     
-    # 准备优化参数
+    # 准备基础优化参数（不包含种子）
     base_params = [
         "--strategy", strategy,
         "--method", method,
@@ -94,17 +111,19 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
         "--price_min", str(price_min),
         "--price_max", str(price_max),
         "--hold_num", str(hold_num),
-        "--n_jobs", str(n_jobs),
-        "--seed", str(seed)  # 使用固定种子42，与single模式保持一致
+        "--n_jobs", str(n_jobs)
     ]
     
     # 运行多次优化
     total_start_time = time.time()
     for i in range(iterations):
-        print(f"\n============== 第 {i+1}/{iterations} 次优化 ==============")
+        # 使用规律变化的种子
+        current_seed = seed_start + i * seed_step
         
-        # 构建命令 - 不再使用随机种子
-        cmd = ["python", "domain_knowledge_optimizer.py"] + base_params
+        print(f"\n============== 第 {i+1}/{iterations} 次优化 (种子: {current_seed}) ==============")
+        
+        # 构建命令
+        cmd = ["python", "domain_knowledge_optimizer.py"] + base_params + ["--seed", str(current_seed)]
         
         # 运行命令
         start_time = time.time()
@@ -172,7 +191,7 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
         latest_model = find_latest_model(os.path.join(RESULTS_DIR, f"best_model_{strategy}_{method}_{n_factors}factors_*.pkl"))
         
         if latest_model and current_cagr > 0:
-            print(f"当前运行CAGR: {current_cagr:.4f}")
+            print(f"当前运行CAGR: {current_cagr:.4f} (种子: {current_seed})")
             
             # 如果优于历史最佳，更新记录
             if current_cagr > best_record["best_cagr"]:
@@ -194,7 +213,7 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
                     "n_factors": n_factors,
                     "price_range": f"{price_min}-{price_max}",
                     "hold_num": hold_num,
-                    "seed": seed
+                    "seed": current_seed
                 }
                 save_best_record(best_record)
                 print(f"发现新的最佳结果! CAGR: {current_cagr:.4f}")
@@ -216,7 +235,7 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
 def parse_args():
     """解析命令行参数"""
     parser = argparse.ArgumentParser(description='可转债多因子持续优化程序')
-    parser.add_argument('--iterations', type=int, default=10, help='连续优化次数')
+    parser.add_argument('--iterations', type=int, default=10, help='持续优化次数')
     parser.add_argument('--strategy', type=str, default='multistage', 
                         choices=['domain', 'prescreen', 'multistage', 'filter'],
                         help='优化策略')
@@ -231,14 +250,14 @@ def parse_args():
     parser.add_argument('--price_max', type=int, default=150, help='价格上限')
     parser.add_argument('--hold_num', type=int, default=5, help='持仓数量')
     parser.add_argument('--n_jobs', type=int, default=15, help='并行任务数')
-    parser.add_argument('--seed', type=int, default=42, help='随机种子')
+    parser.add_argument('--seed_start', type=int, default=42, help='起始随机种子')
+    parser.add_argument('--seed_step', type=int, default=1000, help='种子递增步长')
     
     return parser.parse_args()
 
 def main():
     """主函数"""
     args = parse_args()
-    
     run_optimization(
         iterations=args.iterations,
         strategy=args.strategy,
@@ -251,7 +270,8 @@ def main():
         price_max=args.price_max,
         hold_num=args.hold_num,
         n_jobs=args.n_jobs,
-        seed=args.seed
+        seed_start=args.seed_start,
+        seed_step=args.seed_step
     )
 
 if __name__ == "__main__":
