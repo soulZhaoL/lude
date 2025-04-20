@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # chmod +x ~/batch_init_env.sh ~/run_opt.sh
-# /root/run_opt.sh --mode continuous --trials 3000 --iterations 5 --hold 5 --factors 3 --num 1
+# /root/run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 3 --num 1
 #
 #
 #
@@ -125,8 +125,8 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   --seed-start 42 \
   --seed-step 1000 \
   --iterations ${ITERATIONS} \
-  --factors ${FAC}
-  -b
+  --factors ${FAC} \
+  -b \
   -l optimization.log
 
 echo "✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}"
