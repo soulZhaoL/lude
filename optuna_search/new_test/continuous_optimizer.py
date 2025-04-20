@@ -187,7 +187,9 @@ def extract_best_factors_from_output(output):
         print(f"提取最佳因子组合时出错: {e}")
         return []
 
-def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None):
+def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None, 
+                                        n_factors=None, start_date=None, end_date=None,
+                                        price_min=None, price_max=None, hold_num=None):
     """发送优化结果到钉钉
     
     Args:
@@ -195,6 +197,15 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
         factors: 因子列表
         seed: 随机种子
         strategy: 优化策略
+        n_factors: 因子数量
+        start_date: 回测开始日期
+        end_date: 回测结束日期
+        price_min: 价格下限
+        price_max: 价格上限
+        hold_num: 持仓数量
+    
+    Returns:
+        bool: 是否成功发送
     """
     if not ding_talk_available:
         print("钉钉推送模块不可用，跳过推送")
@@ -209,6 +220,21 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
         seed_info = f"(种子: {seed})" if seed else ""
         strategy_info = f"策略: {strategy}" if strategy else ""
         
+        # 构造优化参数信息
+        params_info = "\n\n【优化参数】"
+        if n_factors is not None:
+            params_info += f"\n因子数量: {n_factors}"
+        if start_date is not None and end_date is not None:
+            params_info += f"\n回测区间: {start_date} 至 {end_date}"
+        if price_min is not None and price_max is not None:
+            params_info += f"\n价格区间: {price_min} 至 {price_max}"
+        if hold_num is not None:
+            params_info += f"\n持仓数量: {hold_num}"
+        
+        # 如果没有任何参数，则不显示参数部分
+        if params_info == "\n\n【优化参数】":
+            params_info = ""
+        
         # 构造因子信息
         factors_info = ""
         if factors:
@@ -222,6 +248,7 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
         message = f"【可转债优化新结果】{current_time}\n\n" \
                   f"年化收益率(CAGR): {cagr:.6f} {seed_info}\n" \
                   f"{strategy_info}" \
+                  f"{params_info}" \
                   f"{factors_info}"
         
         # 发送消息
@@ -496,7 +523,9 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
                 print(f"已保存到: {best_model_path}")
                 
                 # 发送钉钉推送
-                send_optimization_result_to_dingtalk(current_cagr, best_factors, seed=current_seed, strategy=strategy)
+                send_optimization_result_to_dingtalk(current_cagr, best_factors, seed=current_seed, strategy=strategy,
+                                                    n_factors=n_factors, start_date=start_date, end_date=end_date,
+                                                    price_min=price_min, price_max=price_max, hold_num=hold_num)
             else:
                 print(f"未超过历史最佳 ({best_record['best_cagr']:.6f})")
         

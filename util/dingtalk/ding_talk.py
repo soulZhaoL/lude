@@ -94,34 +94,70 @@ class DingTalk:
         Returns:
             Dict: 响应结果
         """
-        try:
-            if not self.enabled:
-                logger.warning("钉钉推送未启用")
-                return {"errcode": -1, "errmsg": "钉钉推送未启用"}
+        # 最大重试次数
+        max_retries = 3
+        # 初始重试延迟（秒）
+        retry_delay = 1
+        
+        for retry in range(max_retries):
+            try:
+                if not self.enabled:
+                    logger.warning("钉钉推送未启用")
+                    return {"errcode": -1, "errmsg": "钉钉推送未启用"}
 
-            headers = {'Content-Type': 'application/json'}
+                headers = {'Content-Type': 'application/json'}
 
-            if self.secret:
-                timestamp, sign = self._get_timestamp_sign()
-                webhook = f"{self.webhook}&timestamp={timestamp}&sign={sign}"
-            else:
-                webhook = self.webhook
+                if self.secret:
+                    timestamp, sign = self._get_timestamp_sign()
+                    webhook = f"{self.webhook}&timestamp={timestamp}&sign={sign}"
+                else:
+                    webhook = self.webhook
+                
+                # 增加连接和读取超时设置
+                resp = requests.post(
+                    webhook,
+                    data=json.dumps(msg),
+                    headers=headers,
+                    timeout=(5, 10)  # 连接超时5秒，读取超时10秒
+                )
+                
+                resp_json = resp.json()
 
-            resp = requests.post(
-                webhook,
-                data=json.dumps(msg),
-                headers=headers,
-                timeout=5
-            )
-            resp_json = resp.json()
+                if resp_json['errcode'] != 0:
+                    logger.error(f"发送钉钉消息失败: {resp_json}")
+                
+                # 成功发送，返回结果
+                return resp_json
 
-            if resp_json['errcode'] != 0:
-                logger.error(f"发送钉钉消息失败: {resp_json}")
-            return resp_json
-
-        except Exception as e:
-            logger.error(f"发送钉钉消息异常: {e}")
-            return {"errcode": -1, "errmsg": str(e)}
+            except requests.exceptions.ConnectionError as e:
+                # 连接错误，可能是网络问题
+                if retry < max_retries - 1:
+                    # 不是最后一次重试，记录警告并继续
+                    current_delay = retry_delay * (2 ** retry)  # 指数退避策略
+                    logger.warning(f"钉钉消息发送连接错误，{current_delay}秒后重试 ({retry+1}/{max_retries}): {e}")
+                    time.sleep(current_delay)
+                else:
+                    # 最后一次重试失败，记录错误
+                    logger.error(f"发送钉钉消息连接错误，重试{max_retries}次后失败: {e}")
+                    return {"errcode": -1, "errmsg": str(e)}
+            
+            except requests.exceptions.Timeout as e:
+                # 超时错误
+                if retry < max_retries - 1:
+                    current_delay = retry_delay * (2 ** retry)
+                    logger.warning(f"钉钉消息发送超时，{current_delay}秒后重试 ({retry+1}/{max_retries}): {e}")
+                    time.sleep(current_delay)
+                else:
+                    logger.error(f"发送钉钉消息超时，重试{max_retries}次后失败: {e}")
+                    return {"errcode": -1, "errmsg": str(e)}
+            
+            except Exception as e:
+                # 其他错误
+                logger.error(f"发送钉钉消息异常: {e}")
+                return {"errcode": -1, "errmsg": str(e)}
+        
+        # 如果代码执行到这里，表示所有重试都失败了
+        return {"errcode": -1, "errmsg": "所有重试尝试都失败了"}
 
     def send_message(
         self,
