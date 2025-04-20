@@ -11,3 +11,6 @@ __pycache__/
 
 /optimization_results
 /optuna_search/new_test/optimization_results
+
+.optimizer_pid
+*.log

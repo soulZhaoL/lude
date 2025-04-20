@@ -16,6 +16,7 @@ import importlib.util
 import threading
 import re
 import sys
+import shutil
 
 # 添加项目根目录到路径，确保能导入util目录下的模块
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -212,6 +213,17 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
         return False
     
     try:
+        # 加载因子映射文件
+        factor_mapping = {}
+        factor_mapping_path = os.path.join(project_root, 'factor_mapping.json')
+        if os.path.exists(factor_mapping_path):
+            try:
+                with open(factor_mapping_path, 'r', encoding='utf-8') as f:
+                    factor_mapping = json.load(f)
+                print(f"已加载因子映射文件: {factor_mapping_path}")
+            except Exception as e:
+                print(f"加载因子映射文件时出错: {e}")
+        
         # 获取钉钉管理器实例
         ding_manager = DingTalkManager.get_instance()
         
@@ -242,7 +254,16 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
             for i, factor in enumerate(factors):
                 direction = "升序" if factor.get('ascending', False) else "降序"
                 weight = factor.get('weight', 1)
-                factors_info += f"\n{i+1}. {factor['name']} (权重: {weight}, {direction})"
+                factor_name = factor['name']
+                
+                # 添加中文名称（如果存在）
+                chinese_name = factor_mapping.get(factor_name, "")
+                if chinese_name:
+                    factor_display = f"{factor_name}[{chinese_name}]"
+                else:
+                    factor_display = factor_name
+                
+                factors_info += f"\n{i+1}. {factor_display} (权重: {weight}, {direction})"
         
         # 完整消息
         message = f"【可转债优化新结果】{current_time}\n\n" \

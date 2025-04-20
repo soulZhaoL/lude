@@ -126,5 +126,7 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   --seed-step 1000 \
   --iterations ${ITERATIONS} \
   --factors ${FAC}
+  -b
+  -l optimization.log
 
 echo "✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}"

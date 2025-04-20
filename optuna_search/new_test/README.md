@@ -41,6 +41,12 @@ conda activate lude_100_150_hold5_fac3_num1
 ./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start 20220729 --end 20250328 --min 100 --max 150 --jobs 15 --trials 3000 --hold 5 --seed-start 42 --seed-step 1000 --iterations 10 --factors 3 
 
 ./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start 20220729 --end 20250328 --min 100 --max 150 --jobs 15 --trials 3000 --hold 5 --seed-start 42 --seed-step 1000 --iterations 10 --factors 4 
+
+# 查看状态
+./run_optimizer.sh --status
+
+# 停止
+./run_optimizer.sh --stop
 ```
 
 

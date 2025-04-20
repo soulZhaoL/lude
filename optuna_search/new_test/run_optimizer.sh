@@ -1,10 +1,19 @@
 #!/bin/bash
 
+# 进入脚本所在目录
+cd "$(dirname "$0")"
+
+# 定义项目根目录
+PROJECT_ROOT=$(cd ../.. && pwd)
+
+# 定义进程ID文件
+PID_FILE="$PROJECT_ROOT/optuna_search/new_test/.optimizer_pid"
+
 # 可转债多因子优化脚本
 # 作者: Cascade
 # 日期: 2025-04-19
 
-# 定义函数：检测环境并激活conda环境
+# 检测环境并激活conda环境
 setup_conda_environment() {
     # 获取当前脚本的完整路径
     SCRIPT_PATH=$(cd "$(dirname "$0")" && pwd)
@@ -37,7 +46,7 @@ setup_conda_environment() {
 # 调用函数激活conda环境
 setup_conda_environment
 
-# 定义颜色
+# 设置颜色输出
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -63,6 +72,7 @@ ITERATIONS=10        # 持续优化模式下的运行次数
 BACKGROUND=false     # 是否在后台运行
 LOG_FILE=""          # 日志文件
 CLEAR_RESULTS=false  # 是否清空结果目录
+ACTION="run"         # 操作类型: run(运行) 或 stop(停止)
 
 # 显示脚本使用说明
 show_help() {
@@ -88,12 +98,15 @@ show_help() {
     echo "  -b, --background         在后台运行脚本"
     echo "  -l, --log <filename>     指定日志文件(用于后台运行)"
     echo "  --clear                  运行前清空结果目录"
+    echo "  --stop                   停止后台运行的优化进程"
+    echo "  --status                 检查后台运行的优化进程状态"
     echo "  -h, --help               显示帮助信息"
     echo ""
     echo "示例:"
     echo "  $0 -s multistage --factors 4 --jobs 15"
     echo "  $0 -m continuous --iterations 20 --strategy filter"
     echo "  $0 -m continuous -b -l optimization.log"
+    echo "  $0 --stop           # 停止后台运行的优化进程"
 }
 
 # 解析命令行参数
@@ -172,6 +185,14 @@ while [[ $# -gt 0 ]]; do
             CLEAR_RESULTS=true
             shift
             ;;
+        --stop)
+            ACTION="stop"
+            shift
+            ;;
+        --status)
+            ACTION="status"
+            shift
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -197,63 +218,178 @@ if [[ "$BACKGROUND" = true && -z "$LOG_FILE" ]]; then
     echo -e "${YELLOW}将使用自动生成的日志文件: $LOG_FILE${NC}"
 fi
 
-# 询问是否清空结果目录
-if [[ "$CLEAR_RESULTS" = false ]]; then
-    # 检查结果目录是否存在且非空
-    RESULTS_DIR="optimization_results"
-    if [[ -d "$RESULTS_DIR" && "$(ls -A $RESULTS_DIR 2>/dev/null)" ]]; then
-        # 统计文件数量和占用空间
-        FILE_COUNT=$(find "$RESULTS_DIR" -type f | wc -l)
-        DIR_SIZE=$(du -sh "$RESULTS_DIR" | cut -f1)
+# 检测和初始化结果目录
+check_results_dir() {
+    # 检测项目根目录是否存在，不存在则创建
+    if [ ! -d "$PROJECT_ROOT" ]; then
+        echo -e "${RED}错误：找不到项目根目录: $PROJECT_ROOT${NC}"
+        exit 1
+    fi
+
+    # 检测 optimization_results 目录
+    RESULTS_DIR="$PROJECT_ROOT/optuna_search/new_test/optimization_results"
+    if [ ! -d "$RESULTS_DIR" ]; then
+        echo "创建 optimization_results 目录..."
+        mkdir -p "$RESULTS_DIR/best_models"
+    else
+        # 统计目录中的文件数量和占用空间
+        file_count=$(find "$RESULTS_DIR" -type f | wc -l)
+        file_size=$(du -sh "$RESULTS_DIR" | cut -f1)
+        echo "发现 optimization_results 目录已存在并包含 $file_count 个文件，占用 $file_size 空间"
         
-        echo -e "${YELLOW}发现 $RESULTS_DIR 目录已存在并包含 $FILE_COUNT 个文件，占用 $DIR_SIZE 空间${NC}"
-        read -p "是否在运行前清空该目录? (y/n) [默认:y]: " confirm_clear
-        confirm_clear=${confirm_clear:-y}
-        if [[ "$confirm_clear" == "y" ]]; then
-            CLEAR_RESULTS=true
+        # 询问是否清空目录
+        if [[ "$CLEAR_RESULTS" = true ]] || [[ "$BACKGROUND" = false ]]; then
+            read -p "是否在运行前清空该目录? (y/n) [默认:y]: " clear_dir
+            clear_dir=${clear_dir:-y}
+            if [[ "$clear_dir" == "y" ]]; then
+                echo "正在清空 optimization_results 目录..."
+                rm -rf "$RESULTS_DIR"/*
+                mkdir -p "$RESULTS_DIR/best_models"
+                echo "目录已清空"
+            fi
         fi
     fi
-fi
+}
 
-# 清空结果目录（如果需要）
-if [[ "$CLEAR_RESULTS" = true ]]; then
-    echo -e "${YELLOW}正在清空 optimization_results 目录...${NC}"
-    rm -rf optimization_results/*
-    # 确保目录存在
-    mkdir -p optimization_results/best_models
-    echo -e "${GREEN}目录已清空${NC}"
-fi
-
-# 构建命令
-if [[ "$MODE" = "single" ]]; then
-    CMD="python domain_knowledge_optimizer.py --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed $SEED"
-else
-    CMD="python continuous_optimizer.py --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed_start $SEED_START --seed_step $SEED_STEP"
-fi
-
-# 显示将执行的命令
-echo -e "${BLUE}将执行以下命令:${NC}"
-echo -e "${GREEN}\"$CMD\"${NC}"
-
-# 确认执行
-if [[ "$BACKGROUND" = false ]]; then
-    read -p "是否继续? (y/n) [默认:y]: " confirm
-    confirm=${confirm:-y}
-    if [[ "$confirm" != "y" ]]; then
-        echo "已取消"
-        exit 0
+# 构建命令行
+build_command() {
+    # 根据运行模式设置命令
+    if [[ "$MODE" == "single" ]]; then
+        CMD="python domain_knowledge_optimizer.py --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed $SEED"
+    else
+        CMD="python continuous_optimizer.py --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed_start $SEED_START --seed_step $SEED_STEP"
     fi
+    
+    echo "将执行以下命令:"
+    echo "\"$CMD\""
+}
+
+# 停止后台运行的优化进程
+stop_optimizer() {
+    if [ -f "$PID_FILE" ]; then
+        optimizer_pid=$(cat "$PID_FILE")
+        if ps -p $optimizer_pid > /dev/null; then
+            echo -e "${YELLOW}正在停止优化进程 (PID: $optimizer_pid)...${NC}"
+            kill $optimizer_pid
+            sleep 1
+            
+            # 检查进程是否已经停止
+            if ps -p $optimizer_pid > /dev/null; then
+                echo -e "${RED}进程未能正常停止，尝试强制终止...${NC}"
+                kill -9 $optimizer_pid
+            fi
+            
+            # 再次检查进程是否已经停止
+            if ! ps -p $optimizer_pid > /dev/null; then
+                echo -e "${GREEN}优化进程已停止${NC}"
+                rm -f "$PID_FILE"
+                return 0
+            else
+                echo -e "${RED}无法停止优化进程，请手动执行: kill -9 $optimizer_pid${NC}"
+                return 1
+            fi
+        else
+            echo -e "${YELLOW}优化进程 (PID: $optimizer_pid) 已不存在${NC}"
+            rm -f "$PID_FILE"
+            return 0
+        fi
+    else
+        echo -e "${YELLOW}未找到正在运行的优化进程${NC}"
+        return 0
+    fi
+}
+
+# 检查优化进程状态
+check_status() {
+    if [ -f "$PID_FILE" ]; then
+        optimizer_pid=$(cat "$PID_FILE")
+        if ps -p $optimizer_pid > /dev/null; then
+            echo -e "${GREEN}优化进程正在运行 (PID: $optimizer_pid)${NC}"
+            
+            # 显示进程详情
+            echo -e "\n进程详情:"
+            ps -p $optimizer_pid -o pid,ppid,user,%cpu,%mem,start,time,command
+            
+            # 如果有日志文件，显示最新的10行
+            if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
+                echo -e "\n日志文件最新内容 ($LOG_FILE):"
+                tail -n 10 "$LOG_FILE"
+                echo -e "\n使用 'tail -f $LOG_FILE' 查看完整日志"
+            else
+                # 尝试查找默认的日志文件
+                default_logs=("optimization.log" "optimizer.log" "optuna.log")
+                for log in "${default_logs[@]}"; do
+                    if [ -f "$log" ]; then
+                        echo -e "\n日志文件最新内容 ($log):"
+                        tail -n 10 "$log"
+                        echo -e "\n使用 'tail -f $log' 查看完整日志"
+                        break
+                    fi
+                done
+            fi
+            
+            return 0
+        else
+            echo -e "${YELLOW}优化进程 (PID: $optimizer_pid) 已不存在${NC}"
+            rm -f "$PID_FILE"
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}未找到正在运行的优化进程${NC}"
+        return 1
+    fi
+}
+
+# 主执行流程
+main() {
+    # 检查和初始化结果目录
+    check_results_dir
+    
+    # 构建命令行
+    build_command
+    
+    # 确认执行
+    if [[ "$BACKGROUND" = false ]]; then
+        read -p "是否继续? (y/n) [默认:y]: " confirm
+        confirm=${confirm:-y}
+        if [[ "$confirm" != "y" ]]; then
+            echo "已取消"
+            exit 0
+        fi
+    fi
+    
+    # 执行命令
+    if [[ "$BACKGROUND" = true ]]; then
+        echo -e "${YELLOW}在后台运行，输出将写入: $LOG_FILE${NC}"
+        
+        # 检查日志文件是否存在，存在则先删除
+        if [ -f "$LOG_FILE" ]; then
+            echo -e "${YELLOW}发现已存在的日志文件，正在删除...${NC}"
+            rm -f "$LOG_FILE"
+        fi
+        
+        nohup $CMD > "$LOG_FILE" 2>&1 &
+        PID=$!
+        echo -e "${GREEN}进程已启动，PID: $PID${NC}"
+        echo -e "可以使用 'tail -f $LOG_FILE' 查看进度"
+        echo -e "使用 '$0 --stop' 可以停止运行"
+        echo $PID > "$PID_FILE"
+    else
+        echo -e "${BLUE}开始运行...${NC}"
+        $CMD
+    fi
+    
+    echo -e "${GREEN}完成!${NC}"
+}
+
+# 根据ACTION参数执行不同操作
+if [[ "$ACTION" = "stop" ]]; then
+    stop_optimizer
+    exit $?
+elif [[ "$ACTION" = "status" ]]; then
+    check_status
+    exit $?
 fi
 
-# 执行命令
-if [[ "$BACKGROUND" = true ]]; then
-    echo -e "${YELLOW}在后台运行，输出将写入: $LOG_FILE${NC}"
-    nohup $CMD > "$LOG_FILE" 2>&1 &
-    echo -e "${GREEN}进程已启动，PID: $!${NC}"
-    echo -e "可以使用 'tail -f $LOG_FILE' 查看进度"
-else
-    echo -e "${BLUE}开始运行...${NC}"
-    $CMD
-fi
-
-echo -e "${GREEN}完成!${NC}"
+# 执行主流程
+main
