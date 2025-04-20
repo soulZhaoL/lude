@@ -707,6 +707,15 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
                     }
                     best_rank_factors.append(factor_info)
                 print(f"成功从第二阶段最佳参数中重建了{len(best_rank_factors)}个因子配置")
+                
+                # 打印第二阶段最佳因子组合和CAGR
+                print(f"\n第二阶段最佳因子组合 (CAGR: {second_stage_best_value:.6f}):")
+                for i, factor in enumerate(best_rank_factors):
+                    print(f"  {i+1}. {factor['name']}")
+                    print(f"     - 权重: {factor['weight']}")
+                    print(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
+                print()  # 添加空行
+                
         except Exception as e:
             print(f"重建rank_factors时出错: {e}")
             

@@ -1,0 +1,4 @@
+DINGTALK:
+  WEBHOOK: "https://oapi.dingtalk.com/robot/send?access_token=ae08672180762b39d88dd1cb6f94e1c2160620d2d7f20ea44e8e89dd979ed7ac"
+  SECRET: "SECd40e1ae9913161f1a9294ed33366934d202348c451c80089b751c9ac357072be"
+  ENABLED: true  # 是否启用钉钉推送

@@ -143,6 +143,12 @@ if __name__ == '__main__':
     # 基础设置
     start_date = '20220729'  # 开始日期
     end_date = '20250328'  # 结束日期
-    factors = [{'name': 'conv_prem', 'weight': 1, 'ascending': False}, {'name': 'turnover_5', 'weight': 2, 'ascending': True}, {'name': 'debt_to_assets', 'weight': 1, 'ascending': True}]
+    factors = [
+        {'name': 'option_value', 'weight': 2, 'ascending': True}, 
+        {'name': 'left_years', 'weight': 3, 'ascending': False}, 
+        {'name': 'vol_5', 'weight': 1, 'ascending': True}
+    ]
     cagr = cal_cagr(df, start_date, end_date, 5, None, 100, 150, factors)
     print(cagr)
+
+    # 0.24215323131811584

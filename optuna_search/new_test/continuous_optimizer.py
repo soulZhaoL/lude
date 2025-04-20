@@ -15,6 +15,19 @@ import sys
 import importlib.util
 import threading
 import re
+import sys
+
+# 添加项目根目录到路径，确保能导入util目录下的模块
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
+# 导入钉钉推送模块
+try:
+    from util.dingtalk.ding_talk_manager import DingTalkManager
+    ding_talk_available = True
+except ImportError:
+    ding_talk_available = False
+    print("未找到钉钉推送模块，将不会发送推送消息")
 
 # 设置环境变量，确保Python输出不被缓存
 os.environ['PYTHONUNBUFFERED'] = '1'
@@ -99,7 +112,135 @@ def extract_cagr_from_output(output):
     except Exception as e:
         print(f"提取CAGR时出错: {e}")
         return 0
+    
     return 0
+
+def extract_best_factors_from_output(output):
+    """从输出中提取最佳因子组合"""
+    try:
+        # 保存所有找到的因子组合
+        all_factor_sets = []
+        
+        # 将输出按行分割
+        lines = output.split('\n')
+        
+        # 遍历所有行寻找最佳因子组合部分
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            # 寻找因子组合的开始标记
+            if "最佳因子组合" in line or "第二阶段最佳因子组合" in line:
+                current_factors = []
+                i += 1  # 移到下一行
+                
+                # 逐行解析因子数据，直到遇到空行或分隔线
+                while i < len(lines) and not (lines[i].strip() == "" or "=" * 10 in lines[i]):
+                    line = lines[i]
+                    
+                    # 尝试匹配因子行，格式类似于 "  1. factor_name"
+                    factor_match = re.search(r"\s+\d+\.\s+([^\s]+)", line)
+                    if factor_match:
+                        factor_name = factor_match.group(1)
+                        
+                        # 初始化权重和排序方向
+                        weight = 1
+                        ascending = False
+                        
+                        # 向后查找权重和排序方向信息
+                        if i + 1 < len(lines) and "权重" in lines[i + 1]:
+                            weight_line = lines[i + 1]
+                            weight_match = re.search(r"权重:\s+(\d+(\.\d+)?)", weight_line)
+                            if weight_match:
+                                weight = float(weight_match.group(1))
+                                i += 1  # 移过权重行
+                        
+                        # 向后查找排序方向信息
+                        if i + 1 < len(lines) and "排序方向" in lines[i + 1]:
+                            direction_line = lines[i + 1]
+                            direction_match = re.search(r"排序方向:\s+(.+)", direction_line)
+                            if direction_match:
+                                direction = direction_match.group(1)
+                                ascending = "升序" in direction
+                                i += 1  # 移过排序方向行
+                        
+                        # 添加解析出的因子信息
+                        current_factors.append({
+                            "name": factor_name,
+                            "weight": weight,
+                            "ascending": ascending
+                        })
+                    
+                    i += 1
+                
+                # 如果找到了因子，保存这组因子
+                if current_factors:
+                    all_factor_sets.append(current_factors)
+            else:
+                i += 1
+        
+        # 返回最后一组找到的因子（优先返回第二阶段结果）
+        if all_factor_sets:
+            return all_factor_sets[-1]
+        
+        return []
+    except Exception as e:
+        print(f"提取最佳因子组合时出错: {e}")
+        return []
+
+def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None):
+    """发送优化结果到钉钉
+    
+    Args:
+        cagr: 年化收益率
+        factors: 因子列表
+        seed: 随机种子
+        strategy: 优化策略
+    """
+    if not ding_talk_available:
+        print("钉钉推送模块不可用，跳过推送")
+        return False
+    
+    try:
+        # 获取钉钉管理器实例
+        ding_manager = DingTalkManager.get_instance()
+        
+        # 构造消息内容
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        seed_info = f"(种子: {seed})" if seed else ""
+        strategy_info = f"策略: {strategy}" if strategy else ""
+        
+        # 构造因子信息
+        factors_info = ""
+        if factors:
+            factors_info = "\n\n【最佳因子组合】"
+            for i, factor in enumerate(factors):
+                direction = "升序" if factor.get('ascending', False) else "降序"
+                weight = factor.get('weight', 1)
+                factors_info += f"\n{i+1}. {factor['name']} (权重: {weight}, {direction})"
+        
+        # 完整消息
+        message = f"【可转债优化新结果】{current_time}\n\n" \
+                  f"年化收益率(CAGR): {cagr:.6f} {seed_info}\n" \
+                  f"{strategy_info}" \
+                  f"{factors_info}"
+        
+        # 发送消息
+        print("正在发送钉钉推送...")
+        result = ding_manager.send_message(
+            message=message,
+            prefix="优化结果",
+            is_at_all=False
+        )
+        
+        if result:
+            print("钉钉推送发送成功")
+        else:
+            print("钉钉推送发送失败")
+        
+        return result
+    except Exception as e:
+        print(f"发送钉钉推送时出错: {e}")
+        return False
 
 def show_progress(seconds=10):
     """显示简单的进度指示器"""
@@ -153,7 +294,7 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
     
     # 加载最佳记录
     best_record = load_best_record()
-    print(f"历史最佳CAGR: {best_record['best_cagr']:.4f}, 记录时间: {best_record['timestamp']}")
+    print(f"历史最佳CAGR: {best_record['best_cagr']:.6f}, 记录时间: {best_record['timestamp']}")
     
     # 尝试导入优化器模块
     optimizer_module = import_optimizer_module()
@@ -309,17 +450,20 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
         # 提取CAGR值
         current_cagr = extract_cagr_from_output(output)
         
+        # 提取最佳因子组合
+        best_factors = extract_best_factors_from_output(output)
+        
         # 查找最新生成的模型文件
         latest_model = find_latest_model(os.path.join(RESULTS_DIR, f"best_model_{strategy}_{method}_{n_factors}factors_*.pkl"))
         
         if latest_model and current_cagr > 0:
-            print(f"当前运行CAGR: {current_cagr:.4f} (种子: {current_seed})")
+            print(f"当前运行CAGR: {current_cagr:.6f} (种子: {current_seed})")
             
             # 如果优于历史最佳，更新记录
             if current_cagr > best_record["best_cagr"]:
                 # 复制模型到最佳模型目录
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                best_model_path = os.path.join(BEST_MODELS_DIR, f"best_model_{strategy}_{n_factors}factors_{current_cagr:.4f}_{timestamp}.pkl")
+                best_model_path = os.path.join(BEST_MODELS_DIR, f"best_model_{strategy}_{n_factors}factors_{current_cagr:.6f}_{timestamp}.pkl")
                 
                 # 复制最新模型到最佳模型目录
                 import shutil
@@ -338,10 +482,23 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
                     "seed": current_seed
                 }
                 save_best_record(best_record)
-                print(f"发现新的最佳结果! CAGR: {current_cagr:.4f}")
+                print(f"发现新的最佳结果! CAGR: {current_cagr:.6f}")
+                
+                # 打印因子组合信息
+                if best_factors:
+                    print("\n最佳因子组合:")
+                    for i, factor in enumerate(best_factors):
+                        direction = "升序" if factor.get('ascending', False) else "降序"
+                        weight = factor.get('weight', 1)
+                        print(f"  {i+1}. {factor['name']} (权重: {weight}, {direction})")
+                    print()  # 添加一个空行
+                
                 print(f"已保存到: {best_model_path}")
+                
+                # 发送钉钉推送
+                send_optimization_result_to_dingtalk(current_cagr, best_factors, seed=current_seed, strategy=strategy)
             else:
-                print(f"未超过历史最佳 ({best_record['best_cagr']:.4f})")
+                print(f"未超过历史最佳 ({best_record['best_cagr']:.6f})")
         
         # 计算执行时间
         elapsed = time.time() - start_time
@@ -349,7 +506,7 @@ def run_optimization(iterations=10, strategy="multistage", method="tpe", n_trial
     
     total_elapsed = time.time() - total_start_time
     print("\n============== 优化完成 ==============")
-    print(f"历史最佳CAGR: {best_record['best_cagr']:.4f}")
+    print(f"历史最佳CAGR: {best_record['best_cagr']:.6f}")
     print(f"最佳模型路径: {best_record['best_model_path']}")
     print(f"发现时间: {best_record['timestamp']}")
     print(f"总耗时: {total_elapsed/60:.2f} 分钟")
