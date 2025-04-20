@@ -222,14 +222,14 @@ def send_optimization_result_to_dingtalk(cagr, factors, seed=None, strategy=None
         
         # 构造优化参数信息
         params_info = "\n\n【优化参数】"
+        if hold_num is not None:
+            params_info += f"\n持仓数量: {hold_num}"
         if n_factors is not None:
             params_info += f"\n因子数量: {n_factors}"
         if start_date is not None and end_date is not None:
             params_info += f"\n回测区间: {start_date} 至 {end_date}"
         if price_min is not None and price_max is not None:
             params_info += f"\n价格区间: {price_min} 至 {price_max}"
-        if hold_num is not None:
-            params_info += f"\n持仓数量: {hold_num}"
         
         # 如果没有任何参数，则不显示参数部分
         if params_info == "\n\n【优化参数】":
