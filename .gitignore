@@ -8,3 +8,9 @@ util/merge/format2basket/*,csv
 /csv/*
 __pycache__/
 .DS_Store
+
+/optimization_results
+/optuna_search/new_test/optimization_results
+
+.optimizer_pid
+*.log

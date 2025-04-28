@@ -1,0 +1,17 @@
+# pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+# 
+optuna>=3.2.0
+pandas>=2.0.0
+numpy>=1.24.0
+joblib>=1.2.0
+tqdm>=4.65.0
+pyarrow>=12.0.0  # 用于parquet文件支持
+scikit-learn>=1.2.0  # 用于数据处理和评估
+matplotlib>=3.7.0  # 用于可视化结果
+ta>=0.11.0
+quantstats>=0.0.64
+IPython>=9.1.0  # quantstats依赖
+seaborn>=0.13.2  # quantstats依赖
+scipy>=1.15.2  # quantstats依赖
+tabulate>=0.9.0  # quantstats依赖
+yfinance>=0.2.55  # quantstats依赖（可选）

@@ -9,6 +9,7 @@ import os
 from cal_factor_util import add_custom_factors
 import argparse
 import time
+import types
 
 # 创建结果目录
 RESULTS_DIR = "optimization_results"
@@ -26,17 +27,17 @@ def parse_args():
     parser.add_argument('--price_min', type=int, default=100, help='价格下限')
     parser.add_argument('--price_max', type=int, default=150, help='价格上限')
     parser.add_argument('--hold_num', type=int, default=5, help='持仓数量')
-    parser.add_argument('--n_jobs', type=int, default=5, help='并行任务数')
+    parser.add_argument('--n_jobs', type=int, default=15, help='并行任务数')
     parser.add_argument('--strategy', type=str, default='multistage', 
                         choices=['domain', 'prescreen', 'multistage', 'filter'],
                         help='优化策略: domain(领域知识分组), prescreen(预筛选), multistage(多阶段), filter(过滤冗余)')
-    
+    parser.add_argument('--seed', type=int, default=42, help='随机种子')
     return parser.parse_args()
 
 def load_data():
     """加载数据"""
     print("正在加载数据...")
-    df = pd.read_parquet('optuna_search/new_test/cb_data.pq')
+    df = pd.read_parquet('cb_data.pq')
     return df
 
 def domain_knowledge_factors():
@@ -296,7 +297,7 @@ def prescreen_factors(df, factors, top_n=30, args=None):
                     'cagr': cagr
                 })
                 
-                print(f"因子 {i+1}/{len(factors)}: {factor} ({'升序' if ascending else '降序'}) - CAGR: {cagr:.4f}")
+                print(f"因子 {i+1}/{len(factors)}: {factor} ({'升序' if ascending else '降序'}) - CAGR: {cagr:.6f}")
             except Exception as e:
                 print(f"因子 {factor} 测试失败: {e}")
     
@@ -306,7 +307,7 @@ def prescreen_factors(df, factors, top_n=30, args=None):
     # 打印表现最好的因子
     print("\n表现最好的因子:")
     for i, item in enumerate(factor_performance[:top_n]):
-        print(f"{i+1}. {item['factor']} ({'升序' if item['ascending'] else '降序'}) - CAGR: {item['cagr']:.4f}")
+        print(f"{i+1}. {item['factor']} ({'升序' if item['ascending'] else '降序'}) - CAGR: {item['cagr']:.6f}")
     
     # 返回表现最好的top_n个因子
     best_factors = []
@@ -388,7 +389,8 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
     print(f"第一阶段：随机探索 {first_stage_trials} 次迭代")
     
     # 为第一阶段创建一个新的optuna研究
-    first_stage_study_name = f"cb_optimization_multistage_phase1_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    first_stage_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    first_stage_study_name = f"cb_optimization_multistage_phase1_{first_stage_timestamp}"
     first_stage_storage = f"sqlite:///{RESULTS_DIR}/{first_stage_study_name}.db"
     
     # 第一阶段使用随机采样器进行广泛探索
@@ -396,75 +398,100 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         study_name=first_stage_study_name,
         storage=first_stage_storage,
         direction='maximize',
-        sampler=optuna.samplers.RandomSampler(seed=42)
+        sampler=optuna.samplers.RandomSampler(seed=args.seed)  # 使用传入的随机种子
     )
     
     # 从所有因子中随机选择组合
     print("生成随机因子组合...")
     all_combinations = list(itertools.combinations(range(len(factors)), num_factors))
     if len(all_combinations) > max_combinations // 2:
-        np.random.seed(42)
+        np.random.seed(args.seed)  # 使用传入的随机种子
         indices = np.random.choice(len(all_combinations), max_combinations // 2, replace=False)
         first_stage_combinations = [all_combinations[i] for i in indices]
     else:
         first_stage_combinations = all_combinations
     print(f"第一阶段随机组合数量: {len(first_stage_combinations)}")
     
-    # 启动第一阶段优化
-    first_stage_study.optimize(
-        lambda trial: objective(trial, df, factors, first_stage_combinations, args),
-        n_trials=first_stage_trials,
-        n_jobs=args.n_jobs
-    )
+    # 启动第一阶段优化，降低并行度以提高稳定性
+    try:
+        adjusted_n_jobs = min(args.n_jobs, 10)  # 限制最大并行度
+        print(f"使用 {adjusted_n_jobs} 个并行任务进行第一阶段优化")
+        
+        first_stage_study.optimize(
+            lambda trial: objective(trial, df, factors, first_stage_combinations, args),
+            n_trials=first_stage_trials,
+            n_jobs=adjusted_n_jobs,
+            catch=(Exception,)  # 捕获所有异常，防止单个trial失败导致整个过程中断
+        )
+    except Exception as e:
+        print(f"第一阶段优化过程中出现错误: {e}")
+        print("继续执行第二阶段...")
     
-    # 收集第一阶段的最佳试验
-    best_trials = first_stage_study.trials_dataframe()
-    best_trials = best_trials.sort_values('value', ascending=False)
+    # 如果第一阶段没有成功的trial，使用一个默认值
+    if len(first_stage_study.trials) == 0:
+        print("警告: 第一阶段没有成功的trial，将使用默认参数")
+        first_stage_best_value = -1.0
+        first_stage_best_params = {
+            'combination_idx': 0,
+            'factor0_weight': 1,
+            'factor0_ascending': False,
+            'factor1_weight': 1,
+            'factor1_ascending': False,
+            'factor2_weight': 1,
+            'factor2_ascending': False
+        }
+    else:
+        # 保存第一阶段的最佳结果
+        first_stage_best_value = first_stage_study.best_value
+        first_stage_best_params = first_stage_study.best_params
     
-    # 保存第一阶段的最佳结果
-    first_stage_best_value = first_stage_study.best_value
-    first_stage_best_params = first_stage_study.best_params
-    first_stage_best_trial = first_stage_study.best_trial
+    print(f"第一阶段最佳年化收益率: {first_stage_best_value:.6f}")
     
-    print(f"第一阶段最佳年化收益率: {first_stage_best_value:.4f}")
-    print("第一阶段最佳因子组合:")
-    combination_idx = first_stage_best_params['combination_idx']
-    factor_indices = first_stage_combinations[combination_idx]
-    for i, idx in enumerate(factor_indices):
-        factor_name = factors[idx]
-        weight = first_stage_best_params[f'factor{i}_weight']
-        ascending = first_stage_best_params[f'factor{i}_ascending']
-        print(f"  {i+1}. {factor_name}")
-        print(f"     - 权重: {weight}")
-        print(f"     - 排序方向: {'升序' if ascending else '降序'}")
+    # 只有当有有效的best_trial时才打印详细信息
+    if len(first_stage_study.trials) > 0 and first_stage_study.best_trial:
+        print(f"第一阶段最佳因子组合 (CAGR: {first_stage_best_value:.6f}):")
+        try:
+            combination_idx = first_stage_best_params.get('combination_idx', 0)
+            if combination_idx < len(first_stage_combinations):
+                factor_indices = first_stage_combinations[combination_idx]
+                for i, idx in enumerate(factor_indices):
+                    factor_name = factors[idx]
+                    weight = first_stage_best_params.get(f'factor{i}_weight', 1)
+                    ascending = first_stage_best_params.get(f'factor{i}_ascending', False)
+                    print(f"  {i+1}. {factor_name}")
+                    print(f"     - 权重: {weight}")
+                    print(f"     - 排序方向: {'升序' if ascending else '降序'}")
+        except Exception as e:
+            print(f"打印第一阶段最佳因子组合时出错: {e}")
     
     # 第二阶段：聚焦优化
-    # 从第一阶段的前N个最佳试验中提取有效因子
-    top_n_trials = min(20, len(best_trials))
-    print(f"第二阶段：基于第一阶段前 {top_n_trials} 个最佳结果进行聚焦优化")
-    
+    # 统计第一阶段表现好的因子
     good_factor_counts = {}
     factor_direction_preference = {}
     factor_weight_preference = {}
     
-    # 统计第一阶段表现好的因子
+    successful_trials = [t for t in first_stage_study.trials if t.state == optuna.trial.TrialState.COMPLETE and t.value is not None and t.value > -1.0]
+    
+    # 对成功的试验按值降序排序
+    successful_trials.sort(key=lambda t: t.value if t.value is not None else float('-inf'), reverse=True)
+    
+    # 取前N个最佳试验
+    top_n_trials = min(20, len(successful_trials))
+    print(f"第二阶段：基于第一阶段前 {top_n_trials} 个最佳结果进行聚焦优化")
+    
     for i in range(top_n_trials):
-        if i >= len(best_trials):
+        if i >= len(successful_trials):
             break
-            
-        trial_params = {}
-        for param, value in best_trials.iloc[i].items():
-            if param.startswith('params_'):
-                param_name = param.replace('params_', '')
-                trial_params[param_name] = value
         
-        if 'combination_idx' not in trial_params:
+        trial = successful_trials[i]
+        
+        if 'combination_idx' not in trial.params:
             continue
-            
-        combination_idx = int(trial_params['combination_idx'])
+        
+        combination_idx = int(trial.params['combination_idx'])
         if combination_idx >= len(first_stage_combinations):
             continue
-            
+        
         factor_indices = first_stage_combinations[combination_idx]
         
         for j, idx in enumerate(factor_indices):
@@ -475,21 +502,21 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
                 good_factor_counts[factor_name] = 0
                 factor_direction_preference[factor_name] = {'asc': 0, 'desc': 0}
                 factor_weight_preference[factor_name] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-                
+            
             good_factor_counts[factor_name] += 1
             
             # 统计排序方向偏好
             ascending_param = f'factor{j}_ascending'
-            if ascending_param in trial_params:
-                if trial_params[ascending_param]:
+            if ascending_param in trial.params:
+                if trial.params[ascending_param]:
                     factor_direction_preference[factor_name]['asc'] += 1
                 else:
                     factor_direction_preference[factor_name]['desc'] += 1
             
             # 统计权重偏好
             weight_param = f'factor{j}_weight'
-            if weight_param in trial_params:
-                weight = int(trial_params[weight_param])
+            if weight_param in trial.params:
+                weight = int(trial.params[weight_param])
                 if weight in factor_weight_preference[factor_name]:
                     factor_weight_preference[factor_name][weight] += 1
     
@@ -499,67 +526,67 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
     # 选择前top_n_factors个常用因子
     top_factors = []
     for factor_name, count in popular_factors[:min(len(popular_factors), 20)]:
-        direction = 'desc' if factor_direction_preference[factor_name]['desc'] > factor_direction_preference[factor_name]['asc'] else 'asc'
-        weight = max(factor_weight_preference[factor_name].items(), key=lambda x: x[1])[0]
-        top_factors.append((factor_name, direction, weight))
-        print(f"常用因子 {factor_name}: 出现 {count} 次, 偏好方向: {direction}, 偏好权重: {weight}")
+        if count >= 2:  # 至少出现两次
+            top_factors.append(factor_name)
     
-    # 生成第二阶段的组合
+    # 如果没有足够的热门因子，则随机添加
+    if len(top_factors) < num_factors * 2:
+        remaining_factors = [f for f in factors if f not in top_factors]
+        np.random.shuffle(remaining_factors)
+        top_factors.extend(remaining_factors[:num_factors * 2 - len(top_factors)])
+    
+    print(f"聚焦因子数量: {len(top_factors)}")
+    
+    # 基于热门因子生成第二阶段组合
     second_stage_combinations = []
     
-    # 1. 直接包含第一阶段的最佳组合
-    best_combo_params = {}
-    best_combo_indices = []
-    for i, idx in enumerate(factor_indices):
-        factor_name = factors[idx]
-        best_combo_indices.append(factors.index(factor_name))
-        best_combo_params[f'factor{i}_weight'] = first_stage_best_params[f'factor{i}_weight']
-        best_combo_params[f'factor{i}_ascending'] = first_stage_best_params[f'factor{i}_ascending']
-    
-    # 确保最佳组合在第二阶段的组合中
-    second_stage_combinations.append(tuple(best_combo_indices))
-    
-    # 2. 从top_factors中选择不同的组合
-    top_factor_names = [f[0] for f in top_factors]
-    top_factor_indices = [factors.index(f) for f in top_factor_names if f in factors]
-    
+    # 1. 完全从热门因子中选择
+    top_factor_indices = [factors.index(f) for f in top_factors if f in factors]
     if len(top_factor_indices) >= num_factors:
-        # 生成top因子的组合
-        top_factor_combos = list(itertools.combinations(top_factor_indices, num_factors))
-        second_stage_combinations.extend(top_factor_combos)
+        hot_combinations = list(itertools.combinations(top_factor_indices, num_factors))
+        second_stage_combinations.extend(hot_combinations[:min(len(hot_combinations), max_combinations // 2)])
     
-    # 3. 混合组合：在已知好因子的基础上组合其他因子
-    for i in range(min(10, len(top_factor_indices))):
-        base_factor_idx = top_factor_indices[i]
-        remaining_factors = [idx for idx in range(len(factors)) if idx != base_factor_idx]
-        
-        # 为每个好因子随机添加其他因子形成组合
-        for _ in range(200):  # 每个base因子生成200个组合
-            combo = [base_factor_idx]
-            for _ in range(num_factors - 1):
-                idx = np.random.choice(remaining_factors)
-                while idx in combo:  # 确保不重复
-                    idx = np.random.choice(remaining_factors)
+    # 2. 随机混合热门因子和其他因子
+    remaining_slots = max_combinations - len(second_stage_combinations)
+    if remaining_slots > 0:
+        for _ in range(remaining_slots):
+            combo = []
+            remaining_factors = list(range(len(factors)))
+            # 至少选择一个热门因子
+            if top_factor_indices:
+                idx = np.random.choice(top_factor_indices)
                 combo.append(idx)
-            second_stage_combinations.append(tuple(sorted(combo)))
+                remaining_factors.remove(idx)
+            
+            # 随机填充剩余位置
+            while len(combo) < num_factors and remaining_factors:
+                idx = np.random.choice(remaining_factors)
+                remaining_factors.remove(idx)
+                # 确保不重复
+                if idx not in combo:
+                    combo.append(idx)
+            
+            if len(combo) == num_factors:
+                second_stage_combinations.append(tuple(sorted(combo)))
     
     # 移除重复组合
     second_stage_combinations = list(set(second_stage_combinations))
     
     # 限制组合数量
     if len(second_stage_combinations) > max_combinations:
-        np.random.seed(42)
+        np.random.seed(args.seed)  # 使用传入的随机种子
         indices = np.random.choice(len(second_stage_combinations), max_combinations, replace=False)
         second_stage_combinations = [second_stage_combinations[i] for i in indices]
     
     print(f"第二阶段优化组合数量: {len(second_stage_combinations)}")
     
-    # 创建第二阶段研究
-    second_stage_study_name = f"cb_optimization_multistage_phase2_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    # 创建完全独立的第二阶段研究
+    second_stage_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    second_stage_study_name = f"cb_optimization_multistage_phase2_{second_stage_timestamp}"
     second_stage_storage = f"sqlite:///{RESULTS_DIR}/{second_stage_study_name}.db"
     
     # 第二阶段使用TPE采样器进行精细优化
-    sampler = optuna.samplers.TPESampler(seed=42)
+    sampler = optuna.samplers.TPESampler(seed=args.seed)  # 使用传入的随机种子
     second_stage_study = optuna.create_study(
         study_name=second_stage_study_name,
         storage=second_stage_storage,
@@ -567,57 +594,168 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         sampler=sampler
     )
     
-    # 添加第一阶段的最佳结果作为一个试验点
-    # 需要重新映射combination_idx，确保它在第二阶段组合范围内
-    first_stage_params_adjusted = first_stage_best_params.copy()
-    
-    # 获取第一阶段最佳组合的因子索引
-    first_best_combination = first_stage_combinations[first_stage_best_params['combination_idx']]
-    
-    # 检查这个组合是否已经在第二阶段组合中
-    if first_best_combination in second_stage_combinations:
-        # 找到最佳组合在第二阶段组合列表中的索引
-        first_stage_params_adjusted['combination_idx'] = second_stage_combinations.index(first_best_combination)
-    else:
-        # 如果不在，将其添加到第二阶段组合列表的开头
-        second_stage_combinations.insert(0, first_best_combination)
-        first_stage_params_adjusted['combination_idx'] = 0
-    
-    # 确保使用调整后的参数
-    second_stage_study.enqueue_trial(first_stage_params_adjusted)
+    # 将第一阶段的最佳组合添加到第二阶段组合中(如果不存在)
+    if len(first_stage_study.trials) > 0 and first_stage_study.best_trial and 'combination_idx' in first_stage_best_params:
+        # 获取第一阶段最佳组合的因子索引
+        combination_idx = first_stage_best_params['combination_idx']
+        if combination_idx < len(first_stage_combinations):
+            first_best_combination = first_stage_combinations[combination_idx]
+            
+            # 检查这个组合是否已经在第二阶段组合中
+            if first_best_combination not in second_stage_combinations:
+                # 如果不在，将其添加到第二阶段组合列表的开头
+                second_stage_combinations.insert(0, first_best_combination)
+                
+            # 创建一个新的参数集合，使用相同的因子权重和排序方向，但新的combination_idx
+            new_params = {}
+            first_best_combination_idx = second_stage_combinations.index(first_best_combination)
+            new_params['combination_idx'] = first_best_combination_idx
+            
+            # 复制所有因子参数
+            for i in range(num_factors):
+                weight_param = f'factor{i}_weight'
+                asc_param = f'factor{i}_ascending'
+                if weight_param in first_stage_best_params:
+                    new_params[weight_param] = first_stage_best_params[weight_param]
+                if asc_param in first_stage_best_params:
+                    new_params[asc_param] = first_stage_best_params[asc_param]
+            
+            # 将这个参数组合添加到第二阶段研究中
+            try:
+                second_stage_study.enqueue_trial(new_params)
+            except Exception as e:
+                print(f"添加第一阶段最佳参数到第二阶段时出错: {e}")
+                print("继续执行第二阶段...")
     
     # 启动第二阶段优化
     second_stage_trials = args.n_trials - first_stage_trials
     print(f"第二阶段：精细优化 {second_stage_trials} 次迭代")
-    second_stage_study.optimize(
-        lambda trial: objective(trial, df, factors, second_stage_combinations, args),
-        n_trials=second_stage_trials,
-        n_jobs=args.n_jobs
+    
+    try:
+        # 使用较小的并行度以提高稳定性
+        adjusted_n_jobs = max(1, min(args.n_jobs, 10))
+        print(f"使用 {adjusted_n_jobs} 个并行任务进行第二阶段优化")
+        
+        second_stage_study.optimize(
+            lambda trial: objective(trial, df, factors, second_stage_combinations, args),
+            n_trials=second_stage_trials,
+            n_jobs=adjusted_n_jobs,
+            catch=(Exception,)  # 捕获所有异常，防止单个trial失败导致整个过程中断
+        )
+    except Exception as e:
+        print(f"第二阶段优化过程中出现错误: {e}")
+        print("使用已完成的试验结果...")
+    
+    # 创建最终研究结果
+    final_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    final_study_name = f"cb_optimization_multistage_final_{final_timestamp}"
+    final_storage = f"sqlite:///{RESULTS_DIR}/{final_study_name}.db"
+    final_study = optuna.create_study(
+        study_name=final_study_name,
+        storage=final_storage,
+        direction='maximize'
     )
     
     # 比较两个阶段的结果，取最好的
-    if first_stage_best_value > second_stage_study.best_value:
-        print(f"注意：第一阶段结果 ({first_stage_best_value:.4f}) 优于第二阶段 ({second_stage_study.best_value:.4f})")
+    second_stage_best_value = second_stage_study.best_value if len(second_stage_study.trials) > 0 else -float('inf')
+    
+    # 计算差异，用于判断是否真的有提升
+    value_diff = second_stage_best_value - first_stage_best_value
+    
+    # 如果差异极小（小于0.0001），视为相等，使用第二阶段结果（可能更稳定）
+    if value_diff < -0.0001:  # 第一阶段明显更好
+        print(f"注意：第一阶段结果 ({first_stage_best_value:.6f}) 优于第二阶段 ({second_stage_best_value:.6f})")
+        print(f"提升差值: {-value_diff:.6f}")
         print("使用第一阶段的最佳结果")
-        # 创建合并的研究结果
-        final_study_name = f"cb_optimization_multistage_final_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        final_storage = f"sqlite:///{RESULTS_DIR}/{final_study_name}.db"
-        final_study = optuna.create_study(
-            study_name=final_study_name,
-            storage=final_storage,
-            direction='maximize'
-        )
+        
         # 将第一阶段的最佳参数作为一个试验点添加到最终研究中
-        final_study.enqueue_trial(first_stage_best_params)
-        final_study.optimize(lambda trial: 0, n_trials=1)  # 只是为了记录参数
+        try:
+            final_study.enqueue_trial(first_stage_best_params)
+            final_study.optimize(lambda trial: first_stage_best_value, n_trials=1)
+        except Exception as e:
+            print(f"添加第一阶段结果到最终研究时出错: {e}")
+            # 手动创建一个trial对象
+            trial = optuna.trial.create_trial(
+                params=first_stage_best_params,
+                distributions={},
+                value=first_stage_best_value
+            )
+            final_study.add_trial(trial)
         
         # 返回第一阶段的最佳组合和所有组合
-        return factors, first_stage_combinations + second_stage_combinations, final_study
+        return factors, list(set(first_stage_combinations + second_stage_combinations)), final_study
     else:
-        print(f"第二阶段结果 ({second_stage_study.best_value:.4f}) 优于第一阶段 ({first_stage_best_value:.4f})")
+        print(f"第二阶段结果 ({second_stage_best_value:.6f}) 优于第一阶段 ({first_stage_best_value:.6f})")
+        print(f"提升差值: {value_diff:.6f}")
         print("使用第二阶段的最佳结果")
+        
+        # 重建best_trial的rank_factors
+        best_rank_factors = []
+        best_params = second_stage_study.best_params
+        
+        # 从参数中重建rank_factors
+        try:
+            combination_idx = int(best_params.get('combination_idx', 0))
+            if combination_idx < len(second_stage_combinations):
+                factor_indices = second_stage_combinations[combination_idx]
+                for i, idx in enumerate(factor_indices):
+                    factor_name = factors[idx]
+                    factor_info = {
+                        'name': factor_name,
+                        'weight': best_params.get(f"factor{i}_weight", 1),
+                        'ascending': best_params.get(f"factor{i}_ascending", False)
+                    }
+                    best_rank_factors.append(factor_info)
+                print(f"成功从第二阶段最佳参数中重建了{len(best_rank_factors)}个因子配置")
+                
+                # 打印第二阶段最佳因子组合和CAGR
+                print(f"\n第二阶段最佳因子组合 (CAGR: {second_stage_best_value:.6f}):")
+                for i, factor in enumerate(best_rank_factors):
+                    print(f"  {i+1}. {factor['name']}")
+                    print(f"     - 权重: {factor['weight']}")
+                    print(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
+                print()  # 添加空行
+                
+        except Exception as e:
+            print(f"重建rank_factors时出错: {e}")
+            
+        # 手动创建最终结果模型
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{timestamp}.pkl"
+        model_data = {
+            "study_name": f"cb_optimization_final_{timestamp}",
+            "best_value": second_stage_best_value,
+            "best_rank_factors": best_rank_factors,
+            "best_params": second_stage_study.best_params,
+            "factors": factors,
+            "combinations": second_stage_combinations,
+            "date_range": (args.start_date, args.end_date),
+            "price_range": (args.price_min, args.price_max),
+            "hold_num": args.hold_num,
+            "timestamp": timestamp
+        }
+        
+        # 保存模型
+        try:
+            joblib.dump(model_data, model_path)
+            print(f"\n最佳模型已保存至: {model_path}")
+        except Exception as e:
+            print(f"保存模型时出错: {e}")
+        
+        # 创建一个简化的模拟study对象
+        from types import SimpleNamespace
+        dummy_trial = SimpleNamespace()
+        dummy_trial.value = second_stage_best_value
+        dummy_trial.params = second_stage_study.best_params
+        dummy_trial.user_attrs = {"rank_factors": best_rank_factors}
+        
+        final_study = SimpleNamespace()
+        final_study.best_trial = dummy_trial
+        final_study.best_value = second_stage_best_value
+        final_study.best_params = second_stage_study.best_params
+        
         # 返回第二阶段的组合和所有组合
-        return factors, second_stage_combinations, second_stage_study
+        return factors, second_stage_combinations, final_study
 
 def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=50000):
     """根据选择的策略生成因子组合"""
@@ -629,7 +767,7 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         all_combinations = list(itertools.combinations(range(len(best_factors)), num_factors))
         print(f"预筛选因子组合数量: {len(all_combinations)}")
         if len(all_combinations) > max_combinations:
-            np.random.seed(42)
+            np.random.seed(args.seed)  # 使用参数中的随机种子
             indices = np.random.choice(len(all_combinations), max_combinations, replace=False)
             all_combinations = [all_combinations[i] for i in indices]
         return best_factors, all_combinations
@@ -640,7 +778,7 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         filtered_factors = filter_redundant_factors(factors)
         all_combinations = list(itertools.combinations(range(len(filtered_factors)), num_factors))
         if len(all_combinations) > max_combinations:
-            np.random.seed(42)
+            np.random.seed(args.seed)  # 使用参数中的随机种子
             indices = np.random.choice(len(all_combinations), max_combinations, replace=False)
             all_combinations = [all_combinations[i] for i in indices]
         return filtered_factors, all_combinations
@@ -676,21 +814,14 @@ def objective(trial, df, factors, factor_combinations, args):
         print(f"计算CAGR时出错: {e}")
         return -1.0  # 返回一个很差的值
 
-def create_sampler(method):
+def create_sampler(method, seed=None):
     """创建采样器"""
     if method == 'tpe':
-        return optuna.samplers.TPESampler(seed=42)
-    elif method == 'random':
-        return optuna.samplers.RandomSampler(seed=42)
+        return optuna.samplers.TPESampler(seed=seed)
     elif method == 'cmaes':
-        try:
-            return optuna.samplers.CmaEsSampler(seed=42, warn_independent_sampling=False)
-        except (ImportError, ModuleNotFoundError):
-            print("警告: cmaes 模块未安装，自动切换为 TPE 采样器")
-            print("如需使用 CMA-ES，请运行: pip install cmaes")
-            return optuna.samplers.TPESampler(seed=42)
-    else:
-        raise ValueError(f"不支持的优化方法: {method}")
+        return optuna.samplers.CmaEsSampler(seed=seed)
+    else:  # 默认随机采样
+        return optuna.samplers.RandomSampler(seed=seed)
 
 def run_optimization(df, args):
     """运行优化过程"""
@@ -749,14 +880,31 @@ def run_optimization(df, args):
     
     # 根据策略生成因子组合
     if args.strategy == 'multistage':
-        factors, factor_combinations, study = choose_strategy(
-            args.strategy, df, all_factors, args.n_factors, args
-        )
+        # 多阶段优化策略，factors和combinations已经包含了study
+        factors, factor_combinations, study = choose_strategy(args.strategy, df, all_factors, args.n_factors, args, max_combinations=50000)
+        
+        # 检查study是否是SimpleNamespace对象（由多阶段优化过程中创建的模拟对象）
+        if isinstance(study, types.SimpleNamespace):
+            # 已经完成了优化，无需再次优化
+            print(f"使用多阶段优化结果，最佳值: {study.best_value:.6f}")
+            # 创建结果模型
+            model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl"
+            best_model = {
+                "study": study,
+                "best_value": study.best_value,
+                "best_params": study.best_params,
+                "best_rank_factors": study.best_trial.user_attrs.get("rank_factors", []),
+                "factors": factors,
+                "combinations": factor_combinations,
+                "date_range": (args.start_date, args.end_date),
+                "price_range": (args.price_min, args.price_max),
+                "hold_num": args.hold_num
+            }
+            return study, best_model
+            
     else:
-        factors, factor_combinations = choose_strategy(
-            args.strategy, df, all_factors, args.n_factors, args
-        )
-        study = None
+        # 其他策略，只返回factors和combinations
+        factors, factor_combinations = choose_strategy(args.strategy, df, all_factors, args.n_factors, args, max_combinations=50000)
     
     print(f"选择的因子总数: {len(factors)}")
     print(f"生成的组合总数: {len(factor_combinations)}")
@@ -769,15 +917,14 @@ def run_optimization(df, args):
     storage_path = f"{RESULTS_DIR}/{study_name}.db"
     
     # 创建采样器
-    sampler = create_sampler(args.method)
+    sampler = create_sampler(args.method, seed=args.seed)  # 使用参数中的随机种子
     
-    if study is None:
-        study = optuna.create_study(
-            study_name=study_name,
-            storage=f"sqlite:///{storage_path}",
-            sampler=sampler,
-            direction="maximize"
-        )
+    study = optuna.create_study(
+        study_name=study_name,
+        storage=f"sqlite:///{storage_path}",
+        sampler=sampler,
+        direction="maximize"
+    )
     
     # 开始优化
     start_time = time.time()
@@ -797,11 +944,45 @@ def run_optimization(df, args):
     # 获取最佳结果
     best_trial = study.best_trial
     best_value = best_trial.value
-    best_rank_factors = best_trial.user_attrs["rank_factors"]
+    
+    # 添加异常处理，确保即使找不到rank_factors也能继续运行
+    try:
+        best_rank_factors = best_trial.user_attrs["rank_factors"]
+    except KeyError:
+        print("警告：无法从best_trial中找到rank_factors属性，尝试重建...")
+        # 尝试从best_params重建rank_factors
+        best_params = best_trial.params
+        best_rank_factors = []
+        
+        # 检查combination_idx是否存在
+        if "combination_idx" in best_params and len(factor_combinations) > 0:
+            combo_idx = int(best_params["combination_idx"])
+            if combo_idx < len(factor_combinations):
+                factor_indices = factor_combinations[combo_idx]
+                for i, idx in enumerate(factor_indices):
+                    factor_name = factors[idx]
+                    factor_info = {
+                        'name': factor_name,
+                        'weight': best_params.get(f"factor{i}_weight", 1),
+                        'ascending': best_params.get(f"factor{i}_ascending", False)
+                    }
+                    best_rank_factors.append(factor_info)
+                print(f"成功从参数重建了{len(best_rank_factors)}个因子配置")
+        
+        # 如果还是空的，使用默认值
+        if not best_rank_factors:
+            print("无法重建因子配置，使用默认值")
+            for i in range(args.n_factors):
+                factor_info = {
+                    'name': f"未知因子_{i}",
+                    'weight': 1,
+                    'ascending': False
+                }
+                best_rank_factors.append(factor_info)
     
     # 打印结果
     print("\n" + "="*60)
-    print(f"最佳年化收益率: {best_value:.4f}")
+    print(f"最佳年化收益率: {best_value:.6f}")
     print("\n最佳因子组合:")
     for i, factor in enumerate(best_rank_factors):
         print(f"  {i+1}. {factor['name']}")
@@ -811,7 +992,7 @@ def run_optimization(df, args):
     
     # 保存最佳模型
     model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{timestamp}.pkl"
-    model_data = {
+    best_model = {
         "study_name": study_name,
         "best_value": best_value,
         "best_rank_factors": best_rank_factors,
@@ -823,7 +1004,7 @@ def run_optimization(df, args):
         "hold_num": args.hold_num,
         "timestamp": timestamp
     }
-    joblib.dump(model_data, model_path)
+    joblib.dump(best_model, model_path)
     print(f"\n最佳模型已保存至: {model_path}")
     
     # 输出前5个最佳结果
@@ -832,12 +1013,12 @@ def run_optimization(df, args):
     
     for i, trial in enumerate(top_trials):
         if trial.value is not None:
-            print(f"\n{i+1}. 年化收益率: {trial.value:.4f}")
+            print(f"\n{i+1}. 年化收益率: {trial.value:.6f}")
             rank_factors = trial.user_attrs.get("rank_factors", [])
             for j, factor in enumerate(rank_factors):
                 print(f"   - {factor['name']} (权重: {factor['weight']}, {'升序' if factor['ascending'] else '降序'})")
     
-    return study, model_data
+    return study, best_model
 
 def main():
     """主函数"""
@@ -847,6 +1028,14 @@ def main():
     # 加载数据
     df = load_data()
     
+    print(f"\n开始优化， 参数信息:")
+    print(f"  迭代次数: {args.n_trials}")
+    print(f"  持仓数: {args.hold_num}")
+    print(f"  价格区间: {args.price_min}-{args.price_max}")
+    print(f"  因子数量: {args.n_factors}")
+    print(f"  优化方法: {args.method}")
+    print(f"  策略: {args.strategy}")
+    print(f"  随机种子: {args.seed}")
     # 运行优化
     study, best_model = run_optimization(df, args)
     
