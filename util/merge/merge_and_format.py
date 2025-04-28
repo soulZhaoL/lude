@@ -11,6 +11,7 @@ import csv
 import os
 import glob
 import pandas as pd
+import json
 from typing import List, Dict
 
 def format_basket(script_dir: str) -> str:
@@ -72,15 +73,62 @@ def format_basket(script_dir: str) -> str:
     
     return output_file
 
-def merge_excel(csv_dir: str, output_path: str) -> None:
+
+def create_blacklist_if_not_exists(csv_dir: str) -> str:
+    """
+    检查黑名单文件是否存在，不存在则创建一个空的黑名单JSON文件
+    
+    Args:
+        csv_dir: csv目录的路径
+        
+    Returns:
+        str: 黑名单文件的完整路径
+    """
+    blacklist_path = os.path.join(os.path.dirname(csv_dir), 'blacklist.json')
+    return blacklist_path
+
+
+def read_blacklist(blacklist_path: str) -> List[str]:
+    """
+    读取JSON格式的黑名单文件，返回需要剔除的转债代码列表
+    
+    Args:
+        blacklist_path: 黑名单文件的路径
+        
+    Returns:
+        List[str]: 黑名单转债代码列表
+    """
+    blacklist = []
+
+    if os.path.exists(blacklist_path):
+        try:
+            with open(blacklist_path, 'r', encoding='utf-8') as f:
+                blacklist_data = json.load(f)
+                if "blacklist" in blacklist_data and isinstance(blacklist_data["blacklist"], list):
+                    for item in blacklist_data["blacklist"]:
+                        if "code" in item and item["code"].strip():
+                            blacklist.append(item["code"].strip())
+            print(f"已读取黑名单，共 {len(blacklist)} 个转债代码")
+        except Exception as e:
+            print(f"读取黑名单文件时出错: {str(e)}")
+
+    return blacklist
+
+
+def merge_excel(csv_dir: str, output_path: str, blacklist: List[str] = None) -> None:
     """
     合并csv目录下的所有csv文件，生成最终的result.csv
-    注意：会排除掉"禄得可转债行情表"开头的文件
+    注意：会排除掉"禄得可转债行情表"开头的文件，以及黑名单中的转债
     
     Args:
         csv_dir: csv目录的路径
         output_path: 输出文件的完整路径
+        blacklist: 黑名单转债代码列表，默认为None
     """
+    # 设置默认黑名单
+    if blacklist is None:
+        blacklist = []
+        
     # 获取所有CSV文件
     csv_files = glob.glob(os.path.join(csv_dir, "*.csv"))
     
@@ -102,6 +150,22 @@ def merge_excel(csv_dir: str, output_path: str) -> None:
         else:
             print(f"{file} 无法读取")
             continue
+
+        # 合并数据前，剔除黑名单中的转债
+        if not df.empty and len(blacklist) > 0:
+            # 假设第一列是代码列，可能需要根据实际情况调整
+            if df.shape[1] > 0:
+                # 将第一列转为字符串并提取纯编码部分（不含市场后缀）
+                code_only = df.iloc[:, 0].astype(str).apply(
+                    lambda x: x.split('.')[0] if '.' in x else x
+                )
+
+                # 过滤掉黑名单中的转债
+                mask = ~code_only.isin(blacklist)
+                filtered_count = df.shape[0] - mask.sum()
+                if filtered_count > 0:
+                    print(f"从 {file} 中剔除了 {filtered_count} 个黑名单转债")
+                    df = df[mask]
         
         # 合并数据
         merged_df = pd.concat([merged_df, df], ignore_index=True)
@@ -159,15 +223,21 @@ def merge_files():
     csv_dir = os.path.join(script_dir, 'csv')
     
     try:
+        # 检查并创建黑名单文件
+        blacklist_path = create_blacklist_if_not_exists(csv_dir)
+
+        # 读取黑名单
+        blacklist = read_blacklist(blacklist_path)
+        
         # 第一步：处理禄得可转债行情表
         print("开始处理禄得可转债行情表...")
         basket_file = format_basket(script_dir)
         print(f"已生成文件：{basket_file}")
-        
-        # 第二步：合并CSV文件
+
+        # 第二步：合并CSV文件，同时剔除黑名单中的转债
         print("\n开始合并CSV文件...")
         output_path = "/Users/zhaolei/Downloads/result.csv"
-        merge_excel(csv_dir, output_path)
+        merge_excel(csv_dir, output_path, blacklist)
         print(f"\n合并完成！结果文件：{output_path}")
         
     except Exception as e:
