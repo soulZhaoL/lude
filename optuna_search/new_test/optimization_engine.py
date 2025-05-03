@@ -8,13 +8,13 @@
 import optuna
 import pandas as pd
 import numpy as np
-import joblib
+import json
 import time
 import os
 from datetime import datetime
-from cal_factor_util import add_custom_factors
-from more_factor_test_origin_code import cal_cagr
-from utils.common_utils import create_sampler, save_optimization_result
+
+# 导入常量和工具函数
+from common_utils import create_sampler, save_optimization_result, RESULTS_DIR
 
 def run_optimization(df, args):
     """运行优化过程
@@ -58,7 +58,9 @@ def run_optimization(df, args):
     else:
         # 创建研究
         study_name = f"{args.strategy}_{args.method}_{args.n_factors}factors_{args.seed}"
-        storage_name = f"sqlite:///{study_name}.db"
+        # 将数据库文件保存到optimization_results目录
+        db_path = os.path.join(RESULTS_DIR, f"{study_name}.db")
+        storage_name = f"sqlite:///{db_path}"
         
         try:
             # 尝试加载已有的研究

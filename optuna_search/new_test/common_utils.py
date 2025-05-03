@@ -16,11 +16,13 @@ import joblib
 RESULTS_DIR = "optimization_results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
+
 def load_data():
     """加载数据"""
     print("正在加载数据...")
     df = pd.read_parquet('cb_data.pq')
     return df
+
 
 def create_sampler(method, seed=None):
     """创建采样器
@@ -39,6 +41,7 @@ def create_sampler(method, seed=None):
     else:  # 默认使用TPE
         return optuna.samplers.TPESampler(seed=seed)
 
+
 def save_optimization_result(study, factors, combinations, args, best_rank_factors=None):
     """保存优化结果
     
@@ -54,11 +57,12 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{timestamp}.pkl"
-    
+
     # 如果没有提供best_rank_factors，尝试从study中提取
-    if best_rank_factors is None and hasattr(study.best_trial, 'user_attrs') and 'rank_factors' in study.best_trial.user_attrs:
+    if best_rank_factors is None and hasattr(study.best_trial,
+                                             'user_attrs') and 'rank_factors' in study.best_trial.user_attrs:
         best_rank_factors = study.best_trial.user_attrs['rank_factors']
-    
+
     model_data = {
         "study_name": study.study_name,
         "best_value": study.best_value,
@@ -71,15 +75,16 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
         "hold_num": args.hold_num,
         "timestamp": timestamp
     }
-    
+
     # 保存模型
     try:
         joblib.dump(model_data, model_path)
         print(f"\n最佳模型已保存至: {model_path}")
     except Exception as e:
         print(f"保存模型时出错: {e}")
-    
+
     return model_path
+
 
 def filter_redundant_factors(factors, threshold=0.8):
     """根据业务知识过滤掉冗余因子
@@ -122,25 +127,25 @@ def filter_redundant_factors(factors, threshold=0.8):
         ['pct_chg_5', 'pct_chg_10', 'pct_chg_20'],
         ['pct_chg_5_stk', 'pct_chg_10_stk', 'pct_chg_20_stk'],
     ]
-    
+
     # 创建一个集合来存储要保留的因子
     filtered_factors = set(factors)
-    
+
     # 对每个冗余组进行处理
     for group in redundant_groups:
         # 找出该组中存在于原始因子列表中的因子
         existing_factors = [f for f in group if f in factors]
-        
+
         # 如果该组中有多个因子存在于原始列表中，随机保留一个，移除其他的
         if len(existing_factors) > 1:
             # 随机选择一个因子保留
             np.random.shuffle(existing_factors)
             keep_factor = existing_factors[0]
-            
+
             # 移除其他因子
             for factor in existing_factors[1:]:
                 if factor in filtered_factors:
                     filtered_factors.remove(factor)
                     print(f"移除冗余因子: {factor} (与 {keep_factor} 冗余)")
-    
+
     return list(filtered_factors)

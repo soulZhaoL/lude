@@ -6,8 +6,8 @@
 
 import argparse
 import os
-from utils.common_utils import load_data
 from optimization_engine import run_optimization
+from common_utils import load_data
 
 # 创建结果目录
 RESULTS_DIR = "optimization_results"
@@ -58,4 +58,5 @@ def main():
         print("\n优化未完成或出错")
 
 if __name__ == "__main__":
+    # 入口函数
     main()
