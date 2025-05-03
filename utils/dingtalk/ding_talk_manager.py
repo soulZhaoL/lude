@@ -2,10 +2,8 @@
 钉钉消息管理器
 """
 import logging
-import os
-from typing import Optional
 
-from util.dingtalk.ding_talk import DingTalk
+from utils.dingtalk.ding_talk import DingTalk
 
 logger = logging.getLogger(__name__)
 

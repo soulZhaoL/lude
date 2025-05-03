@@ -18,7 +18,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 sys.path.insert(0, project_root)
 
 # 导入钉钉管理器
-from util.dingtalk.ding_talk_manager import DingTalkManager
+from utils.dingtalk.ding_talk_manager import DingTalkManager
 
 
 def test_send_simple_message():

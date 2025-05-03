@@ -26,7 +26,7 @@ if not util_exists:
 # 尝试导入钉钉管理器
 ding_talk_available = False
 try:
-    from util.dingtalk.ding_talk_manager import DingTalkManager
+    from utils.dingtalk.ding_talk_manager import DingTalkManager
     ding_talk_available = True
     print("成功导入钉钉管理器")
 except ImportError as e:
@@ -59,7 +59,7 @@ except ImportError as e:
                 print(f"尝试添加旧的项目根目录到系统路径: {old_project_root}")
             
             # 再次尝试常规导入
-            from util.dingtalk.ding_talk_manager import DingTalkManager
+            from utils.dingtalk.ding_talk_manager import DingTalkManager
             ding_talk_available = True
             print("通过旧路径成功导入钉钉管理器")
         except Exception as e3:
