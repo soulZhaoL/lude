@@ -55,7 +55,7 @@ NC='\033[0m' # No Color
 
 # 默认参数
 MODE="single"        # 运行模式: single(单次运行) 或 continuous(持续优化)
-STRATEGY="multistage" # 优化策略: domain, prescreen, multistage, filter
+STRATEGY="domain" # 优化策略: domain, prescreen, multistage, filter
 METHOD="tpe"         # 优化方法: tpe, random, cmaes
 N_TRIALS=3000        # 优化迭代次数
 N_FACTORS=3          # 因子数量

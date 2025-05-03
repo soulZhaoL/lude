@@ -1,6 +1,5 @@
 import warnings
 
-from optuna_search.revert.cal_util import add_custom_factors
 
 warnings.filterwarnings('ignore')  # 忽略警告
 import pandas as pd
@@ -138,7 +137,8 @@ def cal_cagr(df, start_date, end_date, hold_num, threshold_num, min, max, rank_f
 if __name__ == '__main__':
     df = pd.read_parquet('cb_data.pq')
     index = pd.read_parquet('index.pq')
-    df = add_custom_factors(df)
+    # df = add_custom_factors(df)
+
     # 基础设置
     start_date = '20220729'  # 开始日期
     end_date = '20250328'  # 结束日期
