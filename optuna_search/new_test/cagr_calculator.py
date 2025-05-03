@@ -5,21 +5,16 @@
 基于more_factor_test_origin_code_none_threadhold.py精简而来，只保留核心计算逻辑。
 """
 
-import os
-import sys
 import warnings
+
 import pandas as pd
-import numpy as np
 from numpy import nan
 
-# 添加项目根目录到Python路径，以便能够导入utils模块
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..'))
+# 使用相对导入，从lude项目的utils包导入
+from utils.cagr_utils import calculate_cagr_manually
 
 # 忽略警告
 warnings.filterwarnings('ignore')
-
-# 导入CAGR计算工具
-from utils.cagr_utils import calculate_cagr_manually
 
 # 基础常量设置
 SP = 0.06  # 盘中止盈条件，6%止盈

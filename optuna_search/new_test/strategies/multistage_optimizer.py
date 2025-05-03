@@ -12,10 +12,8 @@ import sys
 import numpy as np
 import optuna
 
-# 导入相关模块和常量
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cagr_calculator import calculate_bonds_cagr
-from common_utils import RESULTS_DIR  # 导入结果目录常量
+from optuna_search.new_test.cagr_calculator import calculate_bonds_cagr
+from optuna_search.new_test.common_utils import RESULTS_DIR  # 导入结果目录常量
 
 
 def multistage_optimization(df, factors, num_factors, args, max_combinations=50000):

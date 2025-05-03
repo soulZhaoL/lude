@@ -14,9 +14,6 @@ import threading
 import re
 import sys
 
-# 添加项目根目录到路径，确保能导入util目录下的模块
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.insert(0, project_root)
 
 # 导入钉钉推送模块
 try:

@@ -11,18 +11,6 @@ from datetime import datetime
 import sys
 import importlib.util
 
-# 添加项目根目录到系统路径 (调整路径计算)
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-    print(f"已添加项目根目录到系统路径: {project_root}")
-
-# 检查是否已存在util模块
-util_exists = importlib.util.find_spec("util") is not None
-if not util_exists:
-    print(f"警告: 在Python路径中找不到util模块")
-    print(f"当前Python路径: {sys.path}")
-
 # 尝试导入钉钉管理器
 ding_talk_available = False
 try:

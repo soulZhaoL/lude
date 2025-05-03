@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# 进入脚本所在目录
-cd "$(dirname "$0")"
+# 进入脚本所在目录（修改为使用绝对路径）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # 定义项目根目录
 PROJECT_ROOT=$(cd ../.. && pwd)
@@ -16,8 +17,8 @@ PID_FILE="$PROJECT_ROOT/optuna_search/new_test/.optimizer_pid"
 # 检测环境并激活conda环境
 setup_conda_environment() {
     # 获取当前脚本的完整路径
-    SCRIPT_PATH=$(cd "$(dirname "$0")" && pwd)
-    FULL_PATH=$(cd "$SCRIPT_PATH" && cd ../.. && pwd)
+    SCRIPT_PATH="$SCRIPT_DIR"
+    FULL_PATH="$PROJECT_ROOT"
     
     echo "当前工作路径: $FULL_PATH"
     

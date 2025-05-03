@@ -11,9 +11,8 @@ import sys
 
 import numpy as np
 
-# 直接导入同级目录的cagr_calculator模块
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from cagr_calculator import calculate_bonds_cagr
+
 
 
 def domain_knowledge_factors():
