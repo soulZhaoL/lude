@@ -21,27 +21,27 @@ setup_conda_environment() {
     SCRIPT_PATH="$SCRIPT_DIR"
     FULL_PATH="$PROJECT_ROOT"
     
-    echo "当前工作路径: $FULL_PATH"
+    printf "%s当前工作路径: %s%s\n" "${BLUE}" "$FULL_PATH" "${NC}"
     
     # 检查是否为服务器环境（判断是否含有autodl-tmp目录）
     if [[ "$FULL_PATH" == *"autodl-tmp"* ]]; then
-        echo "检测到服务器环境"
+        printf "%s检测到服务器环境%s\n" "${BLUE}" "${NC}"
         
         # 从路径中提取环境名称（例如从/root/autodl-tmp/lude_100_150_hold5_fac3_num1/lude提取lude_100_150_hold5_fac3_num1）
         ENV_NAME=$(echo "$FULL_PATH" | grep -o 'lude_[^/]*')
         
         if [[ -n "$ENV_NAME" ]]; then
-            echo "尝试激活服务器conda环境: $ENV_NAME"
+            printf "%s尝试激活服务器conda环境: %s%s\n" "${BLUE}" "$ENV_NAME" "${NC}"
             source /root/miniconda3/etc/profile.d/conda.sh
-            conda activate "$ENV_NAME" || echo "警告: 无法激活环境 $ENV_NAME"
+            conda activate "$ENV_NAME" || printf "%s警告: 无法激活环境 %s%s\n" "${RED}" "$ENV_NAME" "${NC}"
         else
-            echo "警告: 无法从路径解析出conda环境名称，将使用默认环境"
+            printf "%s警告: 无法从路径解析出conda环境名称，将使用默认环境%s\n" "${RED}" "${NC}"
         fi
     else
-        echo "检测到本地环境"
+        printf "%s检测到本地环境%s\n" "${BLUE}" "${NC}"
         # 本地环境使用固定的conda环境
         source ~/miniconda3/etc/profile.d/conda.sh
-        conda activate lude || echo "警告: 无法激活本地环境 lude"
+        conda activate lude || printf "%s警告: 无法激活本地环境 lude%s\n" "${RED}" "${NC}"
     fi
 }
 
@@ -81,37 +81,37 @@ ACTION="run"         # 操作类型: run(运行) 或 stop(停止)
 
 # 显示脚本使用说明
 show_help() {
-    echo -e "${BLUE}可转债多因子优化脚本${NC}"
-    echo "用法: $0 [选项]"
-    echo ""
-    echo "选项:"
-    echo "  -m, --mode <mode>        运行模式: single(单次) 或 continuous(持续), 默认: single"
-    echo "  -s, --strategy <strategy> 优化策略: domain, prescreen, multistage, filter, 默认: multistage"
-    echo "  --method <method>        优化方法: tpe, random, cmaes, 默认: tpe"
-    echo "  --trials <n>             优化迭代次数, 默认: 3000"
-    echo "  --factors <n>            因子数量(3-5), 默认: 3"
-    echo "  --start <date>           回测开始日期(格式:YYYYMMDD), 默认: 20220729"
-    echo "  --end <date>             回测结束日期(格式:YYYYMMDD), 默认: 20250328"
-    echo "  --min <price>            价格下限, 默认: 100"
-    echo "  --max <price>            价格上限, 默认: 150"
-    echo "  --hold <n>               持仓数量, 默认: 5"
-    echo "  --jobs <n>               并行任务数, 默认: 15"
-    echo "  --seed <n>               随机种子(单次模式), 默认: 42"
-    echo "  --seed-start <n>         起始随机种子(持续模式), 默认: 42"
-    echo "  --seed-step <n>          种子递增步长(持续模式), 默认: 1000"
-    echo "  --iterations <n>         持续模式下的运行次数, 默认: 10"
-    echo "  -b, --background         在后台运行脚本"
-    echo "  -l, --log <filename>     指定日志文件(用于后台运行)"
-    echo "  --clear                  运行前清空结果目录"
-    echo "  --stop                   停止后台运行的优化进程"
-    echo "  --status                 检查后台运行的优化进程状态"
-    echo "  -h, --help               显示帮助信息"
-    echo ""
-    echo "示例:"
-    echo "  $0 -s multistage --factors 4 --jobs 15"
-    echo "  $0 -m continuous --iterations 20 --strategy filter"
-    echo "  $0 -m continuous -b -l optimization.log"
-    echo "  $0 --stop           # 停止后台运行的优化进程"
+    printf "%s可转债多因子优化脚本%s\n" "${BLUE}" "${NC}"
+    printf "用法: %s [选项]\n" "$0"
+    printf "\n"
+    printf "选项:\n"
+    printf "  -m, --mode <mode>        运行模式: single(单次) 或 continuous(持续), 默认: single\n"
+    printf "  -s, --strategy <strategy> 优化策略: domain, prescreen, multistage, filter, 默认: multistage\n"
+    printf "  --method <method>        优化方法: tpe, random, cmaes, 默认: tpe\n"
+    printf "  --trials <n>             优化迭代次数, 默认: 3000\n"
+    printf "  --factors <n>            因子数量(3-5), 默认: 3\n"
+    printf "  --start <date>           回测开始日期(格式:YYYYMMDD), 默认: 20220729\n"
+    printf "  --end <date>             回测结束日期(格式:YYYYMMDD), 默认: 20250328\n"
+    printf "  --min <price>            价格下限, 默认: 100\n"
+    printf "  --max <price>            价格上限, 默认: 150\n"
+    printf "  --hold <n>               持仓数量, 默认: 5\n"
+    printf "  --jobs <n>               并行任务数, 默认: 15\n"
+    printf "  --seed <n>               随机种子(单次模式), 默认: 42\n"
+    printf "  --seed-start <n>         起始随机种子(持续模式), 默认: 42\n"
+    printf "  --seed-step <n>          种子递增步长(持续模式), 默认: 1000\n"
+    printf "  --iterations <n>         持续模式下的运行次数, 默认: 10\n"
+    printf "  -b, --background         在后台运行脚本\n"
+    printf "  -l, --log <filename>     指定日志文件(用于后台运行)\n"
+    printf "  --clear                  运行前清空结果目录\n"
+    printf "  --stop                   停止后台运行的优化进程\n"
+    printf "  --status                 检查后台运行的优化进程状态\n"
+    printf "  -h, --help               显示帮助信息\n"
+    printf "\n"
+    printf "示例:\n"
+    printf "  %s -s multistage --factors 4 --jobs 15\n" "$0"
+    printf "  %s -m continuous --iterations 20 --strategy filter\n" "$0"
+    printf "  %s -m continuous -b -l optimization.log\n" "$0"
+    printf "  %s --stop           # 停止后台运行的优化进程\n" "$0"
 }
 
 # 解析命令行参数
@@ -203,7 +203,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo -e "${RED}未知参数: $1${NC}"
+            printf "%s未知参数: %s%s\n" "${RED}" "$1" "${NC}"
             show_help
             exit 1
             ;;
@@ -212,7 +212,7 @@ done
 
 # 验证参数
 if [[ "$MODE" != "single" && "$MODE" != "continuous" ]]; then
-    echo -e "${RED}错误: 模式必须是 'single' 或 'continuous'${NC}"
+    printf "%s错误: 模式必须是 'single' 或 'continuous'%s\n" "${RED}" "${NC}"
     exit 1
 fi
 
@@ -220,37 +220,37 @@ if [[ "$BACKGROUND" = true && -z "$LOG_FILE" ]]; then
     # 自动生成日志文件名
     timestamp=$(date +"%Y%m%d_%H%M%S")
     LOG_FILE="optimization_${STRATEGY}_${timestamp}.log"
-    echo -e "${YELLOW}将使用自动生成的日志文件: $LOG_FILE${NC}"
+    printf "%s将使用自动生成的日志文件: %s%s\n" "${YELLOW}" "$LOG_FILE" "${NC}"
 fi
 
 # 检测和初始化结果目录
 check_results_dir() {
     # 检测项目根目录是否存在，不存在则创建
     if [ ! -d "$PROJECT_ROOT" ]; then
-        echo -e "${RED}错误：找不到项目根目录: $PROJECT_ROOT${NC}"
+        printf "%s错误：找不到项目根目录: %s%s\n" "${RED}" "$PROJECT_ROOT" "${NC}"
         exit 1
     fi
 
     # 检测 optimization_results 目录
     RESULTS_DIR="$PROJECT_ROOT/optimization_results"
     if [ ! -d "$RESULTS_DIR" ]; then
-        echo "创建 optimization_results 目录..."
+        printf "%s创建 optimization_results 目录...\n" "${BLUE}"
         mkdir -p "$RESULTS_DIR/best_models"
     else
         # 统计目录中的文件数量和占用空间
         file_count=$(find "$RESULTS_DIR" -type f | wc -l)
         file_size=$(du -sh "$RESULTS_DIR" | cut -f1)
-        echo "发现 optimization_results 目录已存在并包含 $file_count 个文件，占用 $file_size 空间"
+        printf "%s发现 optimization_results 目录已存在并包含 %d 个文件，占用 %s 空间\n" "${BLUE}" "$file_count" "$file_size"
         
         # 询问是否清空目录
         if [[ "$CLEAR_RESULTS" = true ]] || [[ "$BACKGROUND" = false ]]; then
             read -p "是否在运行前清空该目录? (y/n) [默认:y]: " clear_dir
             clear_dir=${clear_dir:-y}
             if [[ "$clear_dir" == "y" ]]; then
-                echo "正在清空 optimization_results 目录..."
+                printf "%s正在清空 optimization_results 目录...\n" "${BLUE}"
                 rm -rf "$RESULTS_DIR"/*
                 mkdir -p "$RESULTS_DIR/best_models"
-                echo "目录已清空"
+                printf "%s目录已清空\n" "${GREEN}"
             fi
         fi
     fi
@@ -265,8 +265,8 @@ build_command() {
         CMD="python -m lude.optimization.continuous_optimizer --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed_start $SEED_START --seed_step $SEED_STEP --workspace_id $WORKSPACE_ID"
     fi
     
-    echo "将执行以下命令:"
-    echo "\"$CMD\""
+    printf "%s将执行以下命令:\n" "${BLUE}"
+    printf "\"%s\"\n" "$CMD"
 }
 
 # 停止后台运行的优化进程
@@ -275,20 +275,20 @@ stop_optimizer() {
     CURRENT_DIR=$(pwd)
     WORKSPACE_ID=$(basename $(dirname "$CURRENT_DIR"))
     
-    echo -e "${BLUE}当前工作区: $WORKSPACE_ID${NC}"
+    printf "%s当前工作区: %s%s\n" "${BLUE}" "$WORKSPACE_ID" "${NC}"
     
     # 如果进程组文件存在，优先使用它
     if [ -f "$PID_GROUP_FILE" ]; then
-        echo -e "${BLUE}找到进程组信息文件...${NC}"
+        printf "%s找到进程组信息文件...\n" "${BLUE}"
         ALL_PIDS=$(cat "$PID_GROUP_FILE")
         
         if [ -n "$ALL_PIDS" ]; then
-            echo -e "${YELLOW}正在停止进程组: $ALL_PIDS${NC}"
+            printf "%s正在停止进程组: %s%s\n" "${YELLOW}" "$ALL_PIDS" "${NC}"
             
             # 逐个停止进程
             for pid in $ALL_PIDS; do
                 if ps -p $pid > /dev/null 2>&1; then
-                    echo -e "${YELLOW}终止进程 $pid...${NC}"
+                    printf "%s终止进程 %d...\n" "${YELLOW}" "$pid"
                     kill $pid 2>/dev/null
                 fi
             done
@@ -305,7 +305,7 @@ stop_optimizer() {
             done
             
             if [ -n "$remaining_pids" ]; then
-                echo -e "${RED}进程未能正常停止，尝试强制终止: $remaining_pids ${NC}"
+                printf "%s进程未能正常停止，尝试强制终止: %s%s\n" "${RED}" "$remaining_pids" "${NC}"
                 for pid in $remaining_pids; do
                     kill -9 $pid 2>/dev/null
                 done
@@ -323,16 +323,16 @@ stop_optimizer() {
             done
             
             if [ -n "$final_remaining" ]; then
-                echo -e "${RED}仍有进程无法终止: $final_remaining${NC}"
-                echo -e "${RED}请手动终止这些进程${NC}"
+                printf "%s仍有进程无法终止: %s%s\n" "${RED}" "$final_remaining" "${NC}"
+                printf "%s请手动终止这些进程%s\n" "${RED}" "${NC}"
                 return 1
             else
-                echo -e "${GREEN}所有优化进程已终止${NC}"
+                printf "%s所有优化进程已终止%s\n" "${GREEN}" "${NC}"
                 rm -f "$PID_FILE" "$PID_GROUP_FILE"
                 return 0
             fi
         else
-            echo -e "${YELLOW}进程组文件为空，尝试其他方法终止进程...${NC}"
+            printf "%s进程组文件为空，尝试其他方法终止进程...\n" "${YELLOW}" "${NC}"
         fi
     fi
     
@@ -340,10 +340,10 @@ stop_optimizer() {
     if [ -f "$PID_FILE" ]; then
         optimizer_pid=$(cat "$PID_FILE")
         if ps -p $optimizer_pid > /dev/null; then
-            echo -e "${YELLOW}正在停止优化进程 (PID: $optimizer_pid)...${NC}"
+            printf "%s正在停止优化进程 (PID: %d)...\n" "${YELLOW}" "$optimizer_pid"
             
             # 查找所有相关进程，包括子进程和线程
-            echo -e "${BLUE}查找所有相关进程和线程...${NC}"
+            printf "%s查找所有相关进程和线程...\n" "${BLUE}"
             
             # 使用pstree查找进程树（如果可用）
             if command -v pstree >/dev/null 2>&1; then
@@ -369,12 +369,12 @@ stop_optimizer() {
             all_pids="$optimizer_pid $related_pids $python_pids"
             all_pids=$(echo "$all_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ')
             
-            echo -e "${YELLOW}找到相关进程: $all_pids${NC}"
+            printf "%s找到相关进程: %s%s\n" "${YELLOW}" "$all_pids" "${NC}"
             
             # 先尝试正常终止所有相关进程
             for pid in $all_pids; do
                 if ps -p $pid > /dev/null 2>&1; then
-                    echo -e "${YELLOW}终止进程 $pid...${NC}"
+                    printf "%s终止进程 %d...\n" "${YELLOW}" "$pid"
                     kill $pid 2>/dev/null
                 fi
             done
@@ -391,7 +391,7 @@ stop_optimizer() {
             done
             
             if [ -n "$remaining_pids" ]; then
-                echo -e "${RED}进程未能正常停止，尝试强制终止: $remaining_pids ${NC}"
+                printf "%s进程未能正常停止，尝试强制终止: %s%s\n" "${RED}" "$remaining_pids" "${NC}"
                 for pid in $remaining_pids; do
                     kill -9 $pid 2>/dev/null
                 done
@@ -400,22 +400,22 @@ stop_optimizer() {
                 sleep 1
                 for pid in $remaining_pids; do
                     if ps -p $pid > /dev/null 2>&1; then
-                        echo -e "${RED}无法终止进程 $pid，请手动执行: kill -9 $pid${NC}"
+                        printf "%s无法终止进程 %d，请手动执行: kill -9 %d%s\n" "${RED}" "$pid" "$pid" "${NC}"
                     fi
                 done
             fi
             
             # 最后检查主进程是否已经停止
             if ! ps -p $optimizer_pid > /dev/null; then
-                echo -e "${GREEN}优化进程及相关线程已全部停止${NC}"
+                printf "%s优化进程及相关线程已全部停止%s\n" "${GREEN}" "${NC}"
                 rm -f "$PID_FILE" "$PID_GROUP_FILE" 2>/dev/null
                 return 0
             else
-                echo -e "${RED}无法停止主优化进程，请手动执行: kill -9 $optimizer_pid${NC}"
+                printf "%s无法停止主优化进程，请手动执行: kill -9 %d%s\n" "${RED}" "$optimizer_pid" "${NC}"
                 return 1
             fi
         else
-            echo -e "${YELLOW}优化进程 (PID: $optimizer_pid) 已不存在${NC}"
+            printf "%s优化进程 (PID: %d) 已不存在%s\n" "${YELLOW}" "$optimizer_pid" "${NC}"
             
             # 确保清理所有相关的Python进程
             # 1. 基于目录的精确匹配
@@ -428,23 +428,23 @@ stop_optimizer() {
             all_remaining_pids=$(echo "$all_remaining_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ')
             
             if [ -n "$all_remaining_pids" ]; then
-                echo -e "${YELLOW}发现相关的优化进程仍在运行: $all_remaining_pids${NC}"
-                echo -e "${YELLOW}正在清理残留进程...${NC}"
+                printf "%s发现相关的优化进程仍在运行: %s%s\n" "${YELLOW}" "$all_remaining_pids" "${NC}"
+                printf "%s正在清理残留进程...\n" "${YELLOW}"
                 for pid in $all_remaining_pids; do
-                    echo -e "${YELLOW}终止进程 $pid...${NC}"
+                    printf "%s终止进程 %d...\n" "${YELLOW}" "$pid"
                     kill $pid 2>/dev/null
                     sleep 1
                     if ps -p $pid > /dev/null 2>&1; then
                         kill -9 $pid 2>/dev/null
                     fi
                 done
-                echo -e "${GREEN}残留进程清理完成${NC}"
+                printf "%s残留进程清理完成%s\n" "${GREEN}" "${NC}"
             fi
             rm -f "$PID_FILE" "$PID_GROUP_FILE" 2>/dev/null
             return 0
         fi
     else
-        echo -e "${YELLOW}未找到正在运行的优化进程${NC}"
+        printf "%s未找到正在运行的优化进程%s\n" "${YELLOW}" "${NC}"
         
         # 扫描可能的孤立进程
         python_pids=$(ps -eo pid,command | grep -E "python.*lude.optimization" | grep "$CURRENT_DIR" | grep -v grep | awk '{print $1}')
@@ -454,19 +454,18 @@ stop_optimizer() {
         all_orphan_pids=$(echo "$all_orphan_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ')
         
         if [ -n "$all_orphan_pids" ]; then
-            echo -e "${YELLOW}发现孤立的优化相关进程: $all_orphan_pids${NC}"
-            echo -e "${YELLOW}是否终止这些进程? [y/N]${NC} "
-            read -r confirm
+            printf "%s发现孤立的优化相关进程: %s%s\n" "${YELLOW}" "$all_orphan_pids" "${NC}"
+            read -p "是否终止这些进程? [y/N] " confirm
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
                 for pid in $all_orphan_pids; do
-                    echo -e "${YELLOW}终止进程 $pid...${NC}"
+                    printf "%s终止进程 %d...\n" "${YELLOW}" "$pid"
                     kill $pid 2>/dev/null
                     sleep 1
                     if ps -p $pid > /dev/null 2>&1; then
                         kill -9 $pid 2>/dev/null
                     fi
                 done
-                echo -e "${GREEN}孤立进程清理完成${NC}"
+                printf "%s孤立进程清理完成%s\n" "${GREEN}" "${NC}"
             fi
         fi
         
@@ -479,25 +478,25 @@ check_status() {
     if [ -f "$PID_FILE" ]; then
         optimizer_pid=$(cat "$PID_FILE")
         if ps -p $optimizer_pid > /dev/null; then
-            echo -e "${GREEN}优化进程正在运行 (PID: $optimizer_pid)${NC}"
+            printf "%s优化进程正在运行 (PID: %d)%s\n" "${GREEN}" "$optimizer_pid" "${NC}"
             
             # 显示进程详情
-            echo -e "\n进程详情:"
+            printf "\n进程详情:\n"
             ps -p $optimizer_pid -o pid,ppid,user,%cpu,%mem,start,time,command
             
             # 如果有日志文件，显示最新的10行
             if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
-                echo -e "\n日志文件最新内容 ($LOG_FILE):"
+                printf "\n日志文件最新内容 (%s):\n" "$LOG_FILE"
                 tail -n 10 "$LOG_FILE"
-                echo -e "\n使用 'tail -f $LOG_FILE' 查看完整日志"
+                printf "\n使用 'tail -f %s' 查看完整日志\n" "$LOG_FILE"
             else
                 # 尝试查找默认的日志文件
                 default_logs=("optimization.log" "optimizer.log" "optuna.log")
                 for log in "${default_logs[@]}"; do
                     if [ -f "$log" ]; then
-                        echo -e "\n日志文件最新内容 ($log):"
+                        printf "\n日志文件最新内容 (%s):\n" "$log"
                         tail -n 10 "$log"
-                        echo -e "\n使用 'tail -f $log' 查看完整日志"
+                        printf "\n使用 'tail -f %s' 查看完整日志\n" "$log"
                         break
                     fi
                 done
@@ -505,12 +504,12 @@ check_status() {
             
             return 0
         else
-            echo -e "${YELLOW}优化进程 (PID: $optimizer_pid) 已不存在${NC}"
+            printf "%s优化进程 (PID: %d) 已不存在%s\n" "${YELLOW}" "$optimizer_pid" "${NC}"
             rm -f "$PID_FILE"
             return 1
         fi
     else
-        echo -e "${YELLOW}未找到正在运行的优化进程${NC}"
+        printf "%s未找到正在运行的优化进程%s\n" "${YELLOW}" "${NC}"
         return 1
     fi
 }
@@ -577,18 +576,18 @@ main() {
         read -p "是否继续? (y/n) [默认:y]: " confirm
         confirm=${confirm:-y}
         if [[ "$confirm" != "y" ]]; then
-            echo "已取消"
+            printf "%s已取消\n" "${RED}"
             exit 0
         fi
     fi
     
     # 执行命令
     if [[ "$BACKGROUND" = true ]]; then
-        echo -e "${YELLOW}在后台运行，输出将写入: $LOG_FILE${NC}"
+        printf "%s在后台运行，输出将写入: %s%s\n" "${YELLOW}" "$LOG_FILE" "${NC}"
         
         # 检查日志文件是否存在，存在则先删除
         if [ -f "$LOG_FILE" ]; then
-            echo -e "${YELLOW}发现已存在的日志文件，正在删除...${NC}"
+            printf "%s发现已存在的日志文件，正在删除...\n" "${YELLOW}"
             rm -f "$LOG_FILE"
         fi
         
@@ -598,20 +597,20 @@ main() {
         # 运行命令并保存PID
         nohup $CMD > "$LOG_FILE" 2>&1 &
         PID=$!
-        echo "${GREEN}主进程已启动，PID: $PID${NC}"
-        echo "可以使用 'tail -f $LOG_FILE' 查看进度"
-        echo "使用 '$0 --stop' 可以停止运行"
+        printf "%s主进程已启动，PID: %d%s\n" "${GREEN}" "$PID" "${NC}"
+        printf "可以使用 'tail -f %s' 查看进度\n" "$LOG_FILE"
+        printf "使用 '%s --stop' 可以停止运行\n" "$0"
         
         # 保存主进程PID
         echo $PID > "$PID_FILE"
         
         # 等待子进程启动 - 服务器环境需要等待更长时间
         if [[ "$FULL_PATH" == *"autodl-tmp"* ]]; then
-            echo "${YELLOW}检测到服务器环境，等待30秒让子进程完全启动...${NC}"
-            sleep 30
+            printf "%s检测到服务器环境，等待3秒让子进程启动...\n" "${YELLOW}"
+            sleep 3
         else
-            echo "${YELLOW}等待子进程启动(15秒)...${NC}"
-            sleep 15
+            printf "%s等待子进程启动(1秒)...\n" "${YELLOW}"
+            sleep 1
         fi
         
         # 获取当前工作区路径和主进程ID
@@ -619,35 +618,36 @@ main() {
         MAIN_PID=$PID
         
         # 获取相关进程
-        echo "${YELLOW}开始查找相关进程...${NC}"
+        printf "%s开始查找相关进程...\n" "${YELLOW}"
         ALL_PIDS=$(find_related_processes "$WORKSPACE_DIR" "$MAIN_PID")
         
         # 如果初次查找失败，再多等待并重试一次
         if [ -z "$ALL_PIDS" ] || [ "$ALL_PIDS" = "$MAIN_PID" ]; then
-            echo "${YELLOW}未找到足够的相关进程，等待10秒后重试...${NC}"
-            sleep 10
+            printf "%s未找到足够的相关进程，等待5秒后重试...\n" "${YELLOW}"
+            sleep 5
             ALL_PIDS=$(find_related_processes "$WORKSPACE_DIR" "$MAIN_PID")
         fi
         
         # 如果没有找到任何进程，至少包含主进程
         if [ -z "$ALL_PIDS" ]; then
             ALL_PIDS=$MAIN_PID
-            echo "${YELLOW}警告: 未检测到子进程，仅记录主进程 PID: $MAIN_PID${NC}"
+            printf "%s警告: 未检测到子进程，仅记录主进程 PID: %d%s\n" "${YELLOW}" "$MAIN_PID" "${NC}"
         else
             PROC_COUNT=$(echo "$ALL_PIDS" | wc -w)
-            echo "${GREEN}找到相关进程组: $ALL_PIDS${NC}"
-            echo "${GREEN}共 $PROC_COUNT 个进程${NC}"
+            printf "%s找到相关进程组: %s%s\n" "${GREEN}" "$ALL_PIDS" "${NC}"
+            printf "%s共 %d 个进程%s\n" "${GREEN}" "$PROC_COUNT" "${NC}"
         fi
         
         # 记录进程组到文件
         echo "$ALL_PIDS" > "$PID_GROUP_FILE"
-        echo "${GREEN}进程组已记录，总共 $PROC_COUNT 个进程${NC}"
+        PROC_COUNT=$(echo "$ALL_PIDS" | wc -w)
+        printf "%s进程组已记录，总共 %d 个进程%s\n" "${GREEN}" "$PROC_COUNT" "${NC}"
     else
-        echo "${BLUE}开始运行...${NC}"
+        printf "%s开始运行...\n" "${BLUE}"
         $CMD
     fi
     
-    echo -e "${GREEN}完成!${NC}"
+    printf "%s完成!\n" "${GREEN}"
 }
 
 # 根据ACTION参数执行不同操作
