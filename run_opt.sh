@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh
-# /root/run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 3 --num 1
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
 
 # 定义颜色
 GREEN='\033[0;32m'

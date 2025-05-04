@@ -4,12 +4,13 @@
 # 功能：批量查看服务状态或批量停止服务
 # 作者: Cascade
 # 日期: 2025-05-04
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
 # 查看所有服务状态
 # /root/batch_manage_services.sh --status
 
 # 停止所有服务
 # /root/batch_manage_services.sh --stop
+
 
 # 显示帮助信息
 # /root/batch_manage_services.sh --help
@@ -126,7 +127,7 @@ find_related_processes() {
         local main_session=$(ps -o sess= -p $2 2>/dev/null)
         if [ -n "$main_session" ]; then
             # 查找同一会话的Python进程
-            session_pids=$(ps -eo pid,sess,command | awk -v sess=$main_session '$2 == sess && $3 ~ /python/' | awk '{print $1}')
+            session_pids=$(ps -eo pid,sess,command | awk -v sess="$main_session" '$2 == sess && $3 ~ /python/' | awk '{print $1}')
         fi
     fi
     
