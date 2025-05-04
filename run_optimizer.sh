@@ -353,8 +353,10 @@ stop_optimizer() {
             else
                 # 查找子进程树
                 child_pids=$(ps --forest -o pid,ppid | awk -v ppid=$optimizer_pid '$2 == ppid {print $1}')
-                for child_pid in $child_pids; do
-                    grandchild_pids=$(ps --forest -o pid,ppid | awk -v ppid=$child_pid '$2 == ppid {print $1}')
+                
+                # 递归查找子进程的子进程
+                for cpid in $child_pids; do
+                    grandchild_pids=$(ps --forest -o pid,ppid | awk -v ppid=$cpid '$2 == ppid {print $1}')
                     child_pids="$child_pids $grandchild_pids"
                 done
                 related_pids="$child_pids"
@@ -372,7 +374,7 @@ stop_optimizer() {
             # 先尝试正常终止所有相关进程
             for pid in $all_pids; do
                 if ps -p $pid > /dev/null 2>&1; then
-                    echo -e "${YELLOW}正在终止进程 $pid...${NC}"
+                    echo -e "${YELLOW}终止进程 $pid...${NC}"
                     kill $pid 2>/dev/null
                 fi
             done
@@ -418,6 +420,7 @@ stop_optimizer() {
             # 确保清理所有相关的Python进程
             # 1. 基于目录的精确匹配
             python_pids=$(ps -eo pid,command | grep -E "python.*lude.optimization" | grep "$CURRENT_DIR" | grep -v grep | awk '{print $1}')
+            
             # 2. 额外检查domain_knowledge_optimizer进程
             domain_pids=$(ps -eo pid,command | grep -E "python.*domain_knowledge_optimizer" | grep -v grep | awk '{print $1}')
             
@@ -512,9 +515,58 @@ check_status() {
     fi
 }
 
+# 参照batch_manage_services.sh实现的进程查找函数
+find_related_processes() {
+    # 获取工作区ID和完整路径（用于更精确匹配）
+    local exact_workspace_id=$(basename "$1")
+    local exact_lude_path="$1/lude"
+    
+    # 查找方法1: 使用完整路径精确匹配
+    local path_pids=$(ps -eo pid,command | grep -E "python.*lude.optimization" | grep "$exact_lude_path" | grep -v grep | awk '{print $1}')
+    
+    # 查找方法2: 使用工作区ID精确匹配
+    local id_pids=$(ps -eo pid,command | grep -E "python.*lude.optimization" | grep -E "\b$exact_workspace_id\b" | grep -v grep | awk '{print $1}')
+    
+    # 查找方法3: 针对主进程PPID查找子进程
+    local child_pids=""
+    if [ -n "$2" ] && ps -p $2 > /dev/null 2>&1; then
+        child_pids=$(ps -eo pid,ppid | awk -v ppid=$2 '$2 == ppid {print $1}')
+        
+        # 递归查找子进程的子进程
+        for child_pid in $child_pids; do
+            local grand_pids=$(ps -eo pid,ppid | awk -v ppid=$child_pid '$2 == ppid {print $1}')
+            child_pids="$child_pids $grand_pids"
+        done
+    fi
+    
+    # 查找方法4: 查找特定优化器模块进程
+    local opt_pids=""
+    if [ -n "$2" ]; then
+        # 使用主进程PID作为辅助匹配条件
+        opt_pids=$(ps -eo pid,ppid,command | grep -E "python.*(domain_knowledge_optimizer|continuous_optimizer)" | grep -E "($exact_workspace_id)|ppid:$2" | grep -v grep | awk '{print $1}')
+    else
+        # 没有主进程PID时，仅使用工作区ID匹配
+        opt_pids=$(ps -eo pid,command | grep -E "python.*(domain_knowledge_optimizer|continuous_optimizer)" | grep -E "$exact_workspace_id" | grep -v grep | awk '{print $1}')
+    fi
+    
+    # 查找方法5: 基于python进程创建时间和当前会话的关联性查找相关python进程
+    local session_pids=""
+    if [ -n "$2" ]; then
+        # 获取主进程的会话ID
+        local main_session=$(ps -o sess= -p $2 2>/dev/null)
+        if [ -n "$main_session" ]; then
+            # 查找同一会话的Python进程
+            session_pids=$(ps -eo pid,sess,command | awk -v sess="$main_session" '$2 == sess && $3 ~ /python/' | awk '{print $1}')
+        fi
+    fi
+    
+    # 合并所有检测方法的结果并去重
+    echo "$2 $path_pids $id_pids $child_pids $opt_pids $session_pids" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' '
+}
+
 # 主执行流程
 main() {
-    # 检查和初始化结果目录
+    # 检测和初始化结果目录
     check_results_dir
     
     # 构建命令行
@@ -546,26 +598,52 @@ main() {
         # 运行命令并保存PID
         nohup $CMD > "$LOG_FILE" 2>&1 &
         PID=$!
-        echo -e "${GREEN}主进程已启动，PID: $PID${NC}"
-        echo -e "可以使用 'tail -f $LOG_FILE' 查看进度"
-        echo -e "使用 '$0 --stop' 可以停止运行"
+        echo "${GREEN}主进程已启动，PID: $PID${NC}"
+        echo "可以使用 'tail -f $LOG_FILE' 查看进度"
+        echo "使用 '$0 --stop' 可以停止运行"
         
         # 保存主进程PID
         echo $PID > "$PID_FILE"
         
-        # 等待几秒，让子进程有时间启动
-        sleep 3
-        
-        # 查找并记录所有相关的Python进程（主进程及其子进程）
-        ALL_PIDS=$(ps --forest -o pid,ppid,command | grep -E "python.*lude.optimization" | grep -v grep | awk '{print $1}')
-        if [ -n "$ALL_PIDS" ]; then
-            echo -e "${BLUE}找到相关进程组: $ALL_PIDS${NC}"
-            echo "$ALL_PIDS" > "$PID_GROUP_FILE"
+        # 等待子进程启动 - 服务器环境需要等待更长时间
+        if [[ "$FULL_PATH" == *"autodl-tmp"* ]]; then
+            echo "${YELLOW}检测到服务器环境，等待30秒让子进程完全启动...${NC}"
+            sleep 30
+        else
+            echo "${YELLOW}等待子进程启动(15秒)...${NC}"
+            sleep 15
         fi
         
-        echo -e "${GREEN}进程组已记录，总共 $(echo "$ALL_PIDS" | wc -w) 个进程${NC}"
+        # 获取当前工作区路径和主进程ID
+        WORKSPACE_DIR=$(dirname "$FULL_PATH")
+        MAIN_PID=$PID
+        
+        # 获取相关进程
+        echo "${YELLOW}开始查找相关进程...${NC}"
+        ALL_PIDS=$(find_related_processes "$WORKSPACE_DIR" "$MAIN_PID")
+        
+        # 如果初次查找失败，再多等待并重试一次
+        if [ -z "$ALL_PIDS" ] || [ "$ALL_PIDS" = "$MAIN_PID" ]; then
+            echo "${YELLOW}未找到足够的相关进程，等待10秒后重试...${NC}"
+            sleep 10
+            ALL_PIDS=$(find_related_processes "$WORKSPACE_DIR" "$MAIN_PID")
+        fi
+        
+        # 如果没有找到任何进程，至少包含主进程
+        if [ -z "$ALL_PIDS" ]; then
+            ALL_PIDS=$MAIN_PID
+            echo "${YELLOW}警告: 未检测到子进程，仅记录主进程 PID: $MAIN_PID${NC}"
+        else
+            PROC_COUNT=$(echo "$ALL_PIDS" | wc -w)
+            echo "${GREEN}找到相关进程组: $ALL_PIDS${NC}"
+            echo "${GREEN}共 $PROC_COUNT 个进程${NC}"
+        fi
+        
+        # 记录进程组到文件
+        echo "$ALL_PIDS" > "$PID_GROUP_FILE"
+        echo "${GREEN}进程组已记录，总共 $PROC_COUNT 个进程${NC}"
     else
-        echo -e "${BLUE}开始运行...${NC}"
+        echo "${BLUE}开始运行...${NC}"
         $CMD
     fi
     
