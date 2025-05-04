@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
-
-# 定义颜色
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # 无颜色
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
 
 # ----------------------------------
 #  usage 函数
@@ -73,7 +66,7 @@ while [ $# -gt 0 ]; do
       usage
       ;;
     *)
-      echo -e "${RED}错误: 未知参数 $1${NC}"
+      echo "错误: 未知参数 $1"
       usage
       ;;
   esac
@@ -81,20 +74,20 @@ done
 
 # 检查必选参数
 if [ -z "$HOLD" ] || [ -z "$FAC" ] || [ -z "$NUM" ]; then
-  echo -e "${RED}错误: 缺少必选参数${NC}"
+  echo "错误: 缺少必选参数"
   usage
 fi
 
 # 验证模式参数
 if [ "$MODE" != "single" ] && [ "$MODE" != "continuous" ]; then
-  echo -e "${RED}错误: 模式必须是 'single' 或 'continuous'${NC}"
+  echo "错误: 模式必须是 'single' 或 'continuous'"
   exit 1
 fi
 
 # 验证数值参数
 for param in "$HOLD" "$FAC" "$NUM" "$ITERATIONS" "$TRIALS"; do
   if ! [[ "$param" =~ ^[0-9]+$ ]]; then
-    echo -e "${RED}错误: 参数 '$param' 必须是正整数${NC}"
+    echo "错误: 参数 '$param' 必须是正整数"
     exit 1
   fi
 done
@@ -105,15 +98,15 @@ TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/"
 
 # 检查目录是否存在
 if [ ! -d "${TARGET_DIR}" ]; then
-  echo -e "${RED}❌ 目标目录不存在：${TARGET_DIR}${NC}"
+  echo "❌ 目标目录不存在：${TARGET_DIR}"
   exit 1
 fi
 
 # 进入工作目录
-echo -e "${BLUE}进入工作目录：${TARGET_DIR}${NC}"
+echo "进入工作目录：${TARGET_DIR}"
 cd "${TARGET_DIR}"
 
-echo -e "${GREEN}开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, 模式: ${MODE}, 迭代次数: ${ITERATIONS}, 试验次数: ${TRIALS})${NC}"
+echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, 模式: ${MODE}, 迭代次数: ${ITERATIONS}, 试验次数: ${TRIALS})"
 # 执行优化脚本
 ./run_optimizer.sh \
   -m ${MODE} \
@@ -133,4 +126,4 @@ echo -e "${GREEN}开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号:
   -b \
   -l optimization.log
 
-echo -e "${GREEN}✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}${NC}"
+echo "✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}"

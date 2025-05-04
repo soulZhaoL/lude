@@ -182,19 +182,23 @@ def run_optimization(df, args):
         
         # 发送优化结果到钉钉
         try:
-            send_optimization_result_to_dingtalk(
-                study.best_value, 
-                [(factor['name'], factor['weight'], factor['ascending']) for factor in best_rank_factors] if best_rank_factors else None,
-                seed=args.seed,
-                strategy=args.strategy,
-                n_trials=args.n_trials,
-                start_date=args.start_date,
-                end_date=args.end_date,
-                price_range=(args.price_min, args.price_max),
-                hold_num=args.hold_num,
-                model_path=model_path
-            )
-            logger.debug("钉钉推送成功")
+            # 年化收益率超过55%才发送
+            if study.best_value >= 0.55:
+                send_optimization_result_to_dingtalk(
+                    study.best_value, 
+                    [(factor['name'], factor['weight'], factor['ascending']) for factor in best_rank_factors] if best_rank_factors else None,
+                    seed=args.seed,
+                    strategy=args.strategy,
+                    n_trials=args.n_trials,
+                    start_date=args.start_date,
+                    end_date=args.end_date,
+                    price_range=(args.price_min, args.price_max),
+                    hold_num=args.hold_num,
+                    model_path=model_path
+                )
+                logger.info("钉钉推送成功")
+            else:
+                logger.info("年化收益率未达到55%，不推送")
         except Exception as e:
             logger.error(f"发送优化结果到钉钉时出错: {e}")
         

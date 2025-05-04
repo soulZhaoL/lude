@@ -4,7 +4,7 @@
 # 功能：批量查看服务状态或批量停止服务
 # 作者: Cascade
 # 日期: 2025-05-04
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
 # 查看所有服务状态
 # /root/batch_manage_services.sh --status
 
@@ -15,14 +15,6 @@
 # 显示帮助信息
 # /root/batch_manage_services.sh --help
 
-# 定义颜色
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-NC='\033[0m' # 无颜色
-
 # 定义工程根目录
 PROJECT_ROOT="/root/autodl-tmp"
 # 本地测试用
@@ -30,15 +22,16 @@ PROJECT_ROOT="/root/autodl-tmp"
 
 # 显示帮助信息
 show_help() {
-    echo -e "${BLUE}批量服务管理工具${NC}"
-    echo -e "${YELLOW}用法:${NC} $0 [选项]"
-    echo -e "${YELLOW}选项:${NC}"
-    echo -e "  ${GREEN}-s, --status${NC}    检查所有服务状态"
-    echo -e "  ${GREEN}-k, --stop${NC}      停止所有服务"
-    echo -e "  ${GREEN}-h, --help${NC}      显示此帮助信息"
-    echo -e "\n${YELLOW}示例:${NC}"
-    echo -e "  $0 --status    # 查看所有服务状态"
-    echo -e "  $0 --stop      # 停止所有服务"
+    echo "批量服务管理工具"
+    echo "用法: $0 [选项]"
+    echo "选项:"
+    echo "  -s, --status    检查所有服务状态"
+    echo "  -k, --stop      停止所有服务"
+    echo "  -h, --help      显示此帮助信息"
+    echo ""
+    echo "示例:"
+    echo "  $0 --status    # 查看所有服务状态"
+    echo "  $0 --stop      # 停止所有服务"
 }
 
 # 检查单个服务状态
@@ -47,27 +40,30 @@ check_status() {
     local lude_dir="$workspace_dir/lude"
     local pid_file="$lude_dir/.optimizer_pid"
     
-    echo -e "\n${BLUE}==================================== 检查服务: ${YELLOW}$(basename "$workspace_dir")${BLUE} ====================================${NC}"
+    echo ""
+    echo "==================================== 检查服务: $(basename "$workspace_dir") ===================================="
     
     if [ ! -d "$lude_dir" ]; then
-        echo -e "${RED}错误: 目录 '$lude_dir' 不存在${NC}"
+        echo "错误: 目录 '$lude_dir' 不存在"
         return 1
     fi
     
     if [ -f "$pid_file" ]; then
         local optimizer_pid=$(cat "$pid_file")
         if ps -p $optimizer_pid > /dev/null 2>&1; then
-            echo -e "${GREEN}服务正在运行 (PID: $optimizer_pid)${NC}"
+            echo "服务正在运行 (PID: $optimizer_pid)"
             
             # 显示进程详情
-            echo -e "\n进程详情:"
+            echo ""
+            echo "进程详情:"
             ps -p $optimizer_pid -o pid,ppid,user,%cpu,%mem,start,time,command
             
             # 如果有日志文件，显示最新的5行
             local default_logs=("$lude_dir/optimization.log" "$lude_dir/optimizer.log" "$lude_dir/optuna.log")
             for log in "${default_logs[@]}"; do
                 if [ -f "$log" ]; then
-                    echo -e "\n日志文件最新内容 ($(basename "$log")):"
+                    echo ""
+                    echo "日志文件最新内容 ($(basename "$log")):"
                     tail -n 5 "$log"
                     break
                 fi
@@ -75,11 +71,11 @@ check_status() {
             
             return 0
         else
-            echo -e "${YELLOW}服务PID文件存在 ($optimizer_pid)，但进程已不存在${NC}"
+            echo "服务PID文件存在 ($optimizer_pid)，但进程已不存在"
             return 1
         fi
     else
-        echo -e "${YELLOW}服务未运行 (未找到PID文件)${NC}"
+        echo "服务未运行 (未找到PID文件)"
         return 1
     fi
 }
@@ -142,10 +138,11 @@ stop_service() {
     local pid_file="$lude_dir/.optimizer_pid"
     local pid_group_file="$lude_dir/.optimizer_pid_group"
     
-    echo -e "\n${BLUE}==================================== 正在停止服务: ${YELLOW}$(basename "$workspace_dir")${BLUE} ====================================${NC}"
+    echo ""
+    echo "==================================== 正在停止服务: $(basename "$workspace_dir") ===================================="
     
     if [ ! -d "$lude_dir" ]; then
-        echo -e "${RED}错误: 目录 '$lude_dir' 不存在${NC}"
+        echo "错误: 目录 '$lude_dir' 不存在"
         return 1
     fi
     
@@ -155,39 +152,39 @@ stop_service() {
     
     # 如果进程组文件存在，优先使用它
     if [ -f "$pid_group_file" ]; then
-        echo -e "${BLUE}找到进程组信息文件...${NC}"
+        echo "找到进程组信息文件..."
         ALL_PIDS=$(cat "$pid_group_file")
         
         if [ -n "$ALL_PIDS" ]; then
-            echo -e "${YELLOW}使用记录的进程组: $ALL_PIDS${NC}"
+            echo "使用记录的进程组: $ALL_PIDS"
         else
-            echo -e "${YELLOW}进程组文件为空，将使用进程扫描方式${NC}"
+            echo "进程组文件为空，将使用进程扫描方式"
             ALL_PIDS=$(find_related_processes "$workspace_dir")
         fi
     elif [ -f "$pid_file" ]; then
         # 使用PID文件获取主进程ID
         MAIN_PID=$(cat "$pid_file")
-        echo -e "${YELLOW}找到主进程ID: $MAIN_PID${NC}"
+        echo "找到主进程ID: $MAIN_PID"
         
         # 查找所有相关进程
         ALL_PIDS="$MAIN_PID $(find_related_processes "$workspace_dir" "$MAIN_PID")"
         ALL_PIDS=$(echo "$ALL_PIDS" | tr ' ' '\n' | sort -u | tr '\n' ' ')
     else
-        echo -e "${YELLOW}未找到PID文件，尝试查找相关进程...${NC}"
+        echo "未找到PID文件，尝试查找相关进程..."
         ALL_PIDS=$(find_related_processes "$workspace_dir")
     fi
     
     if [ -z "$ALL_PIDS" ]; then
-        echo -e "${YELLOW}未找到任何相关进程，服务可能未运行${NC}"
+        echo "未找到任何相关进程，服务可能未运行"
         return 0
     fi
     
-    echo -e "${YELLOW}找到相关进程: $ALL_PIDS${NC}"
+    echo "找到相关进程: $ALL_PIDS"
     
     # 逐个停止进程
     for pid in $ALL_PIDS; do
         if ps -p $pid > /dev/null 2>&1; then
-            echo -e "${YELLOW}正在终止进程 $pid...${NC}"
+            echo "正在终止进程 $pid..."
             kill $pid 2>/dev/null
         fi
     done
@@ -204,7 +201,7 @@ stop_service() {
     done
     
     if [ -n "$remaining_pids" ]; then
-        echo -e "${RED}进程未能正常停止，尝试强制终止: $remaining_pids ${NC}"
+        echo "进程未能正常停止，尝试强制终止: $remaining_pids "
         for pid in $remaining_pids; do
             kill -9 $pid 2>/dev/null
         done
@@ -219,8 +216,8 @@ stop_service() {
         done
         
         if [ -n "$remaining_pids" ]; then
-            echo -e "${RED}仍有进程无法终止: $remaining_pids${NC}"
-            echo -e "${RED}请手动终止这些进程${NC}"
+            echo "仍有进程无法终止: $remaining_pids"
+            echo "请手动终止这些进程"
             return 1
         fi
     fi
@@ -228,11 +225,11 @@ stop_service() {
     # 最后一次检查是否还有漏网之鱼
     FINAL_CHECK=$(find_related_processes "$workspace_dir")
     if [ -n "$FINAL_CHECK" ]; then
-        echo -e "${YELLOW}检测到可能遗漏的相关进程: $FINAL_CHECK${NC}"
-        echo -e "${YELLOW}正在尝试终止这些进程...${NC}"
+        echo "检测到可能遗漏的相关进程: $FINAL_CHECK"
+        echo "正在尝试终止这些进程..."
         for pid in $FINAL_CHECK; do
             if ps -p $pid > /dev/null 2>&1; then
-                echo -e "${YELLOW}终止额外进程 $pid...${NC}"
+                echo "终止额外进程 $pid..."
                 kill $pid 2>/dev/null
                 sleep 1
                 if ps -p $pid > /dev/null 2>&1; then
@@ -245,13 +242,13 @@ stop_service() {
     # 清理PID文件
     rm -f "$pid_file" "$pid_group_file" 2>/dev/null
     
-    echo -e "${GREEN}服务已成功停止${NC}"
+    echo "服务已成功停止"
     return 0
 }
 
 # 批量停止所有服务
 stop_all_services() {
-    echo -e "${BLUE}开始批量停止所有服务...${NC}"
+    echo "开始批量停止所有服务..."
     
     # 记录成功停止的服务数量
     local stopped_count=0
@@ -262,7 +259,7 @@ stop_all_services() {
     local workspaces=$(find "$PROJECT_ROOT" -maxdepth 1 -type d -name "lude_*")
     
     if [ -z "$workspaces" ]; then
-        echo -e "${RED}未找到任何工作区目录${NC}"
+        echo "未找到任何工作区目录"
         return 1
     fi
     
@@ -277,43 +274,45 @@ stop_all_services() {
     done
     
     # 最后检查是否有任何遗漏的优化相关进程
-    echo -e "\n${BLUE}进行最终检查，查找任何可能遗漏的优化进程...${NC}"
+    echo ""
+    echo "进行最终检查，查找任何可能遗漏的优化进程..."
     orphan_pids=$(ps -eo pid,command | grep -E "python.*(domain_knowledge_optimizer|continuous_optimizer|lude.optimization)" | grep -v grep | awk '{print $1}')
     
     if [ -n "$orphan_pids" ]; then
-        echo -e "${YELLOW}发现可能遗漏的优化相关进程: $orphan_pids${NC}"
-        echo -e "${YELLOW}是否终止这些进程? [Y/n]${NC} "
+        echo "发现可能遗漏的优化相关进程: $orphan_pids"
+        echo "是否终止这些进程? [Y/n] "
         read -r confirm
         if [[ "$confirm" =~ ^[Nn]$ ]]; then
-            echo -e "${YELLOW}已跳过终止这些进程${NC}"
+            echo "已跳过终止这些进程"
         else
             for pid in $orphan_pids; do
-                echo -e "${YELLOW}终止进程 $pid...${NC}"
+                echo "终止进程 $pid..."
                 kill $pid 2>/dev/null
                 sleep 1
                 if ps -p $pid > /dev/null 2>&1; then
                     kill -9 $pid 2>/dev/null
                 fi
             done
-            echo -e "${GREEN}遗漏进程清理完成${NC}"
+            echo "遗漏进程清理完成"
         fi
     else
-        echo -e "${GREEN}未发现任何遗漏的优化进程${NC}"
+        echo "未发现任何遗漏的优化进程"
     fi
     
-    echo -e "\n${BLUE}===== 停止服务结果汇总 =====${NC}"
-    echo -e "总工作区数量: ${YELLOW}$total_count${NC}"
-    echo -e "成功停止服务数量: ${GREEN}$stopped_count${NC}"
+    echo ""
+    echo "===== 停止服务结果汇总 ====="
+    echo "总工作区数量: $total_count"
+    echo "成功停止服务数量: $stopped_count"
     if [ $((total_count - stopped_count)) -gt 0 ]; then
-        echo -e "停止失败服务数量: ${RED}$((total_count - stopped_count))${NC}"
-        echo -e "${YELLOW}失败的工作区:${failed_workspaces}${NC}"
-        echo -e "${YELLOW}请检查失败的服务并手动停止${NC}"
+        echo "停止失败服务数量: $((total_count - stopped_count))"
+        echo "失败的工作区:$failed_workspaces"
+        echo "请检查失败的服务并手动停止"
     fi
 }
 
 # 批量检查所有服务状态
 check_all_services() {
-    echo -e "${BLUE}开始批量检查服务状态...${NC}"
+    echo "开始批量检查服务状态..."
     
     # 记录运行中的服务数量
     local running_count=0
@@ -323,7 +322,7 @@ check_all_services() {
     local workspaces=$(find "$PROJECT_ROOT" -maxdepth 1 -type d -name "lude_*")
     
     if [ -z "$workspaces" ]; then
-        echo -e "${RED}未找到任何工作区目录${NC}"
+        echo "未找到任何工作区目录"
         return 1
     fi
     
@@ -335,10 +334,11 @@ check_all_services() {
         fi
     done
     
-    echo -e "\n${BLUE}===== 服务状态汇总 =====${NC}"
-    echo -e "总工作区数量: ${YELLOW}$total_count${NC}"
-    echo -e "运行中服务数量: ${GREEN}$running_count${NC}"
-    echo -e "未运行服务数量: ${YELLOW}$((total_count - running_count))${NC}"
+    echo ""
+    echo "===== 服务状态汇总 ====="
+    echo "总工作区数量: $total_count"
+    echo "运行中服务数量: $running_count"
+    echo "未运行服务数量: $((total_count - running_count))"
 }
 
 # 主函数
@@ -359,10 +359,11 @@ main() {
                 ;;
             -k|--stop)
                 check_all_services  # 先显示当前状态
-                echo -e "\n${YELLOW}确认要停止所有运行中的服务吗? [Y/n]${NC} "
+                echo ""
+                echo "确认要停止所有运行中的服务吗? [Y/n] "
                 read -r confirm
                 if [[ "$confirm" =~ ^[Nn]$ ]]; then
-                    echo -e "${YELLOW}操作已取消${NC}"
+                    echo "操作已取消"
                 else
                     stop_all_services
                 fi
