@@ -97,7 +97,7 @@ done
 
 # 根目录，请根据你的实际路径调整
 BASE_DIR="/root/autodl-tmp"
-TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/optuna_search/new_test"
+TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/src/lude/strategies"
 
 # 检查目录是否存在
 if [ ! -d "${TARGET_DIR}" ]; then

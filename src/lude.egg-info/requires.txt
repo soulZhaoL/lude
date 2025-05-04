@@ -1,0 +1,9 @@
+pandas
+numpy
+optuna
+scikit-learn
+
+[dev]
+pytest
+flake8
+mypy

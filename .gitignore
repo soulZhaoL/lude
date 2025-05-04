@@ -14,3 +14,4 @@ __pycache__/
 
 .optimizer_pid
 *.log
+/logs

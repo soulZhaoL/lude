@@ -66,7 +66,7 @@ fi
 # ——— 路径设置 ——— #
 DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}"
 REPO_DIR="${DIR}/lude"    # 仓库克隆到子目录
-WORKDIR="${REPO_DIR}/optuna_search/new_test"
+WORKDIR="${REPO_DIR}/src/lude/data"
 
 echo "▶▶▶ 处理目标：${DIR}"
 mkdir -p "${DIR}"
