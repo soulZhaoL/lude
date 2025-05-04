@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh
 # /root/run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 3 --num 1
 #
 #
@@ -97,7 +97,7 @@ done
 
 # 根目录，请根据你的实际路径调整
 BASE_DIR="/root/autodl-tmp"
-TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/src/lude/strategies"
+TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/"
 
 # 检查目录是否存在
 if [ ! -d "${TARGET_DIR}" ]; then
