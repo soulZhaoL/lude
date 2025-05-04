@@ -49,12 +49,23 @@ def save_best_record(record):
     with open(BEST_RECORD_FILE, 'w') as f:
         json.dump(record, f, indent=4)
 
-def find_latest_model(pattern):
-    """查找最新的模型文件"""
-    files = glob.glob(pattern)
-    if not files:
-        return None
-    return max(files, key=os.path.getctime)
+def find_latest_model(pattern=None):
+    """查找最新的模型文件
+    
+    Args:
+        pattern: 文件名匹配模式，默认查找所有模型文件
+        
+    Returns:
+        最新模型文件的路径，如果没有找到则返回None
+    """
+    if pattern is None:
+        # 默认查找所有joblib文件
+        pattern = "*.joblib"
+    
+    files = glob.glob(os.path.join(RESULTS_DIR, pattern))
+    if files:
+        return max(files, key=os.path.getctime)
+    return None
 
 def extract_cagr_from_output(output):
     """从输出中提取CAGR值"""
@@ -303,13 +314,14 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                     best_factors = extract_best_factors_from_output(output)
                     
                     # 保存模型文件
-                    save_model_path = find_latest_model(f"*_seed{current_seed}_*.joblib")
+                    save_model_path = find_latest_model()
                     
                     if save_model_path:
                         # 复制到最佳模型目录
+                        file_ext = os.path.splitext(save_model_path)[1]  # 获取原始文件扩展名
                         new_model_path = os.path.join(
                             BEST_MODELS_DIR, 
-                            f"best_model_cagr{current_cagr:.6f}_seed{current_seed}_{timestamp.replace(':', '-').replace(' ', '_')}.joblib"
+                            f"best_model_cagr{current_cagr:.6f}_seed{current_seed}_{timestamp.replace(':', '-').replace(' ', '_')}{file_ext}"
                         )
                         try:
                             import shutil

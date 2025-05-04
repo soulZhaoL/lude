@@ -69,7 +69,7 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
         model_path: 保存的模型路径
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{timestamp}.pkl"
+    model_path = f"{RESULTS_DIR}/best_model_{args.strategy}_{args.method}_{args.n_factors}factors_{timestamp}.joblib"
 
     # 如果没有提供best_rank_factors，尝试从study中提取
     if best_rank_factors is None and hasattr(study.best_trial,
@@ -83,19 +83,12 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
         "best_params": study.best_params,
         "factors": factors,
         "combinations": combinations,
-        "date_range": (args.start_date, args.end_date),
-        "price_range": (args.price_min, args.price_max),
-        "hold_num": args.hold_num,
-        "timestamp": timestamp
+        "args": args
     }
-
-    # 保存模型
-    try:
-        joblib.dump(model_data, model_path)
-        print(f"\n最佳模型已保存至: {model_path}")
-    except Exception as e:
-        print(f"保存模型时出错: {e}")
-
+    
+    # 使用joblib保存模型数据
+    joblib.dump(model_data, model_path)
+    
     return model_path
 
 
