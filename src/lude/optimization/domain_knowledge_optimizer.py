@@ -28,12 +28,23 @@ def parse_args():
                         choices=['domain', 'prescreen', 'multistage', 'filter'],
                         help='优化策略: domain(领域知识分组), prescreen(预筛选), multistage(多阶段), filter(过滤冗余)')
     parser.add_argument('--seed', type=int, default=42, help='随机种子')
+    parser.add_argument('--workspace_id', type=str, default='', help='工作区ID标识，用于进程管理')
     return parser.parse_args()
 
 def main():
     """主函数"""
     # 解析命令行参数
     args = parse_args()
+    
+    # 设置进程标题，包含工作区ID
+    try:
+        import setproctitle
+        if args.workspace_id:
+            process_title = f"lude_domain_optimizer_{args.workspace_id}"
+            setproctitle.setproctitle(process_title)
+            logger.info(f"进程标题已设置为: {process_title}")
+    except ImportError:
+        logger.warning("setproctitle模块未安装，无法设置进程标题")
     
     # 加载数据
     df = load_data()

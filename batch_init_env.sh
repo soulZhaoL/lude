@@ -2,7 +2,7 @@
 
 # 将上面内容粘贴进去并保存
 # source /etc/network_turbo
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh
 # ~/batch_init_env.sh 5 3 1
 # 或者
 # ~/batch_init_env.sh lude_100_150_hold5_fac3_num1
@@ -23,7 +23,8 @@ REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
 PQ_SOURCE="/root/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
 CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
-PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
+# PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
+PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"   # pip 镜像地址
 # ================ #
 
 usage() {
@@ -99,6 +100,19 @@ if [ "${SKIP_CONDA}" = false ]; then
   echo "→ 安装 Python 依赖 requirements.txt"
   cd "${REPO_DIR}"
   pip install -r requirements.txt -i "${PIP_INDEX_URL}"
+  
+  # 以开发模式安装项目
+  echo "→ 以开发模式安装项目"
+  if [ -f "${REPO_DIR}/install_dev.sh" ]; then
+    cd "${REPO_DIR}"
+    chmod +x ./install_dev.sh
+    ./install_dev.sh
+  else
+    echo "⚠️ 警告：找不到 install_dev.sh 脚本"
+    # 尝试直接安装
+    cd "${REPO_DIR}"
+    python -m pip install -e .
+  fi
 else
   echo "→ 跳过 Conda 环境激活"
 fi

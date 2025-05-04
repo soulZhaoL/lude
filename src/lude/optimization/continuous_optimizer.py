@@ -197,7 +197,7 @@ def show_progress(seconds=10):
 def run_continuous_optimization(iterations=10, strategy="multistage", method="tpe", n_trials=3000, 
                      n_factors=3, start_date="20220729", end_date="20250328", 
                      price_min=100, price_max=150, hold_num=5, n_jobs=15,
-                     seed_start=42, seed_step=1000):
+                     seed_start=42, seed_step=1000, workspace_id=''):
     """运行连续优化过程，使用改进的低开销方法
     
     Args:
@@ -214,6 +214,7 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
         n_jobs: 并行任务数
         seed_start: 起始种子值
         seed_step: 种子递增步长
+        workspace_id: 工作区ID标识
     """
     
     # 加载最佳记录
@@ -231,7 +232,8 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
         "price_min": price_min,
         "price_max": price_max,
         "hold_num": hold_num,
-        "n_jobs": n_jobs
+        "n_jobs": n_jobs,
+        "workspace_id": workspace_id
     }
     
     # 运行多次优化
@@ -443,12 +445,25 @@ def parse_args():
     parser.add_argument('--n_jobs', type=int, default=15, help='并行任务数')
     parser.add_argument('--seed_start', type=int, default=42, help='起始随机种子')
     parser.add_argument('--seed_step', type=int, default=1000, help='种子递增步长')
+    parser.add_argument('--workspace_id', type=str, default='', help='工作区ID标识，用于进程管理')
     
     return parser.parse_args()
 
 def main():
     """主函数"""
     args = parse_args()
+    
+    # 设置进程标题，包含工作区ID
+    try:
+        import setproctitle
+        if args.workspace_id:
+            process_title = f"lude_optimizer_{args.workspace_id}"
+            setproctitle.setproctitle(process_title)
+            logger.info(f"进程标题已设置为: {process_title}")
+    except ImportError:
+        logger.warning("setproctitle模块未安装，无法设置进程标题")
+    
+    # 运行持续优化
     run_continuous_optimization(
         iterations=args.iterations,
         strategy=args.strategy,
@@ -462,7 +477,8 @@ def main():
         hold_num=args.hold_num,
         n_jobs=args.n_jobs,
         seed_start=args.seed_start,
-        seed_step=args.seed_step
+        seed_step=args.seed_step,
+        workspace_id=args.workspace_id
     )
 
 if __name__ == "__main__":

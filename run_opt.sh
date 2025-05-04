@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh
+# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/run_optimizer.sh ~/batch_manage_services.sh
 # /root/run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 3 --num 1
-#
-#
-#
+
+# 定义颜色
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # 无颜色
 
 # ----------------------------------
 #  usage 函数
@@ -69,7 +73,7 @@ while [ $# -gt 0 ]; do
       usage
       ;;
     *)
-      echo "错误: 未知参数 $1"
+      echo -e "${RED}错误: 未知参数 $1${NC}"
       usage
       ;;
   esac
@@ -77,20 +81,20 @@ done
 
 # 检查必选参数
 if [ -z "$HOLD" ] || [ -z "$FAC" ] || [ -z "$NUM" ]; then
-  echo "错误: 缺少必选参数"
+  echo -e "${RED}错误: 缺少必选参数${NC}"
   usage
 fi
 
 # 验证模式参数
 if [ "$MODE" != "single" ] && [ "$MODE" != "continuous" ]; then
-  echo "错误: 模式必须是 'single' 或 'continuous'"
+  echo -e "${RED}错误: 模式必须是 'single' 或 'continuous'${NC}"
   exit 1
 fi
 
 # 验证数值参数
 for param in "$HOLD" "$FAC" "$NUM" "$ITERATIONS" "$TRIALS"; do
   if ! [[ "$param" =~ ^[0-9]+$ ]]; then
-    echo "错误: 参数 '$param' 必须是正整数"
+    echo -e "${RED}错误: 参数 '$param' 必须是正整数${NC}"
     exit 1
   fi
 done
@@ -101,15 +105,15 @@ TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/"
 
 # 检查目录是否存在
 if [ ! -d "${TARGET_DIR}" ]; then
-  echo "❌ 目标目录不存在：${TARGET_DIR}"
+  echo -e "${RED}❌ 目标目录不存在：${TARGET_DIR}${NC}"
   exit 1
 fi
 
 # 进入工作目录
-echo "进入工作目录：${TARGET_DIR}"
+echo -e "${BLUE}进入工作目录：${TARGET_DIR}${NC}"
 cd "${TARGET_DIR}"
 
-echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, 模式: ${MODE}, 迭代次数: ${ITERATIONS}, 试验次数: ${TRIALS})"
+echo -e "${GREEN}开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, 模式: ${MODE}, 迭代次数: ${ITERATIONS}, 试验次数: ${TRIALS})${NC}"
 # 执行优化脚本
 ./run_optimizer.sh \
   -m ${MODE} \
@@ -129,4 +133,4 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   -b \
   -l optimization.log
 
-echo "✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}"
+echo -e "${GREEN}✅ 完成：hold=${HOLD} fac=${FAC} num=${NUM}${NC}"
