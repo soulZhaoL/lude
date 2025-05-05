@@ -436,7 +436,7 @@ def parse_args():
                         choices=['tpe', 'random', 'cmaes'],
                         help='优化方法')
     parser.add_argument('--n_trials', type=int, default=3000, help='每次优化的迭代次数')
-    parser.add_argument('--n_factors', type=int, default=3, choices=[3, 4, 5], help='因子数量')
+    parser.add_argument('--n_factors', type=int, default=3, choices=[3, 4, 5, 6, 7], help='因子数量')
     parser.add_argument('--start_date', type=str, default='20220729', help='回测开始日期')
     parser.add_argument('--end_date', type=str, default='20250328', help='回测结束日期')
     parser.add_argument('--price_min', type=int, default=100, help='价格下限')

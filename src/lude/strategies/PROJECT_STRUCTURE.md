@@ -88,7 +88,7 @@ python domain_knowledge_optimizer.py --strategy multistage --n_factors 3 --n_tri
 ### 主要参数
 - `--method`: 优化方法 (tpe, random, cmaes)
 - `--n_trials`: 优化迭代次数
-- `--n_factors`: 因子数量 (3, 4, 5)
+- `--n_factors`: 因子数量 (3, 4, 5, 6, 7)
 - `--start_date`: 回测开始日期
 - `--end_date`: 回测结束日期
 - `--price_min`: 价格下限
