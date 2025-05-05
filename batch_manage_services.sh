@@ -41,7 +41,7 @@ check_status() {
     local pid_file="$lude_dir/.optimizer_pid"
     
     echo ""
-    echo "==================================== 检查服务: $(basename "$workspace_dir") ===================================="
+    echo "========================================= 检查服务: $(basename "$workspace_dir") ========================================="
     
     if [ ! -d "$lude_dir" ]; then
         echo "错误: 目录 '$lude_dir' 不存在"
