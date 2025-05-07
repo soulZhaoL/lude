@@ -12,7 +12,7 @@
 # 明确指定清空结果目录
 # /root/batch_run_opt.sh --clear
 # 可以与其他参数一起使用
-# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
+# /root/batch_run_opt.sh         --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
 # /root/batch_run_opt.sh --clear --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
 
 # 设置优化参数
