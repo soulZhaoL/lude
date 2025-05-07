@@ -13,19 +13,29 @@ import glob
 import pandas as pd
 import json
 from typing import List, Dict
+import sys
 
-def format_basket(script_dir: str) -> str:
+# 导入路径配置
+from lude.config.paths import (
+    MERGE_DIR,
+    MERGE_CSV_DIR,
+    MERGE_RESULT_PATH,
+    BLACKLIST_PATH
+)
+
+
+def format_basket(data_dir: str) -> str:
     """
     处理禄得可转债行情表，生成basket_strategy.csv
     
     Args:
-        script_dir: 脚本所在目录路径
+        data_dir: 数据目录路径
         
     Returns:
         str: 生成的basket_strategy.csv的完整路径
     """
     # 设置CSV文件夹路径
-    csv_dir = os.path.join(script_dir, 'csv')
+    csv_dir = data_dir
     os.makedirs(csv_dir, exist_ok=True)
     
     # 获取CSV文件夹下所有以"禄得可转债行情表"开头的csv文件
@@ -84,8 +94,8 @@ def create_blacklist_if_not_exists(csv_dir: str) -> str:
     Returns:
         str: 黑名单文件的完整路径
     """
-    blacklist_path = os.path.join(os.path.dirname(csv_dir), 'blacklist.json')
-    return blacklist_path
+    # 使用统一配置的路径
+    return BLACKLIST_PATH
 
 
 def read_blacklist(blacklist_path: str) -> List[str]:
@@ -218,27 +228,26 @@ def recalculate_weights(file_path: str) -> None:
 
 def merge_files():
     """执行文件合并操作"""
-    # 获取脚本所在目录
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_dir = os.path.join(script_dir, 'csv')
+    # 确保目录存在
+    # os.makedirs(MERGE_CSV_DIR, exist_ok=True)
+    # os.makedirs(MERGE_RESULT_PATH, exist_ok=True)
     
     try:
         # 检查并创建黑名单文件
-        blacklist_path = create_blacklist_if_not_exists(csv_dir)
+        blacklist_path = create_blacklist_if_not_exists(MERGE_CSV_DIR)
 
         # 读取黑名单
         blacklist = read_blacklist(blacklist_path)
         
         # 第一步：处理禄得可转债行情表
         print("开始处理禄得可转债行情表...")
-        basket_file = format_basket(script_dir)
+        basket_file = format_basket(MERGE_CSV_DIR)
         print(f"已生成文件：{basket_file}")
 
         # 第二步：合并CSV文件，同时剔除黑名单中的转债
         print("\n开始合并CSV文件...")
-        output_path = "/Users/zhaolei/Downloads/result.csv"
-        merge_excel(csv_dir, output_path, blacklist)
-        print(f"\n合并完成！结果文件：{output_path}")
+        merge_excel(MERGE_CSV_DIR, MERGE_RESULT_PATH, blacklist)
+        print(f"\n合并完成！结果文件：{MERGE_RESULT_PATH}")
         
     except Exception as e:
         print(f"错误：{str(e)}")
@@ -269,11 +278,10 @@ def main():
         elif choice == "2":
             print("\n执行重新计算权重...")
             try:
-                file_path = "/Users/zhaolei/Downloads/result.csv"
-                if not os.path.exists(file_path):
-                    print(f"错误：文件不存在：{file_path}")
+                if not os.path.exists(MERGE_RESULT_PATH):
+                    print(f"错误：文件不存在：{MERGE_RESULT_PATH}")
                     continue
-                recalculate_weights(file_path)
+                recalculate_weights(MERGE_RESULT_PATH)
             except Exception as e:
                 print(f"错误：{str(e)}")
             

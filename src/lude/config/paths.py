@@ -24,3 +24,9 @@ LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
 
 # 配置文件路径
 FACTOR_MAPPING_PATH = os.path.join(CONFIG_DIR, 'factor_mapping.json')
+
+# 合并工具相关路径
+MERGE_DIR = os.path.join(PROJECT_ROOT, 'src', 'lude', 'utils', 'merge')
+MERGE_CSV_DIR = os.path.join(MERGE_DIR, 'csv')  # CSV文件存放目录
+MERGE_RESULT_PATH = "/Users/zhaolei/Downloads/result.csv"  # 合并结果文件路径
+BLACKLIST_PATH = os.path.join(MERGE_DIR, 'blacklist.json')  # 黑名单文件路径
