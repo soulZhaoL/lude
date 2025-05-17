@@ -195,21 +195,11 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         # 注意：quantstats 的不同版本 API 可能有变化
         print(f"\n使用 quantstats {qs.__version__} 版本计算风险收益指标...")
         
-        # 不同版本的 API 参数可能不同，尝试多种参数形式
-        try:
-            # 新版 API
-            qs_max_drawdown = qs.stats.max_drawdown(returns)
-            qs_sharpe = qs.stats.sharpe(returns, rf=risk_free, periods=yearly_factor)
-            qs_sortino = qs.stats.sortino(returns, rf=risk_free, periods=yearly_factor)
-            qs_calmar = qs.stats.calmar(returns, periods=yearly_factor)
-        except Exception as api_err:
-            print(f"API 参数错误: {api_err}")
-            print("尝试旧版 API 格式...")
-            # 旧版 API
-            qs_max_drawdown = qs.stats.max_drawdown(returns)
-            qs_sharpe = qs.stats.sharpe(returns, rf=risk_free)
-            qs_sortino = qs.stats.sortino(returns, rf=risk_free)
-            qs_calmar = qs.stats.calmar(returns)
+        # 新版 API
+        qs_max_drawdown = qs.stats.max_drawdown(returns)
+        qs_sharpe = qs.stats.sharpe(returns, rf=risk_free, periods=yearly_factor)
+        qs_sortino = qs.stats.sortino(returns, rf=risk_free, periods=yearly_factor)
+        qs_calmar = qs.stats.calmar(returns, periods=yearly_factor)
         
         # 更新计算结果，注意取最大回撤率的绝对值
         max_drawdown = abs(qs_max_drawdown)  # quantstats 返回的回撤率是负值，我们取绝对值
@@ -220,16 +210,8 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         # 使用标准公式：年化收益率 / 最大回撤率
         calmar_ratio = cagr / max_drawdown if max_drawdown > 0 else float('inf')
         
-        print(f"quantstats 计算成功:")  
-        print(f"- 最大回撤率: {max_drawdown:.6f}")
-        print(f"- 夏普比率: {sharpe_ratio:.6f}")
-        print(f"- 索提诺比率: {sortino_ratio:.6f}")
-        print(f"- 卡玛比率: {calmar_ratio:.6f}")
-        
     except Exception as e:
         # 如果 quantstats 计算出错，使用标准计算方法
-        print(f"quantstats 计算出错: {e}")
-        print("切换到标准计算方法")
         
         # 计算年化标准差
         annual_std = returns.std() * np.sqrt(yearly_factor)
@@ -248,18 +230,6 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         
         # 计算卡玛比率
         calmar_ratio = cagr / max_drawdown if max_drawdown > 0 else float('inf')
-    
-    # 转换为百分比表示
-    cagr_pct = cagr * 100
-    max_drawdown_pct = max_drawdown * 100
-    
-    # 打印计算结果
-    print(f"\n风险收益指标计算结果:")
-    print(f"- 年化收益率: {cagr_pct:.2f}%")
-    print(f"- 最大回撤率: {max_drawdown_pct:.2f}%")
-    print(f"- 夏普比率: {sharpe_ratio:.4f}")
-    print(f"- 索提诺比率: {sortino_ratio:.4f}")
-    print(f"- 卡玛比率: {calmar_ratio:.4f}")
     
     # 返回所有指标
     results = {

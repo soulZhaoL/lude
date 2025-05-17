@@ -127,7 +127,7 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   --method tpe \
   --strategy multistage \
   --start 20220729 \
-  --end 20250328 \
+  --end 20240607 \
   --min 100 \
   --max 150 \
   --jobs 5 \
