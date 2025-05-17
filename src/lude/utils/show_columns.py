@@ -19,6 +19,8 @@ def show_parquet_columns(file_path):
     
     print(df.head())
     print(df['amount'])
+    print("conv_prem")
+    print(df['conv_prem'])
     # 获取列名
     columns = df.columns.tolist()
     

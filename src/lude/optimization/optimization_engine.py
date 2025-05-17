@@ -5,18 +5,19 @@
 负责执行优化过程的核心逻辑
 """
 
-import optuna
-import pandas as pd
-import numpy as np
-import json
-import time
 import os
-from datetime import datetime
 
+import optuna
+
+from lude.config.config_loader import get_optimization_config
+from lude.config.paths import RESULTS_DIR
 # 导入常量和工具函数
-from lude.utils.common_utils import create_sampler, save_optimization_result, RESULTS_DIR
+from lude.utils.common_utils import create_sampler
+from lude.utils.common_utils import save_optimization_result
 from lude.utils.dingtalk.dingtalk_notifier import send_optimization_result_to_dingtalk
+from lude.utils.factor_saver import save_high_performance_factors
 from lude.utils.logger import optimization_logger as logger
+
 
 def run_optimization(df, args):
     """运行优化过程
@@ -38,20 +39,20 @@ def run_optimization(df, args):
     logger.info(f"持仓数量: {args.hold_num}")
     logger.info(f"并行任务数: {args.n_jobs}")
     logger.info(f"随机种子: {args.seed}")
-    
+
     # 添加自定义因子
     # df = add_custom_factors(df)
-    
+
     # 获取所有可用因子
     factors = [col for col in df.columns if col not in ['date', 'bond_id', 'bond_nm', 'stock_id']]
     logger.info(f"数据中共有 {len(factors)} 个因子")
-    
+
     # 根据策略生成因子组合
     from lude.strategies.factor_strategies import choose_strategy
     factors, factor_combinations = choose_strategy(
         args.strategy, df, factors, args.n_factors, args, max_combinations=50000
     )
-    
+
     # 如果使用多阶段优化策略，执行多阶段优化
     if args.strategy == 'multistage':
         from lude.strategies.multistage_optimizer import multistage_optimization
@@ -64,7 +65,7 @@ def run_optimization(df, args):
         # 将数据库文件保存到optimization_results目录
         db_path = os.path.join(RESULTS_DIR, f"{study_name}.db")
         storage_name = f"sqlite:///{db_path}"
-        
+
         try:
             # 尝试加载已有的研究
             study = optuna.load_study(study_name=study_name, storage=storage_name)
@@ -79,10 +80,10 @@ def run_optimization(df, args):
                 load_if_exists=True
             )
             logger.info("创建新的研究")
-        
+
         # 定义目标函数
         from lude.strategies.multistage_optimizer import objective
-        
+
         # 执行优化
         try:
             study.optimize(
@@ -95,15 +96,15 @@ def run_optimization(df, args):
             logger.warning("用户中断了优化")
         except Exception as e:
             logger.error(f"优化过程出错: {e}")
-    
+
     # 打印最佳结果
     if len(study.trials) > 0:
         logger.info(f"===== 优化结果 =====")
         logger.info(f"最佳CAGR: {study.best_value:.6f}")
-        
+
         # 提取最佳因子组合
         best_rank_factors = None
-        
+
         # 首先检查study对象本身是否直接保存了best_rank_factors属性（由多阶段优化器设置的备选方案）
         if hasattr(study, 'best_rank_factors'):
             best_rank_factors = study.best_rank_factors
@@ -112,27 +113,28 @@ def run_optimization(df, args):
         elif hasattr(study.best_trial, 'user_attrs') and 'rank_factors' in study.best_trial.user_attrs:
             best_rank_factors = study.best_trial.user_attrs['rank_factors']
             logger.info("从best_trial的user_attrs中获取最佳因子配置")
-        
+
         if best_rank_factors:
             logger.info(f"最佳因子组合:")
             for i, factor in enumerate(best_rank_factors):
-                logger.info(f"  {i+1}. {factor['name']}")
+                logger.info(f"  {i + 1}. {factor['name']}")
                 logger.info(f"     - 权重: {factor['weight']}")
                 logger.info(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
         else:
             logger.warning("无法获取最佳因子组合详情")
-            
+
             # 尝试从best_trial的参数重建rank_factors（最后的备选方案）
             try:
                 if 'combination_idx' in study.best_params:
                     combination_idx = study.best_params['combination_idx']
-                    
+
                     # 根据策略获取正确的组合
                     if args.strategy == 'multistage':
                         from lude.strategies.multistage_optimizer import multistage_optimization
                         # 使用一个很小的dummy函数绕过完整优化过程获取组合
                         def dummy_objective(*args, **kwargs):
                             return 0
+
                         # 伪造一个study对象防止覆盖原始数据
                         dummy_study = optuna.create_study()
                         # 绕过优化过程直接获取第二阶段组合
@@ -148,45 +150,85 @@ def run_optimization(df, args):
                         # 从factor_combinations获取组合
                         if combination_idx < len(factor_combinations):
                             combination_indices = factor_combinations[combination_idx]
-                            combination = [factors[i] for i in combination_indices] if isinstance(combination_indices[0], int) else combination_indices
+                            combination = [factors[i] for i in combination_indices] if isinstance(
+                                combination_indices[0], int) else combination_indices
                         else:
                             logger.warning(f"警告: combination_idx={combination_idx}超出组合范围")
                             combination = None
-                    
+
                     # 如果成功获取到组合，重建rank_factors
                     if combination:
                         best_rank_factors = []
                         for i, factor in enumerate(combination):
                             weight_param = f'factor{i}_weight'
                             asc_param = f'factor{i}_ascending'
-                            
+
                             weight = study.best_params.get(weight_param, 1)
                             ascending = study.best_params.get(asc_param, True)
-                            
+
                             best_rank_factors.append({
                                 'name': factor,
                                 'weight': weight,
                                 'ascending': ascending
                             })
-                        
+
                         logger.info("已从参数重建最佳因子组合:")
                         for i, factor in enumerate(best_rank_factors):
-                            logger.info(f"  {i+1}. {factor['name']}")
+                            logger.info(f"  {i + 1}. {factor['name']}")
                             logger.info(f"     - 权重: {factor['weight']}")
                             logger.info(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
             except Exception as e:
                 logger.error(f"尝试重建最佳因子组合时出错: {e}")
-        
+
         # 保存最佳模型
         model_path = save_optimization_result(study, factors, factor_combinations, args, best_rank_factors)
-        
+
+        # 获取配置的CAGR阈值
+        cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold', 0.55)
+
+        # 年化收益率超过阈值时保存高绩效因子组合
+        if study.best_value >= cagr_threshold and best_rank_factors:
+            try:
+                # 准备因子组合详细数据
+                # 这里深拷贝因子数据以确保安全
+                factor_data = [{
+                    'name': factor['name'],
+                    'description': factor.get('description', ''),  # 提供默认值防止缺失
+                    'weight': factor['weight'],
+                    'ascending': factor['ascending']
+                } for factor in best_rank_factors]
+
+                # 准备元数据
+                metadata = {
+                    'strategy': args.strategy if hasattr(args, 'strategy') else 'default',
+                    'start_date': args.start_date if hasattr(args, 'start_date') else None,
+                    'end_date': args.end_date if hasattr(args, 'end_date') else None,
+                    'hold_num': args.hold_num if hasattr(args, 'hold_num') else None,
+                    'n_trials': args.n_trials if hasattr(args, 'n_trials') else None,
+                    'seed': args.seed if hasattr(args, 'seed') else None,
+                    'price_range': [args.min_price, args.max_price] if hasattr(args, 'min_price') and hasattr(args,
+                                                                                                              'max_price') else None,
+                    'model_path': model_path
+                }
+
+                # 保存高绩效因子组合
+                save_high_performance_factors(factor_data, study.best_value, metadata)
+                logger.info(f"已保存高绩效因子组合 (CAGR: {study.best_value:.6f})")
+
+            except Exception as e:
+                logger.error(f"保存高绩效因子组合时出错: {e}")
+
         # 发送优化结果到钉钉
         try:
-            # 年化收益率超过55%才发送
-            if study.best_value >= 0.55:
+            # 检查是否启用了钉钉推送
+            dingtalk_enabled = get_optimization_config('notification.dingtalk.enabled', True)
+
+            # 年化收益率超过配置的阈值且启用了推送才发送
+            if study.best_value >= cagr_threshold and dingtalk_enabled:
                 send_optimization_result_to_dingtalk(
-                    study.best_value, 
-                    [(factor['name'], factor['weight'], factor['ascending']) for factor in best_rank_factors] if best_rank_factors else None,
+                    study.best_value,
+                    [(factor['name'], factor['weight'], factor['ascending']) for factor in
+                     best_rank_factors] if best_rank_factors else None,
                     seed=args.seed,
                     strategy=args.strategy,
                     n_trials=args.n_trials,
@@ -201,7 +243,7 @@ def run_optimization(df, args):
                 logger.info("年化收益率未达到55%，不推送")
         except Exception as e:
             logger.error(f"发送优化结果到钉钉时出错: {e}")
-        
+
         return model_path
     else:
         logger.warning("没有完成任何试验，无法获取结果")

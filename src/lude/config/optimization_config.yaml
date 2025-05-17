@@ -1,0 +1,50 @@
+# 优化引擎配置文件
+# 包含优化过程中需要的各种配置参数
+
+# 通知配置
+notification:
+  # 钉钉推送相关配置
+  dingtalk:
+    # CAGR阈值：年化收益率超过此值才发送钉钉推送
+    cagr_threshold: 0.45
+    # 是否启用钉钉推送
+    enabled: true
+    # 消息模板配置
+    message_template:
+      # 是否显示模型保存路径
+      show_model_path: true
+      # 是否显示迭代信息
+      show_iteration_info: true
+      # 是否显示价格范围
+      show_price_range: true
+      # 是否显示时间范围
+      show_date_range: true
+
+# 优化配置
+optimization:
+  # 优化参数
+  parameters:
+    # 默认持仓数
+    default_hold_num: 15
+    # 默认价格范围
+    default_price_range:
+      min: 110
+      max: 135
+    # 默认因子数量
+    default_factor_count: 4
+  
+  # 性能阈值
+  performance:
+    # 考虑有效的最小CAGR
+    min_valid_cagr: 0.20
+    # 优秀结果的CAGR阈值
+    excellent_cagr: 0.50
+    # 保存模型的最小CAGR阈值
+    save_model_cagr_threshold: 0.40
+
+# 资源配置
+resources:
+  # 并行优化的最大进程数
+  max_processes: 4
+  # 单次优化的最大试验次数
+  max_trials: 200

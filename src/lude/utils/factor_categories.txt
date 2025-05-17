@@ -1,0 +1,101 @@
+因子分类结果:
+==================================================
+
+价格相关因子 (17个):
+------------------------------
+  1. pre_close
+  2. open
+  3. high
+  4. low
+  5. close
+  6. close_ma_5
+  7. pre_close_stk
+  8. open_stk
+  9. high_stk
+  10. low_stk
+  11. close_stk
+  12. conv_price
+  13. dblow
+  14. maturity_put_price
+  15. open_pct_chg
+  16. high_pct_chg
+  17. low_pct_chg
+
+成交量/流动性相关因子 (7个):
+------------------------------
+  1. vol
+  2. vol_5
+  3. volatility
+  4. vol_stk
+  5. volatility_stk
+  6. turnover
+  7. turnover_5
+
+价值相关因子 (3个):
+------------------------------
+  1. pe_ttm
+  2. pb
+  3. ps_ttm
+
+技术指标因子 (8个):
+------------------------------
+  1. pct_chg
+  2. pct_chg_stk
+  3. remain_size
+  4. remain_cap
+  5. maturity
+  6. pct_chg_5
+  7. pct_chg_5_stk
+  8. alpha_pct_chg_5
+
+基本面相关因子 (1个):
+------------------------------
+  1. debt_to_assets
+
+时间/日期相关因子 (6个):
+------------------------------
+  1. list_date
+  2. list_days
+  3. conv_start_date
+  4. left_conv_start_days
+  5. conv_end_date
+  6. left_years
+
+其他因子 (36个):
+------------------------------
+  1. name
+  2. limit
+  3. bias_5
+  4. adj_factor
+  5. amount
+  6. amount_5
+  7. code_stk
+  8. name_stk
+  9. adj_factor_stk
+  10. amount_stk
+  11. dv_ratio
+  12. total_share
+  13. float_share
+  14. total_mv
+  15. circ_mv
+  16. is_call
+  17. conv_value
+  18. conv_prem
+  19. issue_size
+  20. cap_mv_rate
+  21. ytm
+  22. pure_value
+  23. bond_prem
+  24. option_value
+  25. theory_value
+  26. theory_bias
+  27. rating
+  28. yy_rating
+  29. orgform
+  30. area
+  31. industry_1
+  32. industry_2
+  33. industry_3
+  34. popularity_ranking
+  35. theory_conv_prem
+  36. mod_conv_prem
