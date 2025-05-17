@@ -240,7 +240,7 @@ def run_optimization(df, args):
                 )
                 logger.info("钉钉推送成功")
             else:
-                logger.info("年化收益率未达到55%，不推送")
+                logger.info(f"年化收益率未达到{cagr_threshold*100}%，不推送")
         except Exception as e:
             logger.error(f"发送优化结果到钉钉时出错: {e}")
 

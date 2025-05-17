@@ -27,7 +27,9 @@ FACTOR_MAPPING_PATH = os.path.join(CONFIG_DIR, 'factor_mapping.json')
 OPTIMIZATION_CONFIG_PATH = os.path.join(CONFIG_DIR, 'optimization_config.yaml')
 
 # 高收益因子组合文件路径
-HIGH_PERFORMANCE_FACTORS_PATH = os.path.join(RESULTS_DIR, 'high_performance_factors.json')
+DINGDING_OPT_RESULT_PATH = os.path.join(DATA_DIR, 'dd_opt.txt')
+DINGDING_OPT_RESULT_PATH_TEST = os.path.join(DATA_DIR, 'dd_opt_test.txt')
+HIGH_PERFORMANCE_FACTORS_PATH = os.path.join(DATA_DIR, 'high_performance_factors.json')
 
 # 合并工具相关路径
 MERGE_DIR = os.path.join(PROJECT_ROOT, 'src', 'lude', 'utils', 'merge')

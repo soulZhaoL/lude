@@ -13,6 +13,8 @@ import concurrent.futures
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 from tqdm import tqdm
+from lude.config.paths import DINGDING_OPT_RESULT_PATH, HIGH_PERFORMANCE_FACTORS_PATH, DINGDING_OPT_RESULT_PATH_TEST
+
 
 # 添加项目根目录到路径，确保能够导入自定义模块
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -62,12 +64,12 @@ def parse_factor_combination(text: str) -> List[Dict[str, Any]]:
     return factor_list
 
 
-def extract_factor_combinations_with_metadata(opt_file: str) -> List[Dict[str, Any]]:
+def extract_from_txt_file(opt_file: str) -> List[Dict[str, Any]]:
     """
-    从优化结果文件中提取最佳因子组合及其元数据
+    从钉钉文本文件(dd_opt.txt)中提取最佳因子组合及其元数据
     
     参数:
-        opt_file: 优化结果文件路径
+        opt_file: 优化结果文本文件路径
     
     返回:
         results: 包含因子组合及元数据的结果列表
@@ -118,6 +120,80 @@ def extract_factor_combinations_with_metadata(opt_file: str) -> List[Dict[str, A
             })
     
     return results
+
+
+def extract_from_json_file(json_file: str) -> List[Dict[str, Any]]:
+    """
+    从JSON文件(high_performance_factors.json)中提取最佳因子组合及其元数据
+    
+    参数:
+        json_file: 高性能因子组合JSON文件路径
+    
+    返回:
+        results: 包含因子组合及元数据的结果列表
+    """
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+        
+        # 检查加载的数据是否为列表
+        if not isinstance(records, list):
+            print(f"错误: JSON文件{json_file}格式不正确，应为列表")
+            return []
+        
+        # 不需要特殊处理，因为JSON格式已经是我们期望的格式
+        # 但添加一个验证步骤确保每个记录都有必要的字段
+        valid_records = []
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+                
+            if 'factors' not in record or not isinstance(record['factors'], list):
+                continue
+                
+            if 'cagr' not in record and 'expected_cagr' not in record:
+                # 尝试从元数据中获取CAGR值
+                continue
+            
+            # 确保record中有expected_cagr字段
+            if 'expected_cagr' not in record and 'cagr' in record:
+                record['expected_cagr'] = record['cagr']
+                
+            valid_records.append(record)
+            
+        return valid_records
+        
+    except json.JSONDecodeError:
+        print(f"错误: 无法解析JSON文件{json_file}")
+        return []
+    except Exception as e:
+        print(f"读取JSON文件{json_file}时出错: {e}")
+        return []
+
+
+def extract_factor_combinations_with_metadata(opt_file: str) -> List[Dict[str, Any]]:
+    """
+    从优化结果文件中提取最佳因子组合及其元数据
+    根据文件扩展名自动选择适当的解析方法
+    
+    参数:
+        opt_file: 优化结果文件路径
+    
+    返回:
+        results: 包含因子组合及元数据的结果列表
+    """
+    if not os.path.exists(opt_file):
+        raise FileNotFoundError(f"文件不存在: {opt_file}")
+        
+    # 根据文件扩展名选择解析方法
+    file_ext = os.path.splitext(opt_file)[1].lower()
+    
+    if file_ext == '.json':
+        print("检测到JSON格式文件，使用JSON解析器")
+        return extract_from_json_file(opt_file)
+    else:  # 默认为TXT文件或其他文本格式
+        print("使用文本解析器解析钉钉优化结果")
+        return extract_from_txt_file(opt_file)
 
 
 def process_single_factor_combination(args):
@@ -361,6 +437,7 @@ def main(
 if __name__ == '__main__':
     # 使用默认线程数（CPU核心数 * 5）
     # python factor_performance_analyzer.py --opt_file=/path/to/dd_opt.txt
+    # python factor_performance_analyzer.py --opt_file=/data/high_performance_factors.json
 
     # 指定线程数为16
     # python factor_performance_analyzer.py --opt_file=/path/to/dd_opt.txt --max_workers=16
@@ -373,7 +450,7 @@ if __name__ == '__main__':
     
     # 创建命令行参数解析器
     parser = argparse.ArgumentParser(description='因子组合绩效分析器')
-    parser.add_argument('--opt_file', type=str, help='优化结果文件路径')
+    # parser.add_argument('--opt_file', type=str, help='优化结果文件路径')
     parser.add_argument('--cb_data_file', type=str, help='可转债数据文件路径')
     parser.add_argument('--output_file', type=str, help='输出文件路径')
     parser.add_argument('--start_date', type=str, default='20220729', help='回测开始日期，格式为YYYYMMDD')
@@ -389,7 +466,7 @@ if __name__ == '__main__':
     
     # 调用主函数
     main(
-        opt_file=args.opt_file,
+        opt_file=DINGDING_OPT_RESULT_PATH_TEST,
         cb_data_file=args.cb_data_file,
         output_file=args.output_file,
         start_date=args.start_date,
