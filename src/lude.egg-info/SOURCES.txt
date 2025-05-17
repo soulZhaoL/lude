@@ -7,6 +7,7 @@ src/lude.egg-info/dependency_links.txt
 src/lude.egg-info/requires.txt
 src/lude.egg-info/top_level.txt
 src/lude/config/__init__.py
+src/lude/config/config_loader.py
 src/lude/config/paths.py
 src/lude/core/__init__.py
 src/lude/core/cagr_calculator.py
@@ -27,8 +28,11 @@ src/lude/utils/cagr_utils.py
 src/lude/utils/common_utils.py
 src/lude/utils/compare_cagr_methods.py
 src/lude/utils/compare_with_lude.py
+src/lude/utils/factor_performance_analyzer.py
+src/lude/utils/factor_saver.py
 src/lude/utils/logger.py
 src/lude/utils/parse.html.py
+src/lude/utils/performance_metrics.py
 src/lude/utils/show_columns.py
 src/lude/utils/dingtalk/__init__.py
 src/lude/utils/dingtalk/ding_talk.py
@@ -39,4 +43,6 @@ src/lude/utils/merge/__init__.py
 src/lude/utils/merge/merge_and_format.py
 src/lude/utils/monitor/__init__.py
 src/lude/utils/monitor/stock_monitor.py
+tests/test_cagr_calculator.py
 tests/test_imports.py
+tests/test_performance_metrics.py
