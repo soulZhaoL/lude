@@ -39,7 +39,7 @@ for num in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
 done
 
 ```shell
-conda create --name lude_100_150_hold5_fac3_num1  python=3.12
+conda create --name lude_100_150_hold5_fac3_num1  python=3.11
 conda activate lude_100_150_hold5_fac3_num1
 
 ./run_optimizer.sh  -m single --factors 4 --min 100 --max 150 --hold 5 --jobs 10  --trials 500

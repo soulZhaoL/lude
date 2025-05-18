@@ -23,8 +23,8 @@ REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
 PQ_SOURCE="/root/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
 CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
-# PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
-PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"   # pip 镜像地址
+PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
+# PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"   # pip 镜像地址
 # ================ #
 
 usage() {
