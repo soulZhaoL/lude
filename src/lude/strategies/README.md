@@ -35,7 +35,7 @@ python view_best_model.py --model <model_path>
 for num in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   env_name="lude_100_150_hold5_fac3_num${num}"
   echo "▶️ 创建环境：${env_name}"
-  conda create -n "${env_name}" python=3.12 -y
+  conda create -n "${env_name}" python=3.11 -y
 done
 
 ```shell
