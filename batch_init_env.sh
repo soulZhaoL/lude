@@ -2,7 +2,7 @@
 
 # 将上面内容粘贴进去并保存
 # source /etc/network_turbo
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
+# chmod +x ~/*.sh
 # ~/batch_init_env.sh 5 3 1
 # 或者
 # ~/batch_init_env.sh lude_100_150_hold5_fac3_num1

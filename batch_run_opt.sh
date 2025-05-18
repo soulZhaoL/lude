@@ -4,7 +4,7 @@
 # 从num=1执行到num=15
 # 作者: Cascade
 # 日期: 2025-05-04
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
+# chmod +x ~/*.sh
 # /root/batch_run_opt.sh
 
 # 默认不清空结果目录

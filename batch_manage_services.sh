@@ -4,7 +4,7 @@
 # 功能：批量查看服务状态或批量停止服务
 # 作者: Cascade
 # 日期: 2025-05-04
-# chmod +x ~/batch_init_env.sh ~/run_opt.sh ~/batch_manage_services.sh ~/batch_run_opt.sh
+# chmod +x ~/*.sh
 # 查看所有服务状态
 # /root/batch_manage_services.sh --status
 
