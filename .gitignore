@@ -6,7 +6,6 @@ utils/merge/format2basket/*,csv
 
 *.csv
 *.xlsx
-*.txt
 /csv/*
 __pycache__/
 .DS_Store

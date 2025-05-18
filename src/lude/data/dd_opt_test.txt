@@ -1,0 +1,182 @@
+
+5月4日 12:22 - 5月5日 03:31
+
+ETH_signal_receiver
+5月4日 12:22
+【可转债优化新结果】2025-05-04 12:22:05
+年化收益率(CAGR): 0.228588 (种子: 42)
+策略: multistage
+试验次数: 3000
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_3factors_20250504_122204.pkl
+
+最佳因子组合:
+1. conv_prem (转股溢价率) (权重: 5, 降序)
+2. remain_cap (剩余市值(亿)) (权重: 4, 降序)
+3. pb (市净率) (权重: 4, 升序)
+
+ETH_signal_receiver
+5月4日 12:26
+【可转债优化新结果】2025-05-04 12:26:18
+年化收益率(CAGR): 0.288170 (种子: 42)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_122618.pkl
+
+最佳因子组合:
+1. alpha_pct_chg_5 (5日超额涨跌幅) (权重: 4, 降序)
+2. amount_5 (5日成交额) (权重: 1, 升序)
+3. conv_prem (转股溢价率) (权重: 1, 降序)
+4. theory_bias (理论偏离度) (权重: 2, 降序)
+
+ETH_signal_receiver
+5月4日 12:28
+【可转债优化新结果】2025-05-04 12:28:04
+年化收益率(CAGR): 0.330794 (种子: 1042)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_122804.pkl
+
+最佳因子组合:
+1. close_stk (正股收盘价) (权重: 1, 降序)
+2. dblow (双低) (权重: 2, 降序)
+3. left_years (剩余年限) (权重: 1, 降序)
+4. volatility (年化波动率) (权重: 5, 升序)
+
+ETH_signal_receiver
+5月4日 12:29
+【可转债优化新结果】2025-05-04 12:29:52
+年化收益率(CAGR): 0.355339 (种子: 2042)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_122952.pkl
+
+最佳因子组合:
+1. conv_prem (转股溢价率) (权重: 4, 降序)
+2. dv_ratio (股息率) (权重: 2, 降序)
+3. left_years (剩余年限) (权重: 5, 降序)
+4. volatility_stk (正股年化波动率) (权重: 5, 升序)
+
+ETH_signal_receiver
+5月4日 12:34
+【可转债优化新结果】2025-05-04 12:34:34
+年化收益率(CAGR): 0.381755 (种子: 42)
+策略: domain
+试验次数: 400
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_domain_tpe_4factors_20250504_123432.pkl
+
+最佳因子组合:
+1. circ_mv (正股流通市值(亿)) (权重: 2, 升序)
+2. dv_ratio (股息率) (权重: 4, 降序)
+3. pct_chg_5_stk (正股5日涨跌幅) (权重: 4, 升序)
+4. turnover_5 (5日换手率) (权重: 4, 升序)
+
+ETH_signal_receiver
+5月4日 12:38
+【可转债优化新结果】2025-05-04 12:38:36
+年化收益率(CAGR): 0.331201 (种子: 42)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_123835.pkl
+最佳因子组合:
+1. circ_mv (正股流通市值(亿)) (权重: 2, 降序)
+2. conv_value (转股价值) (权重: 2, 升序)
+3. dblow (双低) (权重: 5, 降序)
+4. total_mv (正股总市值(亿)) (权重: 2, 降序)
+
+ETH_signal_receiver
+5月4日 12:40
+【可转债优化新结果】2025-05-04 12:40:22
+年化收益率(CAGR): 0.279724 (种子: 1042)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_124022.pkl
+最佳因子组合:
+1. cap_mv_rate (转债市占比) (权重: 5, 降序)
+2. list_days (上市天数) (权重: 5, 升序)
+3. mod_conv_prem (修正溢价率) (权重: 1, 降序)
+4. theory_conv_prem (理论溢价率) (权重: 5, 降序)
+
+ETH_signal_receiver
+5月4日 12:42
+【可转债优化新结果】2025-05-04 12:42:12
+年化收益率(CAGR): 0.452117 (种子: 2042)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_124212.pkl
+最佳因子组合:
+1. debt_to_assets (资产负债率) (权重: 4, 升序)
+2. pct_chg_5 (5日涨跌幅) (权重: 4, 升序)
+3. theory_bias (理论偏离度) (权重: 2, 降序)
+4. turnover_5 (5日换手率) (权重: 5, 升序)
+
+ETH_signal_receiver
+5月4日 12:56
+【可转债优化新结果】2025-05-04 12:56:00
+年化收益率(CAGR): 0.335359 (种子: 42)
+策略: domain
+试验次数: 400
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_domain_tpe_4factors_20250504_125558.joblib
+最佳因子组合:
+1. close_stk (正股收盘价) (权重: 2, 降序)
+2. pure_value (纯债价值) (权重: 5, 升序)
+3. theory_bias (理论偏离度) (权重: 1, 降序)
+4. turnover_5 (5日换手率) (权重: 3, 升序)
+
+ETH_signal_receiver
+5月4日 12:58
+【可转债优化新结果】2025-05-04 12:58:31
+年化收益率(CAGR): 0.412921 (种子: 42)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_125831.joblib
+最佳因子组合:
+1. close_stk (正股收盘价) (权重: 1, 降序)
+2. dv_ratio (股息率) (权重: 2, 降序)
+3. total_mv (正股总市值(亿)) (权重: 2, 升序)
+4. turnover_5 (5日换手率) (权重: 5, 升序)
+
+ETH_signal_receiver
+5月4日 13:00
+【可转债优化新结果】2025-05-04 13:00:13
+年化收益率(CAGR): 0.405142 (种子: 1042)
+策略: multistage
+试验次数: 450
+持仓数: 5
+时间范围: 20220729 - 20250328
+价格范围: 100 - 150
+模型保存路径: /Users/zhaolei/My/python/lude/optimization_results/best_model_multistage_tpe_4factors_20250504_130013.joblib
+最佳因子组合:
+1. dv_ratio (股息率) (权重: 5, 降序)
+2. pure_value (纯债价值) (权重: 3, 升序)
+3. total_mv (正股总市值(亿)) (权重: 3, 升序)
+4. turnover_5 (5日换手率) (权重: 4, 升序)
