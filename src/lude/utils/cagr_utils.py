@@ -36,7 +36,7 @@ def calculate_cagr_manually(returns: Union[pd.Series, Sequence[float]],
     # 计算年数
     start_date = pd.to_datetime(start_date, format='%Y%m%d')
     end_date = pd.to_datetime(end_date, format='%Y%m%d')
-    years = (end_date - start_date).days / 365.25
+    years = (end_date - start_date).days / 365
     
     # 计算CAGR
     cagr = (1 + cumulative_return) ** (1 / years) - 1

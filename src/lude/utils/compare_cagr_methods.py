@@ -12,9 +12,6 @@ import numpy as np
 
 # 导入自定义CAGR计算函数
 from lude.utils.cagr_utils import (
-    calculate_cagr_manually,
-    calculate_cagr_trading_days,
-    get_quantstats_cagr,
     compare_cagr_methods,
     format_cagr_results
 )

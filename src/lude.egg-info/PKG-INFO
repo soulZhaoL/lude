@@ -3,7 +3,7 @@ Name: lude
 Version: 0.1.0
 Summary: 可转债多因子优化系统
 Author-email: lude <example@example.com>
-Requires-Python: >=3.12
+Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: pandas
 Requires-Dist: numpy

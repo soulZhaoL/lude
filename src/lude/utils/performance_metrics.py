@@ -12,7 +12,8 @@ from lude.utils.cagr_utils import calculate_cagr_manually
 
 # 全局常量设置
 C_RATE = 2 / 1000  # 买卖一次花费的总佣金和滑点（双边）
-YEARLY_FACTOR = 252  # 交易日标准年化因子
+SP = 0.06  # 盘中止盈条件，6%止盈
+YEARLY_FACTOR = 245  # 交易日标准年化因子
 RISK_FREE = 0.0  # 无风险利率
 
 
@@ -141,14 +142,14 @@ def apply_threshold_ranking(
 
 def apply_take_profit(
     df: pd.DataFrame, 
-    take_profit_rate: Optional[float] = 0.06
+    SP: Optional[float] = 0.06
 ) -> pd.DataFrame:
     """
     应用止盈逻辑
     
     参数:
         df: 可转债数据DataFrame
-        take_profit_rate: 止盈比例，默认为0.06 (6%)
+        SP: 止盈比例，默认为0.06 (6%)
     
     返回:
         DataFrame: 应用了止盈逻辑的DataFrame
@@ -161,16 +162,17 @@ def apply_take_profit(
     df['aft_close'] = code_group.close.shift(-1)  # 计算次日收盘价
     df['aft_high'] = code_group.high.shift(-1)  # 计算次日最高价
     df['time_return'] = code_group.pct_chg.shift(-1)  # 先计算不止盈情况的收益率
-    
+    df['SFZY'] = '未满足止盈'  # 先记录默认情况
+
     # 根据参数控制是否应用止盈逻辑
-    if take_profit_rate:
+    if SP:
         # 如果次日最高价达到止盈条件，则按止盈价计算收益
-        tp_high_mask = df['aft_high'] >= df['close'] * (1 + take_profit_rate)
-        df.loc[tp_high_mask, 'time_return'] = take_profit_rate
+        tp_high_mask = df['aft_high'] >= df['close'] * (1 + SP)
+        df.loc[tp_high_mask, 'time_return'] = SP
         
         # 对于开盘价已满足止盈条件的记录，使用实际开盘价计算收益
         # 这一步会覆盖部分最高价已设置的收益率
-        tp_open_mask = df['aft_open'] >= df['close'] * (1 + take_profit_rate)
+        tp_open_mask = df['aft_open'] >= df['close'] * (1 + SP)
         df.loc[tp_open_mask, 'time_return'] = (df['aft_open'] - df['close']) / df['close']
     
     return df
@@ -294,7 +296,7 @@ def calculate_performance_metrics(
     max_price: float,
     rank_factors: List[Dict[str, Any]],
     threshold_num: Optional[int] = None,
-    take_profit_rate: Optional[float] = 0.06
+    SP: Optional[float] = 0.06
 ) -> Dict[str, Any]:
     """
     计算可转债组合的综合绩效指标
@@ -308,7 +310,7 @@ def calculate_performance_metrics(
         max_price: 最高价格筛选
         rank_factors: 排序因子，格式为[{'name': '因子名', 'weight': 权重, 'ascending': 排序方向}, ...]
         threshold_num: 轮动阈值，默认为None
-        take_profit_rate: 止盈比例，默认为0.06 (6%)，设为None则不启用止盈
+        SP: 止盈比例，默认为0.06 (6%)，设为None则不启用止盈
     
     返回：
         dict: 包含以下指标的字典
@@ -335,7 +337,7 @@ def calculate_performance_metrics(
         df = apply_threshold_ranking(df, hold_num, threshold_num)
     
     # 4. 应用止盈逻辑
-    df = apply_take_profit(df, take_profit_rate)
+    df = apply_take_profit(df, SP)
     
     # 5. 计算投资组合收益率
     daily_returns, daily_selected_bonds = calculate_portfolio_returns(df, hold_num)
