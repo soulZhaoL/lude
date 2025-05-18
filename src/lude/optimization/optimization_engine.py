@@ -5,18 +5,33 @@
 负责执行优化过程的核心逻辑
 """
 
+import json
 import os
 
 import optuna
 
 from lude.config.config_loader import get_optimization_config
-from lude.config.paths import RESULTS_DIR
+from lude.config.paths import RESULTS_DIR, FACTOR_MAPPING_PATH
 # 导入常量和工具函数
 from lude.utils.common_utils import create_sampler
 from lude.utils.common_utils import save_optimization_result
 from lude.utils.dingtalk.dingtalk_notifier import send_optimization_result_to_dingtalk
 from lude.utils.factor_saver import save_high_performance_factors
 from lude.utils.logger import optimization_logger as logger
+
+
+def load_factor_mapping():
+    """加载因子中英文映射
+    
+    Returns:
+        factor_mapping: 因子映射字典，键为英文名，值为中文名
+    """
+    try:
+        with open(FACTOR_MAPPING_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"加载因子映射文件时出错: {e}")
+        return {}
 
 
 def run_optimization(df, args):
@@ -186,17 +201,24 @@ def run_optimization(df, args):
         # 获取配置的CAGR阈值
         cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold', 0.55)
 
+        # 如果有最佳因子组合，加载因子映射并初始化因子数据
+        factor_mapping = {}
+        factor_data = []
+        if best_rank_factors:
+            # 加载因子中英文映射（只加载一次）
+            factor_mapping = load_factor_mapping()
+
+            # 准备因子组合详细数据
+            factor_data = [{
+                'name': factor['name'],
+                'description': factor_mapping.get(factor['name']),
+                'weight': factor['weight'],
+                'ascending': factor['ascending']
+            } for factor in best_rank_factors]
+
         # 年化收益率超过阈值时保存高绩效因子组合
         if study.best_value >= cagr_threshold and best_rank_factors:
             try:
-                # 准备因子组合详细数据
-                # 这里深拷贝因子数据以确保安全
-                factor_data = [{
-                    'name': factor['name'],
-                    'description': factor.get('description', ''),  # 提供默认值防止缺失
-                    'weight': factor['weight'],
-                    'ascending': factor['ascending']
-                } for factor in best_rank_factors]
 
                 # 准备元数据
                 metadata = {
@@ -226,23 +248,22 @@ def run_optimization(df, args):
             # 年化收益率超过配置的阈值且启用了推送才发送
             if study.best_value >= cagr_threshold and dingtalk_enabled:
                 send_optimization_result_to_dingtalk(
-                    study.best_value,
-                    [(factor['name'], factor['weight'], factor['ascending']) for factor in
-                     best_rank_factors] if best_rank_factors else None,
+                    cagr=study.best_value,
+                    rank_factors=factor_data,
                     seed=args.seed,
                     strategy=args.strategy,
                     n_trials=args.n_trials,
                     start_date=args.start_date,
                     end_date=args.end_date,
-                    price_range=(args.price_min, args.price_max),
                     hold_num=args.hold_num,
+                    price_range=[args.min_price, args.max_price] if hasattr(args, 'min_price') else None,
                     model_path=model_path
                 )
-                logger.info("钉钉推送成功")
+                logger.info("已发送结果到钉钉")
             else:
-                logger.info(f"年化收益率未达到{cagr_threshold*100}%，不推送")
+                logger.info(f"年化收益率未达到{cagr_threshold * 100}%，不推送")
         except Exception as e:
-            logger.error(f"发送优化结果到钉钉时出错: {e}")
+            logger.error(f"发送钉钉通知时出错: {e}")
 
         return model_path
     else:
