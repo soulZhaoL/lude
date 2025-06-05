@@ -27,12 +27,13 @@ from lude.config.paths import (
 def format_basket(data_dir: str) -> str:
     """
     处理禄得可转债行情表，生成basket_strategy.csv
+    如果找不到相应文件，则返回None
     
     Args:
         data_dir: 数据目录路径
         
     Returns:
-        str: 生成的basket_strategy.csv的完整路径
+        str: 生成的basket_strategy.csv的完整路径，如果找不到源文件则返回None
     """
     # 设置CSV文件夹路径
     csv_dir = data_dir
@@ -40,9 +41,11 @@ def format_basket(data_dir: str) -> str:
     
     # 获取CSV文件夹下所有以"禄得可转债行情表"开头的csv文件
     input_files = glob.glob(os.path.join(csv_dir, '禄得可转债行情表*.csv'))
-    
+
+    # 如果没有找到相关文件，返回None
     if len(input_files) == 0:
-        raise FileNotFoundError("未找到以'禄得可转债行情表'开头的CSV文件")
+        print("警告：未找到以'禄得可转债行情表'开头的CSV文件，跳过处理步骤")
+        return None
     elif len(input_files) > 1:
         raise ValueError(f"找到多个符合条件的CSV文件: {input_files}，请确保只有一个文件")
     
@@ -242,7 +245,10 @@ def merge_files():
         # 第一步：处理禄得可转债行情表
         print("开始处理禄得可转债行情表...")
         basket_file = format_basket(MERGE_CSV_DIR)
-        print(f"已生成文件：{basket_file}")
+        if basket_file:
+            print(f"已生成文件：{basket_file}")
+        else:
+            print("未生成basket_strategy.csv文件，继续执行下一步")
 
         # 第二步：合并CSV文件，同时剔除黑名单中的转债
         print("\n开始合并CSV文件...")
