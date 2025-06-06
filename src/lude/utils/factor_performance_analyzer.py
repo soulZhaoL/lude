@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from tqdm import tqdm
 
-from lude.config.paths import DATA_DIR
+from lude.config.paths import DATA_DIR, HIGH_PERFORMANCE_FACTORS4_1_PATH, HIGH_PERFORMANCE_FACTORS4_2_PATH, HIGH_PERFORMANCE_FACTORS4_3_PATH, HIGH_PERFORMANCE_FACTORS4_4_PATH, HIGH_PERFORMANCE_FACTORS5_1_PATH, HIGH_PERFORMANCE_FACTORS5_2_PATH, HIGH_PERFORMANCE_FACTORS6_1_PATH, HIGH_PERFORMANCE_FACTORS6_2_PATH
 from lude.config.paths import DINGDING_OPT_RESULT_PATH_TEST, PROJECT_ROOT
 from lude.utils.performance_metrics import calculate_performance_metrics
 
@@ -22,10 +22,10 @@ from lude.utils.performance_metrics import calculate_performance_metrics
 def parse_factor_combination(text: str) -> List[Dict[str, Any]]:
     """
     从文本中解析因子组合
-    
+
     参数:
         text: 包含因子组合的文本块
-    
+
     返回:
         factor_list: 解析后的因子列表
     """
@@ -61,10 +61,10 @@ def parse_factor_combination(text: str) -> List[Dict[str, Any]]:
 def extract_from_txt_file(opt_file: str) -> List[Dict[str, Any]]:
     """
     从钉钉文本文件(dd_opt.txt)中提取最佳因子组合及其元数据
-    
+
     参数:
         opt_file: 优化结果文本文件路径
-    
+
     返回:
         results: 包含因子组合及元数据的结果列表
     """
@@ -118,44 +118,31 @@ def extract_from_txt_file(opt_file: str) -> List[Dict[str, Any]]:
 
 def extract_from_json_file(json_file: str) -> List[Dict[str, Any]]:
     """
-    从JSON文件(high_performance_factors.json)中提取最佳因子组合及其元数据
-    
+    从JSON文件中提取最佳因子组合及其元数据
+    支持两种格式:
+    1. 旧格式: 直接的因子组合列表
+    2. 新格式: 嵌套的对象，包含多个模型组，每个模型组有自己的元数据和数据数组
+
     参数:
         json_file: 高性能因子组合JSON文件路径
-    
+
     返回:
         results: 包含因子组合及元数据的结果列表
     """
     try:
         with open(json_file, 'r', encoding='utf-8') as f:
-            records = json.load(f)
+            json_data = json.load(f)
 
-        # 检查加载的数据是否为列表
-        if not isinstance(records, list):
-            print(f"错误: JSON文件{json_file}格式不正确，应为列表")
+        # 检查是否为新格式（嵌套对象）或旧格式（列表）
+        if isinstance(json_data, dict):
+            print(f"检测到新格式JSON文件: {json_file}")
+            return extract_from_nested_json(json_data)
+        elif isinstance(json_data, list):
+            print(f"检测到旧格式JSON文件: {json_file}")
+            return extract_from_flat_json(json_data)
+        else:
+            print(f"错误: JSON文件{json_file}格式不正确，应为对象或列表")
             return []
-
-        # 不需要特殊处理，因为JSON格式已经是我们期望的格式
-        # 但添加一个验证步骤确保每个记录都有必要的字段
-        valid_records = []
-        for record in records:
-            if not isinstance(record, dict):
-                continue
-
-            if 'factors' not in record or not isinstance(record['factors'], list):
-                continue
-
-            if 'cagr' not in record and 'expected_cagr' not in record:
-                # 尝试从元数据中获取CAGR值
-                continue
-
-            # 确保record中有expected_cagr字段
-            if 'expected_cagr' not in record and 'cagr' in record:
-                record['expected_cagr'] = record['cagr']
-
-            valid_records.append(record)
-
-        return valid_records
 
     except json.JSONDecodeError:
         print(f"错误: 无法解析JSON文件{json_file}")
@@ -165,14 +152,97 @@ def extract_from_json_file(json_file: str) -> List[Dict[str, Any]]:
         return []
 
 
+def extract_from_flat_json(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    从旧格式的平面JSON数据中提取因子组合
+
+    参数:
+        records: JSON数据列表
+
+    返回:
+        valid_records: 有效的因子组合记录列表
+    """
+    valid_records = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+
+        if 'factors' not in record or not isinstance(record['factors'], list):
+            continue
+
+        if 'cagr' not in record and 'expected_cagr' not in record:
+            # 尝试从元数据中获取CAGR值
+            continue
+
+        # 确保record中有expected_cagr字段
+        if 'expected_cagr' not in record and 'cagr' in record:
+            record['expected_cagr'] = record['cagr']
+
+        valid_records.append(record)
+
+    return valid_records
+
+
+def extract_from_nested_json(json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    从新格式的嵌套JSON数据中提取因子组合
+
+    参数:
+        json_data: 嵌套的JSON数据对象
+
+    返回:
+        all_records: 从所有模型组中提取的因子组合记录列表
+    """
+    all_records = []
+
+    # 遍历所有模型组
+    for model_key, model_data in json_data.items():
+        print(f"处理模型组: {model_key}")
+
+        # 检查模型组数据结构
+        if not isinstance(model_data, dict) or 'data' not in model_data:
+            print(f"警告: 模型组 {model_key} 格式不正确，跳过")
+            continue
+
+        # 提取元数据（如果有）
+        metadata = model_data.get('metadata', {})
+        model_records = model_data.get('data', [])
+
+        if not isinstance(model_records, list):
+            print(f"警告: 模型组 {model_key} 的数据不是列表，跳过")
+            continue
+
+        # 处理每条记录
+        for record in model_records:
+            if not isinstance(record, dict):
+                continue
+
+            if 'factors' not in record or not isinstance(record['factors'], list):
+                continue
+
+            # 确保record中有expected_cagr字段
+            if 'expected_cagr' not in record and 'cagr' in record:
+                record['expected_cagr'] = record['cagr']
+
+            # 添加模型组信息
+            record['model_group'] = model_key
+            if metadata:
+                record['model_metadata'] = metadata
+
+            all_records.append(record)
+
+    print(f"从嵌套JSON中提取了 {len(all_records)} 条记录")
+    return all_records
+
+
 def extract_factor_combinations_with_metadata(opt_file: str) -> List[Dict[str, Any]]:
     """
     从优化结果文件中提取最佳因子组合及其元数据
     根据文件扩展名自动选择适当的解析方法
-    
+
     参数:
         opt_file: 优化结果文件路径
-    
+
     返回:
         results: 包含因子组合及元数据的结果列表
     """
@@ -193,10 +263,10 @@ def extract_factor_combinations_with_metadata(opt_file: str) -> List[Dict[str, A
 def process_single_factor_combination(args):
     """
     处理单个因子组合并计算其绩效指标
-    
+
     参数:
         args: 包含所有必要参数的字典
-    
+
     返回:
         performance: 包含绩效指标的字典
     """
@@ -248,6 +318,18 @@ def process_single_factor_combination(args):
                     f"最大回撤: {perf['max_drawdown']:.6f}, 夏普比率: {perf['sharpe_ratio']:.6f}"
         }
 
+        # 添加模型组信息（如果有）
+        if 'model_group' in result:
+            performance['模型组'] = result.get('model_group')
+
+        # 添加模型元数据（如果有）
+        if 'model_metadata' in result:
+            metadata = result.get('model_metadata', {})
+            if 'factor_count' in metadata:
+                performance['因子数量(元数据)'] = metadata.get('factor_count')
+            if 'model_number' in metadata:
+                performance['模型编号'] = metadata.get('model_number')
+
     except Exception as e:
         # 将因子组合转换为JSON格式
         factors_json = json.dumps(factors, ensure_ascii=False)
@@ -271,6 +353,18 @@ def process_single_factor_combination(args):
             '日志': f"因子组合: {factor_str}\n计算失败: {e}"
         }
 
+        # 添加模型组信息（如果有）
+        if 'model_group' in result:
+            performance['模型组'] = result.get('model_group')
+
+        # 添加模型元数据（如果有）
+        if 'model_metadata' in result:
+            metadata = result.get('model_metadata', {})
+            if 'factor_count' in metadata:
+                performance['因子数量(元数据)'] = metadata.get('factor_count')
+            if 'model_number' in metadata:
+                performance['模型编号'] = metadata.get('model_number')
+
     return performance
 
 
@@ -288,7 +382,7 @@ def calculate_factor_performances(
 ) -> pd.DataFrame:
     """
     使用多线程计算所有因子组合的绩效指标
-    
+
     参数:
         factor_results: 包含因子组合及元数据的结果列表
         data_file: 可转债数据文件路径
@@ -300,7 +394,7 @@ def calculate_factor_performances(
         threshold_num: 轮动阈值，默认为None
         take_profit_rate: 止盈比例，默认为0.06 (6%)
         max_workers: 最大线程数，默认为None (CPU核心数 * 5)
-        
+
     返回:
         performance_df: 包含所有因子组合绩效指标的DataFrame
     """
@@ -360,7 +454,7 @@ def main(
 ):
     """
     主函数 - 允许通过参数灵活控制计算过程
-    
+
     参数:
         opt_file: 优化结果文件路径，默认为DATA_DIR下的dd_opt.txt
         cb_data_file: 可转债数据文件路径，默认会自动搜索
@@ -398,10 +492,25 @@ def main(
     if output_file is None:
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = os.path.join(PROJECT_ROOT, f'factor_performance_results_{current_time}.xlsx')
-
+        
     print(f"正在读取优化结果文件: {opt_file}")
     factor_results = extract_factor_combinations_with_metadata(opt_file)
+
+    # 统计模型组信息
+    model_groups = {}
+    for result in factor_results:
+        model_group = result.get('model_group', '未分组')
+        if model_group not in model_groups:
+            model_groups[model_group] = 0
+        model_groups[model_group] += 1
+
     print(f"共解析出 {len(factor_results)} 个因子组合")
+
+    # 输出模型组统计信息
+    if model_groups and len(model_groups) > 1:  # 只有当有多个模型组时才输出统计信息
+        print("模型组统计:")
+        for group, count in model_groups.items():
+            print(f"  - {group}: {count} 个因子组合")
 
     print(f"正在计算绩效指标...")
     print(f"参数配置: 持仓数={hold_num}, 价格范围={min_price}-{max_price}, "
@@ -420,9 +529,12 @@ def main(
         max_workers=max_workers  # 传递线程池大小参数
     )
 
-    # 按实际CAGR排序
+    # 按实际CAGR排序，处理可能的None值
     if '实际CAGR' in performance_df.columns:
-        performance_df = performance_df.sort_values(by='实际CAGR', ascending=False)
+        # 先将None值替换为NaN，以便排序
+        performance_df['实际CAGR'] = pd.to_numeric(performance_df['实际CAGR'], errors='coerce')
+        # 按CAGR降序排序，NaN值放在最后
+        performance_df = performance_df.sort_values(by='实际CAGR', ascending=False, na_position='last')
 
     # 保存结果到Excel文件
     print(f"保存结果到文件: {output_file}")
@@ -449,7 +561,7 @@ if __name__ == '__main__':
     parser.add_argument('--cb_data_file', type=str, help='可转债数据文件路径')
     parser.add_argument('--output_file', type=str, help='输出文件路径')
     parser.add_argument('--start_date', type=str, default='20220729', help='回测开始日期，格式为YYYYMMDD')
-    parser.add_argument('--end_date', type=str, default='20250328', help='回测结束日期，格式为YYYYMMDD')
+    parser.add_argument('--end_date', type=str, default='20250523', help='回测结束日期，格式为YYYYMMDD')
     parser.add_argument('--hold_num', type=int, default=5, help='持有数量')
     parser.add_argument('--min_price', type=float, default=100.0, help='最低价格筛选')
     parser.add_argument('--max_price', type=float, default=150.0, help='最高价格筛选')
@@ -459,11 +571,23 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # path = HIGH_PERFORMANCE_FACTORS4_1_PATH
+    # path = HIGH_PERFORMANCE_FACTORS4_2_PATH
+    # path = HIGH_PERFORMANCE_FACTORS4_3_PATH
+    # path = HIGH_PERFORMANCE_FACTORS4_4_PATH
+    # path = HIGH_PERFORMANCE_FACTORS5_1_PATH
+    # path = HIGH_PERFORMANCE_FACTORS5_2_PATH
+    # path = HIGH_PERFORMANCE_FACTORS6_1_PATH
+    path = HIGH_PERFORMANCE_FACTORS6_2_PATH
+    # output_path 路径等于path 移除文件部分
+    output_path = path.replace('merged_factors.json', '')
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = os.path.join(output_path, f'factor_performance_results_{current_time}.xlsx')
     # 调用主函数
     main(
-        opt_file=DINGDING_OPT_RESULT_PATH_TEST,
+        opt_file=path,
         cb_data_file=args.cb_data_file,
-        output_file=args.output_file,
+        output_file=output_file,
         start_date=args.start_date,
         end_date=args.end_date,
         hold_num=args.hold_num,
