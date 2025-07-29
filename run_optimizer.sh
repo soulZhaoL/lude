@@ -67,6 +67,7 @@ SEED=42              # 随机种子
 SEED_START=42        # 起始随机种子
 SEED_STEP=1000       # 种子递增步长
 ITERATIONS=10        # 持续优化模式下的运行次数
+ENABLE_FILTER_OPT=false  # 是否启用过滤因子组合优化
 BACKGROUND=false     # 是否在后台运行
 LOG_FILE=""          # 日志文件
 CLEAR_RESULTS=false  # 是否清空结果目录
@@ -93,6 +94,7 @@ show_help() {
     echo "  --seed-start <n>         起始随机种子(持续模式), 默认: 42"
     echo "  --seed-step <n>          种子递增步长(持续模式), 默认: 1000"
     echo "  --iterations <n>         持续模式下的运行次数, 默认: 10"
+    echo "  --enable_filter_opt      启用过滤因子组合优化"
     echo "  -b, --background         在后台运行脚本"
     echo "  -l, --log <filename>     指定日志文件(用于后台运行)"
     echo "  --clear                  运行前清空结果目录"
@@ -170,6 +172,10 @@ while [[ $# -gt 0 ]]; do
         --iterations)
             ITERATIONS="$2"
             shift 2
+            ;;
+        --enable_filter_opt)
+            ENABLE_FILTER_OPT=true
+            shift
             ;;
         -b|--background)
             BACKGROUND=true
@@ -251,12 +257,24 @@ check_results_dir() {
 
 # 构建命令行
 build_command() {
-    # 根据参数构建命令行
+    # 构建基础命令参数
+    BASE_PARAMS="--mode $MODE --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --workspace_id $WORKSPACE_ID"
+    
+    # 根据模式添加特定参数
     if [[ "$MODE" = "single" ]]; then
-        CMD="python -m lude.optimization.domain_knowledge_optimizer --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed $SEED --workspace_id $WORKSPACE_ID"
+        MODE_PARAMS="--seed $SEED"
     else
-        CMD="python -m lude.optimization.continuous_optimizer --iterations $ITERATIONS --strategy $STRATEGY --method $METHOD --n_trials $N_TRIALS --n_factors $N_FACTORS --start_date $START_DATE --end_date $END_DATE --price_min $PRICE_MIN --price_max $PRICE_MAX --hold_num $HOLD_NUM --n_jobs $N_JOBS --seed_start $SEED_START --seed_step $SEED_STEP --workspace_id $WORKSPACE_ID"
+        MODE_PARAMS="--iterations $ITERATIONS --seed_start $SEED_START --seed_step $SEED_STEP"
     fi
+    
+    # 添加过滤优化参数
+    FILTER_PARAMS=""
+    if [[ "$ENABLE_FILTER_OPT" = true ]]; then
+        FILTER_PARAMS="--enable_filter_opt"
+    fi
+    
+    # 组合完整命令
+    CMD="python -m lude.optimization.unified_optimizer $BASE_PARAMS $MODE_PARAMS $FILTER_PARAMS"
     
     echo "将执行以下命令:"
     echo "\"$CMD\""
