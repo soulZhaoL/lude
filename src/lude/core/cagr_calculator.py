@@ -25,7 +25,8 @@ threshold_num = None  # 轮动阈值
 
 
 def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_price,
-                         rank_factors, threshold_num=None):
+                         rank_factors, threshold_num=None, filter_conditions=None,
+                         check_overfitting=True, verbose_overfitting=False):
     """
     计算可转债组合的CAGR
     
@@ -38,11 +39,13 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         max_price: 最高价格筛选
         rank_factors: 排序因子，格式为[{'name': '因子名', 'weight': 权重, 'ascending': 排序方向}, ...]
         threshold_num: 轮动阈值，默认为None
+        filter_conditions: 排除因子组合，格式为[{'factor': '因子名', 'operator': '>=', 'value': 阈值}, ...]
+        check_overfitting: 是否进行过拟合检测，默认为True
+        verbose_overfitting: 是否打印过拟合检测详细信息，默认为False
     
     返回：
-        cagr: 使用手动计算法得到的CAGR值
-        daily_selected_bonds: 每日选中的可转债DataFrame
-        daily_returns: 每日收益率DataFrame
+        cagr: 使用手动计算法得到的CAGR值，如果检测到过拟合则返回惩罚值
+        （可选）如果需要更多信息，可以返回详细结果字典
     """
     # 数据筛选 - 按日期范围
     df = df[(df.index.get_level_values('trade_date') >= start_date) &
@@ -54,7 +57,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 计算收盘价百分比排名
     df['close_pct'] = df.groupby('trade_date')['close'].rank(pct=True)
 
-    # 排除条件设置
+    # 基础排除条件设置
     df.loc[df.is_call.isin(['已公告强赎', '公告到期赎回', '公告实施强赎',
                             '公告提示强赎', '已满足强赎条件']), 'filter'] = True  # 排除赎回状态
     df.loc[df.list_days <= 3, 'filter'] = True  # 排除新债
@@ -62,6 +65,39 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     df.loc[df.amount < 1000, 'filter'] = True  # 排除成交额小于1000万
     df.loc[df.close > max_price, 'filter'] = True  # 排除价格过高
     df.loc[df.close < min_price, 'filter'] = True  # 排除价格过低
+    
+    # 应用排除因子组合过滤条件
+    if filter_conditions is None:
+        # 如果没有提供排除因子，使用默认排除因子
+        filter_conditions = [
+            {'factor': 'amount', 'operator': '<', 'value': 1000},  # 默认排除成交额小于1000万
+            {'factor': 'close', 'operator': '>', 'value': max_price},  # 默认排除价格过高
+            {'factor': 'close', 'operator': '<', 'value': min_price},  # 默认排除价格过低
+        ]
+    
+    # 应用动态排除因子条件
+    if filter_conditions:
+        for condition in filter_conditions:
+            factor_name = condition['factor']
+            operator = condition['operator']
+            threshold = condition['value']
+            
+            if factor_name in df.columns:
+                if operator == '>=':
+                    df.loc[df[factor_name] >= threshold, 'filter'] = True
+                elif operator == '>':
+                    df.loc[df[factor_name] > threshold, 'filter'] = True
+                elif operator == '<=':
+                    df.loc[df[factor_name] <= threshold, 'filter'] = True
+                elif operator == '<':
+                    df.loc[df[factor_name] < threshold, 'filter'] = True
+                elif operator == '==':
+                    df.loc[df[factor_name] == threshold, 'filter'] = True
+                elif operator == '!=':
+                    df.loc[df[factor_name] != threshold, 'filter'] = True
+                # print(f'应用排除条件: {factor_name} {operator} {threshold}')
+            else:
+                print(f'警告: 未找到排除因子【{factor_name}】, 跳过此条件')
 
     # 计算多因子得分和排名
     trade_date_group = df[df['filter'] == False].groupby('trade_date')
@@ -167,9 +203,40 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 使用手动计算法计算CAGR
     cagr = calculate_cagr_manually(res['daily_return'], start_date, end_date)
-
-    # return cagr, daily_selected_bonds, res
-    return cagr
+    
+    # 过拟合检测
+    if check_overfitting:
+        from lude.core.overfitting_detector import is_strategy_overfitted, get_overfitting_penalty_value
+        
+        try:
+            # 进行过拟合检测
+            is_overfitted = is_strategy_overfitted(
+                df=df,
+                daily_selected_bonds=daily_selected_bonds,
+                res=res,
+                hold_num=hold_num,
+                min_trading_days_ratio=0.9,
+                verbose=verbose_overfitting
+            )
+            
+            if is_overfitted:
+                # 如果检测到过拟合，返回极小的惩罚值
+                penalty_cagr = get_overfitting_penalty_value()
+                if verbose_overfitting:
+                    print(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {penalty_cagr:.6f}")
+                return penalty_cagr
+            else:
+                if verbose_overfitting:
+                    print(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")
+                return cagr
+                
+        except Exception as e:
+            # 过拟合检测出错时，打印警告但仍返回原始CAGR
+            print(f"过拟合检测出错: {e}")
+            return cagr
+    else:
+        # 不进行过拟合检测，直接返回CAGR
+        return cagr
 
 
 if __name__ == '__main__':
