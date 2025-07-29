@@ -197,7 +197,7 @@ def show_progress(seconds=10):
 def run_continuous_optimization(iterations=10, strategy="multistage", method="tpe", n_trials=3000, 
                      n_factors=3, start_date="20220729", end_date="20250328", 
                      price_min=100, price_max=150, hold_num=5, n_jobs=15,
-                     seed_start=42, seed_step=1000, workspace_id=''):
+                     seed_start=42, seed_step=1000, workspace_id='', enable_filter_opt=False):
     """运行连续优化过程，使用改进的低开销方法
     
     Args:
@@ -215,6 +215,7 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
         seed_start: 起始种子值
         seed_step: 种子递增步长
         workspace_id: 工作区ID标识
+        enable_filter_opt: 是否启用过滤因子组合优化
     """
     
     # 加载最佳记录
@@ -233,7 +234,8 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
         "price_max": price_max,
         "hold_num": hold_num,
         "n_jobs": n_jobs,
-        "workspace_id": workspace_id
+        "workspace_id": workspace_id,
+        "enable_filter_opt": enable_filter_opt
     }
     
     # 运行多次优化
@@ -280,9 +282,15 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
         try:
             # 使用子进程方式执行，更稳定可靠
             # 注意：使用模块化路径 (-m) 而不是直接调用文件
-            cmd = ["python", "-m", "lude.optimization.domain_knowledge_optimizer"]
+            cmd = ["python", "-m", "lude.optimization.unified_optimizer", "--mode", "single"]
             for key, value in current_params.items():
-                cmd.extend([f"--{key}", str(value)])
+                if key == "enable_filter_opt":
+                    # 特殊处理：enable_filter_opt 为 store_true 类型，只有为 True 时才添加参数
+                    if value:
+                        cmd.append("--enable_filter_opt")
+                else:
+                    # 普通参数：直接添加 key 和 value
+                    cmd.extend([f"--{key}", str(value)])
                 
             # 打印完整命令用于调试
             logger.info(f"执行命令: {' '.join(cmd)}")
@@ -446,6 +454,7 @@ def parse_args():
     parser.add_argument('--seed_start', type=int, default=42, help='起始随机种子')
     parser.add_argument('--seed_step', type=int, default=1000, help='种子递增步长')
     parser.add_argument('--workspace_id', type=str, default='', help='工作区ID标识，用于进程管理')
+    parser.add_argument('--enable_filter_opt', action='store_true', help='启用过滤因子组合优化')
     
     return parser.parse_args()
 
@@ -478,7 +487,8 @@ def main():
         n_jobs=args.n_jobs,
         seed_start=args.seed_start,
         seed_step=args.seed_step,
-        workspace_id=args.workspace_id
+        workspace_id=args.workspace_id,
+        enable_filter_opt=args.enable_filter_opt
     )
 
 if __name__ == "__main__":

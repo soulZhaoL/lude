@@ -3,79 +3,79 @@
 
 filter_factors:
   # 价格相关因子
-  close:
-    name: "收盘价"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]  # 大于、小于、大于等于、小于等于
-    value_options: [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]  # 缩减from23to12
-    default_range: 
-      min_op: "gte"  # 默认大于等于
-      min_val: 100
-      max_op: "lte"  # 默认小于等于  
-      max_val: 150
-    max_conditions: 1  # 同一因子最多2个条件
+  # close:
+  #   name: "收盘价"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]  # 大于、小于、大于等于、小于等于
+  #   value_options: [90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]  # 缩减from23to12
+  #   default_range: 
+  #     min_op: "gte"  # 默认大于等于
+  #     min_val: 100
+  #     max_op: "lte"  # 默认小于等于  
+  #     max_val: 150
+  #   max_conditions: 1  # 同一因子最多2个条件
 
-  dblow:
-    name: "双低"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]  # 大于、小于、大于等于、小于等于
-    value_options: [100, 120, 140, 160, 180, 200]  # 缩减from11to6
-    default_range: 
-      min_op: "gte"  # 默认大于等于
-      min_val: 110
-      max_op: "lte"  # 默认小于等于  
-      max_val: 150
-    max_conditions: 1  # 同一因子最多2个条件
+  # dblow:
+  #   name: "双低"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]  # 大于、小于、大于等于、小于等于
+  #   value_options: [100, 120, 140, 160, 180, 200]  # 缩减from11to6
+  #   default_range: 
+  #     min_op: "gte"  # 默认大于等于
+  #     min_val: 110
+  #     max_op: "lte"  # 默认小于等于  
+  #     max_val: 150
+  #   max_conditions: 1  # 同一因子最多2个条件
 
   # 时间相关因子
-  left_years:
-    name: "剩余年限"
-    data_type: "numeric" 
-    operators: [ "gte", "lte"]
-    value_options: [0.5, 1.5, 2.5]  # 缩减from6to3
-    default_range:
-      min_op: "gte"
-      min_val: 0.5
-      max_op: "lte" 
-      max_val: 3
-    max_conditions: 1
+  # left_years:
+  #   name: "剩余年限"
+  #   data_type: "numeric" 
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.5, 1.5, 2.5]  # 缩减from6to3
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 0.5
+  #     max_op: "lte" 
+  #     max_val: 3
+  #   max_conditions: 1
 
-  list_days:
-    name: "上市天数"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [1, 5, 10, 20, 45, 90, 180, 730]  # 缩减from16to8
-    default_range:
-      min_op: "gte"
-      min_val: 4
-      max_op: null  # 不设上限
-      max_val: null
-    max_conditions: 1
+  # list_days:
+  #   name: "上市天数"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [1, 5, 10, 20, 45, 90, 180, 730]  # 缩减from16to8
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 4
+  #     max_op: null  # 不设上限
+  #     max_val: null
+  #   max_conditions: 1
 
   # 交易相关因子
-  amount:
-    name: "成交额(万)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [500, 1000, 2000, 5000, 10000, 20000]  # 缩减from11to6
-    default_range:
-      min_op: "gte"
-      min_val: 1000
-      max_op: null
-      max_val: null
-    max_conditions: 1
+  # amount:
+  #   name: "成交额(万)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [500, 1000, 2000, 5000, 10000, 20000]  # 缩减from11to6
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 1000
+  #     max_op: null
+  #     max_val: null
+  #   max_conditions: 1
 
-  vol:
-    name: "成交量(手)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [200, 1000, 5000, 20000, 50000]  # 缩减from9to5
-    default_range:
-      min_op: "gte"
-      min_val: 1000
-      max_op: null
-      max_val: null
-    max_conditions: 1
+  # vol:
+  #   name: "成交量(手)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [200, 1000, 5000, 20000, 50000]  # 缩减from9to5
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 1000
+  #     max_op: null
+  #     max_val: null
+  #   max_conditions: 1
 
   turnover:
     name: "换手率"
@@ -102,41 +102,41 @@ filter_factors:
       max_val: 0.6
     max_conditions: 1
 
-  pb:
-    name: "市净率"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.5, 1.5, 2.5, 5, 10, 100]  # 缩减from12to6
-    default_range:
-      min_op: "gte"
-      min_val: 1.5
-      max_op: "lte"
-      max_val: 10
-    max_conditions: 1
+  # pb:
+  #   name: "市净率"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.5, 1.5, 2.5, 5, 10, 100]  # 缩减from12to6
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 1.5
+  #     max_op: "lte"
+  #     max_val: 10
+  #   max_conditions: 1
 
-  pe_ttm:
-    name: "市盈率TTM"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [16, 30, 100, 1000, 10000, 50000, 100000]  # 缩减from14to7
-    default_range:
-      min_op: "gte"
-      min_val: 16
-      max_op: "lte"
-      max_val: 50
-    max_conditions: 1
+  # pe_ttm:
+  #   name: "市盈率TTM"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [16, 30, 100, 1000, 10000, 50000, 100000]  # 缩减from14to7
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 16
+  #     max_op: "lte"
+  #     max_val: 50
+  #   max_conditions: 1
 
-  debt_to_assets:
-    name: "资产负债率"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.2, 0.4, 0.6, 0.8, 1.0, 1.5]  # 缩减from11to6
-    default_range:
-      min_op: "gte"
-      min_val: 0.1
-      max_op: "lte"
-      max_val: 1.5  # 修正: 从1.7改为1.5
-    max_conditions: 1
+  # debt_to_assets:
+  #   name: "资产负债率"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.2, 0.4, 0.6, 0.8, 1.0, 1.5]  # 缩减from11to6
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 0.1
+  #     max_op: "lte"
+  #     max_val: 1.5  # 修正: 从1.7改为1.5
+  #   max_conditions: 1
 
   pct_chg:
     name: "涨跌幅"
@@ -150,17 +150,17 @@ filter_factors:
       max_val: 1.0
     max_conditions: 1
 
-  circ_mv:
-    name: "正股流通市值(亿)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [50, 150, 200, 500, 2500]  # 缩减from10to5
-    default_range:
-      min_op: "gte"
-      min_val: 25
-      max_op: "lte"
-      max_val: 5500
-    max_conditions: 1
+  # circ_mv:
+  #   name: "正股流通市值(亿)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [50, 150, 200, 500, 2500]  # 缩减from10to5
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 25
+  #     max_op: "lte"
+  #     max_val: 5500
+  #   max_conditions: 1
 
   pct_chg_5:
     name: "5日涨跌幅"
@@ -234,17 +234,17 @@ filter_factors:
       max_val: 0.3
     max_conditions: 1
 
-  dv_ratio:
-    name: "股息率"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.001, 0.003, 0.005, 0.007, 0.01, 0.015, 0.02]
-    default_range:
-      min_op: "gte"
-      min_val: 0.003
-      max_op: "lte"
-      max_val: 0.01
-    max_conditions: 1
+  # dv_ratio:
+  #   name: "股息率"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.001, 0.003, 0.005, 0.007, 0.01, 0.015, 0.02]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 0.003
+  #     max_op: "lte"
+  #     max_val: 0.01
+  #   max_conditions: 1
 
   # ========== 第一阶段：核心因子配置 ==========
   # 以下配置基于可转债投资逻辑和行业经验生成
@@ -412,83 +412,83 @@ filter_factors:
     max_conditions: 1
     # 发行规模影响流动性，通常在10-100亿之间
 
-  remain_size:
-    name: "剩余规模(亿)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [2, 5, 8, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200]
-    default_range:
-      min_op: "gte"
-      min_val: 5
-      max_op: "lte"
-      max_val: 80
-    max_conditions: 1
+  # remain_size:
+  #   name: "剩余规模(亿)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [2, 5, 8, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 5
+  #     max_op: "lte"
+  #     max_val: 80
+  #   max_conditions: 1
     # 剩余规模反映未转股部分，影响后续流动性
 
-  remain_cap:
-    name: "剩余市值(亿)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 300, 500]
-    default_range:
-      min_op: "gte"
-      min_val: 10
-      max_op: "lte"
-      max_val: 150
-    max_conditions: 1
+  # remain_cap:
+  #   name: "剩余市值(亿)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 300, 500]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 10
+  #     max_op: "lte"
+  #     max_val: 150
+  #   max_conditions: 1
     # 剩余市值反映当前市场价值规模
 
-  cap_mv_rate:
-    name: "转债市占比"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.8, 1.0]
-    default_range:
-      min_op: "gte"
-      min_val: 0.01
-      max_op: "lte"
-      max_val: 0.3
-    max_conditions: 1
+  # cap_mv_rate:
+  #   name: "转债市占比"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.8, 1.0]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 0.01
+  #     max_op: "lte"
+  #     max_val: 0.3
+  #   max_conditions: 1
     # 转债市值占正股市值比例，反映相对规模
 
   # 补充估值因子 (3个)
-  ps_ttm:
-    name: "市销率TTM"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 100]
-    default_range:
-      min_op: "gte"
-      min_val: 1
-      max_op: "lte"
-      max_val: 20
-    max_conditions: 1
+  # ps_ttm:
+  #   name: "市销率TTM"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 100]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 1
+  #     max_op: "lte"
+  #     max_val: 20
+  #   max_conditions: 1
     # 市销率补充PE/PB估值体系，适用于亏损公司
 
-  total_mv:
-    name: "正股总市值(亿)"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [20, 50, 80, 100, 150, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000, 10000]
-    default_range:
-      min_op: "gte"
-      min_val: 50
-      max_op: "lte"
-      max_val: 2000
-    max_conditions: 1
+  # total_mv:
+  #   name: "正股总市值(亿)"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [20, 50, 80, 100, 150, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000, 10000]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 50
+  #     max_op: "lte"
+  #     max_val: 2000
+  #   max_conditions: 1
     # 正股总市值反映公司整体规模，影响流动性和稳定性
 
-  volatility:
-    name: "年化波动率"
-    data_type: "numeric"
-    operators: [ "gte", "lte"]
-    value_options: [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 3.0]
-    default_range:
-      min_op: "gte"
-      min_val: 0.2
-      max_op: "lte" 
-      max_val: 1.0
-    max_conditions: 1
+  # volatility:
+  #   name: "年化波动率"
+  #   data_type: "numeric"
+  #   operators: [ "gte", "lte"]
+  #   value_options: [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 3.0]
+  #   default_range:
+  #     min_op: "gte"
+  #     min_val: 0.2
+  #     max_op: "lte" 
+  #     max_val: 1.0
+  #   max_conditions: 1
     # 年化波动率反映价格波动风险，通常在20%-100%之间
 
 # 排除因子组合规则
