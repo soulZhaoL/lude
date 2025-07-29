@@ -7,6 +7,8 @@
 避免复杂的路径导入问题
 """
 
+from lude.utils.logger import optimization_logger as logger
+
 def analyze_daily_candidates_inline(df, filter_conditions, hold_num, start_date, end_date, verbose=True):
     """
     内联版每日可选债分析
@@ -28,16 +30,16 @@ def analyze_daily_candidates_inline(df, filter_conditions, hold_num, start_date,
     
     # 应用动态过滤条件（简化实现，排除因子功能已移除）
     if filter_conditions and verbose:
-        print("⚠️ 排除因子功能已移除，跳过动态过滤条件")
+        logger.warning("⚠️ 排除因子功能已移除，跳过动态过滤条件")
     
     # 获取所有交易日
     all_trading_days = sorted(df_filtered.index.get_level_values('trade_date').unique())
     total_trading_days = len(all_trading_days)
     
     if verbose:
-        print(f"📊 分析期间: {start_date} 至 {end_date}")
-        print(f"📊 总交易日数: {total_trading_days}")
-        print(f"📊 需要持仓数: {hold_num}")
+        logger.info(f"📊 分析期间: {start_date} 至 {end_date}")
+        logger.info(f"📊 总交易日数: {total_trading_days}")
+        logger.info(f"📊 需要持仓数: {hold_num}")
     
     # 分析每日情况
     daily_stats = []
@@ -105,65 +107,65 @@ def analyze_daily_candidates_inline(df, filter_conditions, hold_num, start_date,
     median_candidates = np.median(candidate_counts)
     
     if verbose:
-        print(f"\n{'='*70}")
-        print(f"🔍 每日可选债深度分析结果:")
-        print(f"{'='*70}")
-        print(f"📊 交易日分类统计:")
-        print(f"  ❌ 完全无可选债: {days_with_no_candidates:3d} 天 ({days_with_no_candidates/total_trading_days*100:5.1f}%)")
-        print(f"  ⚠️  候选债不足:   {days_with_insufficient_candidates:3d} 天 ({days_with_insufficient_candidates/total_trading_days*100:5.1f}%)")
-        print(f"  ✅ 候选债充足:   {days_with_sufficient_candidates:3d} 天 ({days_with_sufficient_candidates/total_trading_days*100:5.1f}%)")
-        print()
-        print(f"📈 关键指标:")
-        print(f"  ✅ 真实可交易覆盖率: {coverage_ratio*100:5.1f}% ({days_with_sufficient_candidates}/{total_trading_days})")
-        print(f"     (修正逻辑: 统计有充足候选债的交易日)")
-        print(f"  📊 平均每日候选数:   {avg_candidates:5.1f} 只")
-        print(f"  📊 候选数中位数:     {median_candidates:5.1f} 只")
-        print(f"  📊 候选数范围:       {min(candidate_counts)} - {max(candidate_counts)} 只")
-        print()
+        logger.info(f"\n{'='*70}")
+        logger.info(f"🔍 每日可选债深度分析结果:")
+        logger.info(f"{'='*70}")
+        logger.info(f"📊 交易日分类统计:")
+        logger.info(f"  ❌ 完全无可选债: {days_with_no_candidates:3d} 天 ({days_with_no_candidates/total_trading_days*100:5.1f}%)")
+        logger.info(f"  ⚠️  候选债不足:   {days_with_insufficient_candidates:3d} 天 ({days_with_insufficient_candidates/total_trading_days*100:5.1f}%)")
+        logger.info(f"  ✅ 候选债充足:   {days_with_sufficient_candidates:3d} 天 ({days_with_sufficient_candidates/total_trading_days*100:5.1f}%)")
+        logger.info("")
+        logger.info(f"📈 关键指标:")
+        logger.info(f"  ✅ 真实可交易覆盖率: {coverage_ratio*100:5.1f}% ({days_with_sufficient_candidates}/{total_trading_days})")
+        logger.info(f"     (修正逻辑: 统计有充足候选债的交易日)")
+        logger.info(f"  📊 平均每日候选数:   {avg_candidates:5.1f} 只")
+        logger.info(f"  📊 候选数中位数:     {median_candidates:5.1f} 只")
+        logger.info(f"  📊 候选数范围:       {min(candidate_counts)} - {max(candidate_counts)} 只")
+        logger.info("")
         
         # 显示问题日期样例
         no_candidate_samples = [d for d in sample_problem_days if d['type'] == 'no_candidates']
         insufficient_samples = [d for d in sample_problem_days if d['type'] == 'insufficient']
         
         if no_candidate_samples:
-            print(f"🔍 完全无候选债的日期样例 (共{days_with_no_candidates}天):")
+            logger.info(f"🔍 完全无候选债的日期样例 (共{days_with_no_candidates}天):")
             for day in no_candidate_samples:
-                print(f"  {day['date']}: {day['total']}只债 → {day['filtered']}只被过滤 → {day['available']}只可选")
+                logger.info(f"  {day['date']}: {day['total']}只债 → {day['filtered']}只被过滤 → {day['available']}只可选")
             if days_with_no_candidates > len(no_candidate_samples):
-                print(f"  ... 还有{days_with_no_candidates - len(no_candidate_samples)}天类似情况")
-            print()
+                logger.info(f"  ... 还有{days_with_no_candidates - len(no_candidate_samples)}天类似情况")
+            logger.info("")
         
         if insufficient_samples:
-            print(f"🔍 候选不足的日期样例 (共{days_with_insufficient_candidates}天):")
+            logger.info(f"🔍 候选不足的日期样例 (共{days_with_insufficient_candidates}天):")
             for day in insufficient_samples:
-                print(f"  {day['date']}: {day['total']}只债 → {day['filtered']}只被过滤 → {day['available']}只可选 (需要{hold_num}只)")
+                logger.info(f"  {day['date']}: {day['total']}只债 → {day['filtered']}只被过滤 → {day['available']}只可选 (需要{hold_num}只)")
             if days_with_insufficient_candidates > len(insufficient_samples):
-                print(f"  ... 还有{days_with_insufficient_candidates - len(insufficient_samples)}天类似情况")
-            print()
+                logger.info(f"  ... 还有{days_with_insufficient_candidates - len(insufficient_samples)}天类似情况")
+            logger.info("")
         
         # 诊断建议
-        print(f"💡 诊断建议:")
+        logger.info(f"💡 诊断建议:")
         total_problematic = days_with_no_candidates + days_with_insufficient_candidates
         
         if coverage_ratio < 0.1:
-            print(f"  🚨 严重过拟合: 可交易覆盖率仅{coverage_ratio*100:.1f}%，请大幅放宽过滤条件")
+            logger.warning(f"  🚨 严重过拟合: 可交易覆盖率仅{coverage_ratio*100:.1f}%，请大幅放宽过滤条件")
         elif coverage_ratio < 0.3:
-            print(f"  ⚠️  中度过拟合: 可交易覆盖率{coverage_ratio*100:.1f}%，建议适当放宽过滤条件") 
+            logger.warning(f"  ⚠️  中度过拟合: 可交易覆盖率{coverage_ratio*100:.1f}%，建议适当放宽过滤条件") 
         elif coverage_ratio < 0.7:
-            print(f"  ⚡ 轻度过拟合: 可交易覆盖率{coverage_ratio*100:.1f}%，可考虑微调过滤条件")
+            logger.info(f"  ⚡ 轻度过拟合: 可交易覆盖率{coverage_ratio*100:.1f}%，可考虑微调过滤条件")
         else:
-            print(f"  ✅ 覆盖率良好: {coverage_ratio*100:.1f}%，过滤条件基本合理")
+            logger.info(f"  ✅ 覆盖率良好: {coverage_ratio*100:.1f}%，过滤条件基本合理")
         
         no_candidate_ratio = days_with_no_candidates / total_trading_days
         if no_candidate_ratio > 0.5:
-            print(f"  🔴 {no_candidate_ratio*100:.1f}%的天数完全无候选债，过滤条件过于严格")
+            logger.warning(f"  🔴 {no_candidate_ratio*100:.1f}%的天数完全无候选债，过滤条件过于严格")
         elif no_candidate_ratio > 0.2:
-            print(f"  🟡 {no_candidate_ratio*100:.1f}%的天数无候选债，需要注意")
+            logger.info(f"  🟡 {no_candidate_ratio*100:.1f}%的天数无候选债，需要注意")
         
         if avg_candidates < hold_num * 1.5:
-            print(f"  📉 平均候选数({avg_candidates:.1f})接近持仓需求({hold_num})，选择余地不足")
+            logger.warning(f"  📉 平均候选数({avg_candidates:.1f})接近持仓需求({hold_num})，选择余地不足")
         
-        print(f"{'='*70}")
+        logger.info(f"{'='*70}")
     
     # 构建结果
     result = {

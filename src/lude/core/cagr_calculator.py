@@ -11,6 +11,7 @@ import warnings
 
 import pandas as pd
 from numpy import nan
+from lude.utils.logger import optimization_logger as logger
 
 from lude.utils.cagr_utils import calculate_cagr_manually
 from lude.config.paths import DATA_DIR
@@ -97,7 +98,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
                     df.loc[df[factor_name] != threshold, 'filter'] = True
                 # print(f'应用排除条件: {factor_name} {operator} {threshold}')
             else:
-                print(f'警告: 未找到排除因子【{factor_name}】, 跳过此条件')
+                logger.warning(f'警告: 未找到排除因子【{factor_name}】, 跳过此条件')
 
     # 计算多因子得分和排名
     trade_date_group = df[df['filter'] == False].groupby('trade_date')
@@ -108,7 +109,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
             df[f'{factor["name"]}_score'] = trade_date_group[factor["name"]].rank(
                 ascending=factor['ascending']) * factor['weight']
         else:
-            print(f'未找到因子【{factor["name"]}】, 跳过')
+            logger.warning(f'未找到因子【{factor["name"]}】, 跳过')
 
     # 计算总得分和排名
     df['score'] = df[df.filter(like='score').columns].sum(axis=1, min_count=1)
@@ -223,16 +224,16 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
                 # 如果检测到过拟合，返回极小的惩罚值
                 penalty_cagr = get_overfitting_penalty_value()
                 if verbose_overfitting:
-                    print(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {penalty_cagr:.6f}")
+                    logger.warning(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {penalty_cagr:.6f}")
                 return penalty_cagr
             else:
                 if verbose_overfitting:
-                    print(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")
+                    logger.info(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")
                 return cagr
                 
         except Exception as e:
             # 过拟合检测出错时，打印警告但仍返回原始CAGR
-            print(f"过拟合检测出错: {e}")
+            logger.error(f"过拟合检测出错: {e}")
             return cagr
     else:
         # 不进行过拟合检测，直接返回CAGR
@@ -244,19 +245,19 @@ if __name__ == '__main__':
     cb_data_path = os.path.join(DATA_DIR, 'cb_data.pq')
     index_data_path = os.path.join(DATA_DIR, 'index.pq')
     
-    print(f"加载可转债数据: {cb_data_path}")
+    logger.info(f"加载可转债数据: {cb_data_path}")
     if not os.path.exists(cb_data_path):
-        print(f"错误：找不到可转债数据文件: {cb_data_path}")
+        logger.error(f"错误：找不到可转债数据文件: {cb_data_path}")
         sys.exit(1)
         
     df = pd.read_parquet(cb_data_path)
     
     # 尝试加载指数数据
     if os.path.exists(index_data_path):
-        print(f"加载指数数据: {index_data_path}")
+        logger.info(f"加载指数数据: {index_data_path}")
         index = pd.read_parquet(index_data_path)
     else:
-        print(f"警告：找不到指数数据文件: {index_data_path}")
+        logger.warning(f"警告：找不到指数数据文件: {index_data_path}")
         index = None
 
     start_date = '20220729'
@@ -277,5 +278,5 @@ if __name__ == '__main__':
     )
 
     # 打印CAGR结果
-    print("启用止盈情况的CAGR:")
-    print(cagr)
+    logger.info("启用止盈情况的CAGR:")
+    logger.info(cagr)

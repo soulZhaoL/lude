@@ -11,6 +11,7 @@ import optuna
 import numpy as np
 from datetime import datetime
 import joblib
+from lude.utils.logger import optimization_logger as logger
 
 from lude.config.paths import DATA_DIR, PROJECT_ROOT, RESULTS_DIR
 
@@ -26,13 +27,13 @@ def load_data():
     Returns:
         df: 可转债数据DataFrame
     """
-    print("正在加载数据...")
+    logger.info("正在加载数据...")
     data_path = os.path.join(DATA_DIR, "cb_data.pq")
     
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"找不到数据文件: {data_path}")
     
-    print(f"加载数据文件: {data_path}")
+    logger.info(f"加载数据文件: {data_path}")
     df = pd.read_parquet(data_path)
     return df
 
@@ -152,6 +153,6 @@ def filter_redundant_factors(factors, threshold=0.8):
             for factor in existing_factors[1:]:
                 if factor in filtered_factors:
                     filtered_factors.remove(factor)
-                    print(f"移除冗余因子: {factor} (与 {keep_factor} 冗余)")
+                    logger.info(f"移除冗余因子: {factor} (与 {keep_factor} 冗余)")
 
     return list(filtered_factors)

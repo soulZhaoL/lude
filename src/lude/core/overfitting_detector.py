@@ -10,6 +10,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional
+from lude.utils.logger import optimization_logger as logger
 
 
 def check_overfitting(df: pd.DataFrame, 
@@ -252,89 +253,89 @@ def print_overfitting_report(check_results: Dict) -> None:
     参数：
         check_results: 检查结果字典
     """
-    print("=" * 60)
-    print("过拟合检查结果:")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("过拟合检查结果:")
+    logger.info("=" * 60)
     
     # 1. 交易日覆盖率 - 修正后的显示
     coverage = check_results['trading_days_coverage']
-    print(f"1. 交易日覆盖率: {coverage['coverage_ratio']:.2%} ({coverage['days_with_sufficient_candidates']}/{coverage['total_trading_days']})")
-    print(f"   有充足候选债: {coverage['days_with_sufficient_candidates']} 天")
-    print(f"   候选债不足:   {coverage['days_with_insufficient_candidates']} 天")
-    print(f"   完全无候选债: {coverage['days_with_no_candidates']} 天")
-    print(f"   状态: {'✓ 通过' if coverage['passed'] else '✗ 未通过'}")
+    logger.info(f"1. 交易日覆盖率: {coverage['coverage_ratio']:.2%} ({coverage['days_with_sufficient_candidates']}/{coverage['total_trading_days']})")
+    logger.info(f"   有充足候选债: {coverage['days_with_sufficient_candidates']} 天")
+    logger.info(f"   候选债不足:   {coverage['days_with_insufficient_candidates']} 天")
+    logger.info(f"   完全无候选债: {coverage['days_with_no_candidates']} 天")
+    logger.info(f"   状态: {'✓ 通过' if coverage['passed'] else '✗ 未通过'}")
     
     # 2. 候选池充足性
     pool = check_results['candidate_pool_sufficiency']
-    print(f"2. 候选池充足性:")
-    print(f"   平均每日候选数: {pool['avg_daily_candidates']:.1f}")
-    print(f"   最少单日候选数: {pool['min_daily_candidates']}")
-    print(f"   候选不足天数: {pool['insufficient_days_count']} ({pool['insufficient_days_ratio']:.2%})")
-    print(f"   状态: {'✓ 通过' if pool['passed'] else '✗ 未通过'}")
+    logger.info(f"2. 候选池充足性:")
+    logger.info(f"   平均每日候选数: {pool['avg_daily_candidates']:.1f}")
+    logger.info(f"   最少单日候选数: {pool['min_daily_candidates']}")
+    logger.info(f"   候选不足天数: {pool['insufficient_days_count']} ({pool['insufficient_days_ratio']:.2%})")
+    logger.info(f"   状态: {'✓ 通过' if pool['passed'] else '✗ 未通过'}")
     
     # 3. 选股集中度
     if check_results['stock_concentration']:
         conc = check_results['stock_concentration']
-        print(f"3. 选股集中度:")
-        print(f"   总选择标的数: {conc['total_unique_stocks']}")
-        print(f"   最高频标的占比: {conc['top_stock_ratio']:.2%}")
-        print(f"   前5标的占比: {conc['top5_stocks_ratio']:.2%}")
+        logger.info(f"3. 选股集中度:")
+        logger.info(f"   总选择标的数: {conc['total_unique_stocks']}")
+        logger.info(f"   最高频标的占比: {conc['top_stock_ratio']:.2%}")
+        logger.info(f"   前5标的占比: {conc['top5_stocks_ratio']:.2%}")
     else:
-        print("3. 选股集中度: 无数据")
+        logger.info("3. 选股集中度: 无数据")
     
     # 4. 时间段稳定性
     if check_results['time_stability']:
         stab = check_results['time_stability']
-        print(f"4. 时间段稳定性:")
-        print(f"   各季度CAGR: {[f'{x:.2%}' for x in stab['quarters_cagr']]}")
-        print(f"   变异系数: {stab['cagr_cv']:.2f}")
+        logger.info(f"4. 时间段稳定性:")
+        logger.info(f"   各季度CAGR: {[f'{x:.2%}' for x in stab['quarters_cagr']]})")
+        logger.info(f"   变异系数: {stab['cagr_cv']:.2f}")
     else:
-        print("4. 时间段稳定性: 数据不足")
+        logger.info("4. 时间段稳定性: 数据不足")
     
     # 5. 极端收益贡献 - 详细版
     if check_results['extreme_return_contribution']:
         extreme = check_results['extreme_return_contribution']
-        print(f"5. 极端收益贡献:")
-        print(f"   总交易日数: {extreme['total_trading_days']}")
-        print(f"   平均日收益: {extreme['avg_daily_return']:.4f} ({extreme['avg_daily_return']*100:.2f}%)")
-        print(f"   收益中位数: {extreme['median_daily_return']:.4f} ({extreme['median_daily_return']*100:.2f}%)")
-        print(f"   最大日收益: {extreme['max_daily_return']:.4f} ({extreme['max_daily_return']*100:.2f}%)")
-        print(f"   最小日收益: {extreme['min_daily_return']:.4f} ({extreme['min_daily_return']*100:.2f}%)")
-        print(f"   总收益: {extreme['total_return']:.4f} ({extreme['total_return']*100:.2f}%)")
-        print(f"   ")
-        print(f"   收益分布: 正收益{extreme['positive_days']}天, 负收益{extreme['negative_days']}天, 零收益{extreme['zero_days']}天")
-        print(f"   ")
-        print(f"   前5%分析 (按分位数95%):")
-        print(f"     阈值: {extreme['top_5pct_threshold']:.4f} ({extreme['top_5pct_threshold']*100:.2f}%)")
-        print(f"     天数: {extreme['top_5pct_days_count']} 天")
-        print(f"     贡献: {extreme['top_5pct_days_contribution']:.2%}")
-        print(f"   ")
-        print(f"   前5%分析 (按排名):")
-        print(f"     天数: {extreme['top_5pct_count_by_rank']} 天")
-        print(f"     贡献: {extreme['top_5pct_by_rank_contribution']:.2%}")
-        print(f"   ")
-        print(f"   极端分析:")
-        print(f"     最高1天贡献: {extreme['top_1_day_contribution']:.2%}")
-        print(f"     最高3天贡献: {extreme['top_3_days_contribution']:.2%}")
+        logger.info(f"5. 极端收益贡献:")
+        logger.info(f"   总交易日数: {extreme['total_trading_days']}")
+        logger.info(f"   平均日收益: {extreme['avg_daily_return']:.4f} ({extreme['avg_daily_return']*100:.2f}%)")
+        logger.info(f"   收益中位数: {extreme['median_daily_return']:.4f} ({extreme['median_daily_return']*100:.2f}%)")
+        logger.info(f"   最大日收益: {extreme['max_daily_return']:.4f} ({extreme['max_daily_return']*100:.2f}%)")
+        logger.info(f"   最小日收益: {extreme['min_daily_return']:.4f} ({extreme['min_daily_return']*100:.2f}%)")
+        logger.info(f"   总收益: {extreme['total_return']:.4f} ({extreme['total_return']*100:.2f}%)")
+        logger.info(f"   ")
+        logger.info(f"   收益分布: 正收益{extreme['positive_days']}天, 负收益{extreme['negative_days']}天, 零收益{extreme['zero_days']}天")
+        logger.info(f"   ")
+        logger.info(f"   前5%分析 (按分位数95%):")
+        logger.info(f"     阈值: {extreme['top_5pct_threshold']:.4f} ({extreme['top_5pct_threshold']*100:.2f}%)")
+        logger.info(f"     天数: {extreme['top_5pct_days_count']} 天")
+        logger.info(f"     贡献: {extreme['top_5pct_days_contribution']:.2%}")
+        logger.info(f"   ")
+        logger.info(f"   前5%分析 (按排名):")
+        logger.info(f"     天数: {extreme['top_5pct_count_by_rank']} 天")
+        logger.info(f"     贡献: {extreme['top_5pct_by_rank_contribution']:.2%}")
+        logger.info(f"   ")
+        logger.info(f"   极端分析:")
+        logger.info(f"     最高1天贡献: {extreme['top_1_day_contribution']:.2%}")
+        logger.info(f"     最高3天贡献: {extreme['top_3_days_contribution']:.2%}")
         
         # 显示具体的前5%收益值
         if len(extreme.get('top_5pct_by_rank_returns', [])) > 0:
-            print(f"   ")
-            print(f"   前5%交易日收益明细:")
+            logger.info(f"   ")
+            logger.info(f"   前5%交易日收益明细:")
             for i, ret in enumerate(extreme['top_5pct_by_rank_returns'][:10]):  # 最多显示10个
-                print(f"     第{i+1}名: {ret:.4f} ({ret*100:.2f}%)")
+                logger.info(f"     第{i+1}名: {ret:.4f} ({ret*100:.2f}%)")
     else:
-        print("5. 极端收益贡献: 无数据")
+        logger.info("5. 极端收益贡献: 无数据")
     
     # 总体结果
     overall = check_results['overall']
-    print("=" * 60)
-    print(f"总体检查结果: {'✓ 通过' if overall['passed'] else '✗ 检测到过拟合'}")
+    logger.info("=" * 60)
+    logger.info(f"总体检查结果: {'✓ 通过' if overall['passed'] else '✗ 检测到过拟合'}")
     if overall['warning_messages']:
-        print("警告信息:")
+        logger.warning("警告信息:")
         for msg in overall['warning_messages']:
-            print(f"  - {msg}")
-    print("=" * 60)
+            logger.warning(f"  - {msg}")
+    logger.info("=" * 60)
 
 
 def get_overfitting_penalty_value() -> float:

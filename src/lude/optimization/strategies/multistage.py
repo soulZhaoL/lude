@@ -226,11 +226,11 @@ def _get_first_stage_results(first_stage_study, first_stage_combinations, num_fa
             direction = "升序" if ascending else "降序"
             logger.info(f"  {i + 1}. {factor}")
             logger.info(f"     - 权重: {weight}")
-            print(f"     - 排序方向: {direction}")
+            logger.info(f"     - 排序方向: {direction}")
         
         return best_params, best_value, best_combination
     else:
-        print("无法获取第一阶段最佳因子组合")
+        logger.warning("无法获取第一阶段最佳因子组合")
         return None, None, None
 
 
@@ -247,7 +247,7 @@ def _prepare_second_stage_combinations(factors, num_factors, best_combination, m
     Returns:
         second_stage_combinations: 第二阶段因子组合列表
     """
-    print("准备第二阶段因子组合...")
+    logger.info("准备第二阶段因子组合...")
     
     # 生成第二阶段的因子组合
     # 策略：从最佳组合开始，替换1-2个因子生成新组合
@@ -284,7 +284,7 @@ def _prepare_second_stage_combinations(factors, num_factors, best_combination, m
         indices = np.random.choice(len(second_stage_combinations), max_second_stage, replace=False)
         second_stage_combinations = [second_stage_combinations[i] for i in indices]
 
-    print(f"第二阶段将探索 {len(second_stage_combinations)} 个因子组合")
+    logger.info(f"第二阶段将探索 {len(second_stage_combinations)} 个因子组合")
     
     return second_stage_combinations
 
@@ -332,10 +332,10 @@ def _add_first_stage_best_to_second_stage(second_stage_study, first_stage_best_p
             value=first_stage_best_value
         )
         second_stage_study.add_trial(trial)
-        print("成功将第一阶段最佳参数添加到第二阶段研究中")
+        logger.info("成功将第一阶段最佳参数添加到第二阶段研究中")
     except Exception as e:
-        print(f"添加第一阶段最佳参数到第二阶段时出错: {e}")
-        print("继续执行第二阶段...")
+        logger.error(f"添加第一阶段最佳参数到第二阶段时出错: {e}")
+        logger.warning("继续执行第二阶段...")
 
 
 def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_best_params, 
@@ -356,7 +356,7 @@ def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_b
         second_stage_study: 第二阶段研究
         second_stage_combinations: 第二阶段因子组合
     """
-    print("\n===== 第二阶段：优化权重和排序方向 =====")
+    logger.info("\n===== 第二阶段：优化权重和排序方向 =====")
     
     # 获取第一阶段最佳组合
     best_combination_idx = first_stage_best_params['combination_idx']
@@ -391,9 +391,9 @@ def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_b
             gc_after_trial=True
         )
     except KeyboardInterrupt:
-        print("用户中断了第二阶段优化")
+        logger.warning("用户中断了第二阶段优化")
     except Exception as e:
-        print(f"第二阶段优化出错: {e}")
+        logger.error(f"第二阶段优化出错: {e}")
     
     return second_stage_study, second_stage_combinations
 
@@ -455,16 +455,16 @@ def _create_final_study_and_merge_results(args, first_stage_study, first_stage_c
     
     # 决定使用哪个阶段的结果
     if abs(value_diff) < 0.0001:
-        print(f"第二阶段结果 ({second_stage_best_value:.6f}) 与第一阶段 ({first_stage_best_value:.6f}) 基本相同")
-        print("使用第二阶段的最佳结果")
+        logger.info(f"第二阶段结果 ({second_stage_best_value:.6f}) 与第一阶段 ({first_stage_best_value:.6f}) 基本相同")
+        logger.info("使用第二阶段的最佳结果")
         use_second_stage = True
     elif value_diff < 0:
-        print(f"第一阶段结果 ({first_stage_best_value:.6f}) 优于第二阶段 ({second_stage_best_value:.6f})")
-        print("使用第一阶段的最佳结果")
+        logger.info(f"第一阶段结果 ({first_stage_best_value:.6f}) 优于第二阶段 ({second_stage_best_value:.6f})")
+        logger.info("使用第一阶段的最佳结果")
         use_second_stage = False
     else:
-        print(f"第二阶段结果 ({second_stage_best_value:.6f}) 优于第一阶段 ({first_stage_best_value:.6f})")
-        print("使用第二阶段的最佳结果")
+        logger.info(f"第二阶段结果 ({second_stage_best_value:.6f}) 优于第一阶段 ({first_stage_best_value:.6f})")
+        logger.info("使用第二阶段的最佳结果")
         use_second_stage = True
     
     # 根据选择添加最佳结果到最终研究
@@ -504,14 +504,14 @@ def _create_final_study_and_merge_results(args, first_stage_study, first_stage_c
         setattr(final_study, 'best_rank_factors', rank_factors)
         
         # 打印最佳结果
-        print(f"\n最佳因子组合 (CAGR: {best_value:.6f}):")
+        logger.info(f"\n最佳因子组合 (CAGR: {best_value:.6f}):")
         for i, factor in enumerate(rank_factors):
-            print(f"  {i + 1}. {factor['name']}")
-            print(f"     - 权重: {factor['weight']}")
-            print(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
+            logger.info(f"  {i + 1}. {factor['name']}")
+            logger.info(f"     - 权重: {factor['weight']}")
+            logger.info(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
         
     except Exception as e:
-        print(f"创建最终研究时出错: {e}")
+        logger.error(f"创建最终研究时出错: {e}")
     
     # 返回所有探索过的因子组合
     all_combinations = list(set(first_stage_combinations + second_stage_combinations))
@@ -537,7 +537,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         combinations: 所有探索过的因子组合
         final_study: 最终的优化研究
     """
-    print(f"执行多阶段优化策略...")
+    logger.info(f"执行多阶段优化策略...")
     
     # 第一阶段：探索因子组合
     first_stage_study, first_stage_combinations = _run_first_stage_optimization(
@@ -616,5 +616,5 @@ def objective(trial, df, factors, factor_combinations, args):
 
         return cagr
     except Exception as e:
-        print(f"计算CAGR时出错: {e}")
+        logger.error(f"计算CAGR时出错: {e}")
         raise optuna.exceptions.TrialPruned()

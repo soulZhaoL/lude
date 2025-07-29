@@ -10,6 +10,7 @@ import os
 import sys
 
 import numpy as np
+from lude.utils.logger import optimization_logger as logger
 
 # 修改为绝对导入路径
 from lude.core.cagr_calculator import calculate_bonds_cagr
@@ -187,7 +188,7 @@ def domain_knowledge_combinations(df, num_factors, max_combinations=50000):
 
     # 检查数据框中存在的因子
     existing_factors = [f for f in all_factors if f in df.columns]
-    print(f"数据中存在 {len(existing_factors)}/{len(all_factors)} 个因子")
+    logger.info(f"数据中存在 {len(existing_factors)}/{len(all_factors)} 个因子")
 
     # 根据领域知识生成组合
     # 策略: 从不同的因子组中选择因子，确保多样性
@@ -248,7 +249,7 @@ def domain_knowledge_combinations(df, num_factors, max_combinations=50000):
         np.random.shuffle(combinations)
         combinations = combinations[:max_combinations]
 
-    print(f"生成了 {len(combinations)} 个因子组合")
+    logger.info(f"生成了 {len(combinations)} 个因子组合")
     return existing_factors, combinations
 
 
@@ -265,7 +266,7 @@ def prescreen_factors(df, factors, top_n=30, args=None):
         top_factors: 筛选后的顶部因子
         combinations: 因子组合列表
     """
-    print(f"预筛选单因子性能...")
+    logger.info(f"预筛选单因子性能...")
 
     # 计算每个单因子的性能
     factor_performance = {}
@@ -304,9 +305,9 @@ def prescreen_factors(df, factors, top_n=30, args=None):
                     'ascending': ascending,
                     'cagr': cagr
                 }
-                print(f"因子: {factor} ({direction}) - CAGR: {cagr:.6f}")
+                logger.info(f"因子: {factor} ({direction}) - CAGR: {cagr:.6f}")
             except Exception as e:
-                print(f"计算因子 {factor} ({direction}) 性能时出错: {e}")
+                logger.error(f"计算因子 {factor} ({direction}) 性能时出错: {e}")
 
     # 按CAGR排序
     sorted_performance = sorted(
@@ -326,7 +327,7 @@ def prescreen_factors(df, factors, top_n=30, args=None):
     for combo in itertools.combinations(range(len(top_factor_names)), args.n_factors if args else 3):
         combinations.append(tuple(combo))
 
-    print(f"从 {len(top_factor_names)} 个顶部因子中生成了 {len(combinations)} 个组合")
+    logger.info(f"从 {len(top_factor_names)} 个顶部因子中生成了 {len(combinations)} 个组合")
     return top_factor_names, combinations
 
 
@@ -347,15 +348,15 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
     """
     if strategy == 'domain':
         # 使用领域知识生成组合
-        print("使用领域知识生成组合")
+        logger.info("使用领域知识生成组合")
         return domain_knowledge_combinations(df, num_factors, max_combinations)
     elif strategy == 'prescreen':
         # 使用预筛选策略
-        print("使用预筛选策略")
+        logger.info("使用预筛选策略")
         return prescreen_factors(df, factors, top_n=30, args=args)
     elif strategy == 'filter':
         # 使用冗余因子过滤策略
-        print("使用冗余因子过滤策略")
+        logger.info("使用冗余因子过滤策略")
         from lude.utils.common_utils import filter_redundant_factors
         filtered_factors = filter_redundant_factors(factors)
 
@@ -370,9 +371,9 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
             indices = np.random.choice(len(combinations), max_combinations, replace=False)
             combinations = [combinations[i] for i in indices]
 
-        print(f"从 {len(filtered_factors)} 个过滤后的因子中生成了 {len(combinations)} 个组合")
+        logger.info(f"从 {len(filtered_factors)} 个过滤后的因子中生成了 {len(combinations)} 个组合")
         return filtered_factors, combinations
     else:
         # 默认使用领域知识
-        print("使用领域知识生成组合")
+        logger.info("使用领域知识生成组合")
         return domain_knowledge_combinations(df, num_factors, max_combinations)

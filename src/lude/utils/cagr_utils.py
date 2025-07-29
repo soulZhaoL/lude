@@ -7,6 +7,7 @@ CAGR（复合年化增长率）计算工具
 import pandas as pd
 import numpy as np
 from typing import Union, Sequence
+from lude.utils.logger import optimization_logger as logger
 
 
 def calculate_cagr_manually(returns: Union[pd.Series, Sequence[float]], 
@@ -209,4 +210,4 @@ if __name__ == "__main__":
     test_end_date = "20250105"
     
     test_results = compare_cagr_methods(test_returns, test_start_date, test_end_date)
-    print(format_cagr_results(test_results))
+    logger.info(format_cagr_results(test_results))
