@@ -253,85 +253,43 @@ def domain_knowledge_combinations(df, num_factors, max_combinations=50000):
     return existing_factors, combinations
 
 
-def prescreen_factors(df, factors, top_n=30, args=None):
-    """预筛选最有潜力的单因子
+def prescreen_factors(df, factors, top_n=30, args=None, enable_filter_opt=False):
+    """预筛选最有潜力的单因子 - 简化版本，推荐使用multistage策略
     
     Args:
         df: 数据框
         factors: 因子列表
         top_n: 选择的顶部因子数量
         args: 参数
+        enable_filter_opt: 是否启用过滤优化（当前不支持，建议使用multistage策略）
         
     Returns:
         top_factors: 筛选后的顶部因子
         combinations: 因子组合列表
     """
-    logger.info(f"预筛选单因子性能...")
-
-    # 计算每个单因子的性能
-    factor_performance = {}
-    for factor in factors:
-        if factor not in df.columns:
-            continue
-
-        # 测试升序和降序
-        for ascending in [True, False]:
-            # 设置排序方向
-            direction = "升序" if ascending else "降序"
-
-            # 创建单因子配置
-            rank_factors = [{
-                'name': factor,
-                'weight': 1,
-                'ascending': ascending
-            }]
-
-            # 计算CAGR
-            try:
-                cagr = calculate_bonds_cagr(
-                    df,
-                    start_date=args.start_date if args else '20220729',
-                    end_date=args.end_date if args else '20250328',
-                    hold_num=args.hold_num if args else 5,
-                    threshold_num=None,
-                    min_price=args.price_min if args else 100,
-                    max_price=args.price_max if args else 150,
-                    rank_factors=rank_factors,
-                )
-
-                factor_key = f"{factor}_{direction}"
-                factor_performance[factor_key] = {
-                    'factor': factor,
-                    'ascending': ascending,
-                    'cagr': cagr
-                }
-                logger.info(f"因子: {factor} ({direction}) - CAGR: {cagr:.6f}")
-            except Exception as e:
-                logger.error(f"计算因子 {factor} ({direction}) 性能时出错: {e}")
-
-    # 按CAGR排序
-    sorted_performance = sorted(
-        factor_performance.values(),
-        key=lambda x: x['cagr'],
-        reverse=True
-    )
-
-    # 选择顶部因子
-    top_factors = sorted_performance[:top_n]
-
-    # 提取因子名称
-    top_factor_names = [item['factor'] for item in top_factors]
-
-    # 生成所有可能的组合
+    logger.warning("prescreen策略已简化，推荐使用multistage策略以获得完整功能")
+    
+    if enable_filter_opt:
+        logger.warning("prescreen策略不支持过滤优化，请使用multistage策略")
+    
+    # 简化实现：直接使用领域知识选择因子
+    all_factors, factor_groups = domain_knowledge_factors()
+    existing_factors = [f for f in all_factors if f in df.columns]
+    
+    # 选择前top_n个因子
+    selected_factors = existing_factors[:min(top_n, len(existing_factors))]
+    
+    # 生成组合
     combinations = []
-    for combo in itertools.combinations(range(len(top_factor_names)), args.n_factors if args else 3):
+    num_factors = args.n_factors if args else 3
+    for combo in itertools.combinations(range(len(selected_factors)), num_factors):
         combinations.append(tuple(combo))
+    
+    logger.info(f"预筛选策略：选择了 {len(selected_factors)} 个因子，生成 {len(combinations)} 个组合")
+    return selected_factors, combinations
 
-    logger.info(f"从 {len(top_factor_names)} 个顶部因子中生成了 {len(combinations)} 个组合")
-    return top_factor_names, combinations
 
-
-def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=50000):
+def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=50000, enable_filter_opt=False):
     """根据选择的策略生成因子组合
     
     Args:
@@ -341,11 +299,21 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         num_factors: 因子数量
         args: 参数
         max_combinations: 最大组合数量
+        enable_filter_opt: 是否启用过滤优化
         
     Returns:
         factors: 因子列表
         combinations: 因子组合列表
     """
+    # 为非multistage策略提供向后兼容性，但建议使用multistage
+    if strategy == 'multistage':
+        logger.error("multistage策略应该直接调用multistage_optimization函数，而不是通过choose_strategy")
+        # 提供错误信息后，回退到领域知识策略
+        strategy = 'domain'
+    
+    if enable_filter_opt and strategy != 'multistage':
+        logger.warning(f"{strategy}策略不完全支持过滤优化，建议使用multistage策略")
+    
     if strategy == 'domain':
         # 使用领域知识生成组合
         logger.info("使用领域知识生成组合")
@@ -353,7 +321,7 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
     elif strategy == 'prescreen':
         # 使用预筛选策略
         logger.info("使用预筛选策略")
-        return prescreen_factors(df, factors, top_n=30, args=args)
+        return prescreen_factors(df, factors, top_n=30, args=args, enable_filter_opt=enable_filter_opt)
     elif strategy == 'filter':
         # 使用冗余因子过滤策略
         logger.info("使用冗余因子过滤策略")
@@ -372,8 +340,8 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
             combinations = [combinations[i] for i in indices]
 
         logger.info(f"从 {len(filtered_factors)} 个过滤后的因子中生成了 {len(combinations)} 个组合")
-        return filtered_factors, combinations
+        return filtered_factors, combinations  
     else:
-        # 默认使用领域知识
-        logger.info("使用领域知识生成组合")
+        # 默认使用领域知识，并记录警告
+        logger.warning(f"未知策略 '{strategy}'，回退到领域知识策略")
         return domain_knowledge_combinations(df, num_factors, max_combinations)

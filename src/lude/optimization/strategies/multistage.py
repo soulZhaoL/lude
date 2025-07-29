@@ -16,13 +16,14 @@ from lude.core.cagr_calculator import calculate_bonds_cagr
 from lude.utils.common_utils import RESULTS_DIR  # 导入结果目录常量
 from lude.utils.logger import optimization_logger as logger
 
-def _create_objective_function(df, combinations, args):
+def _create_objective_function(df, combinations, args, enable_filter_opt=False):
     """创建优化目标函数
     
     Args:
         df: 数据框
         combinations: 因子组合列表
         args: 参数
+        enable_filter_opt: 是否启用过滤优化
         
     Returns:
         objective: 目标函数
@@ -44,6 +45,26 @@ def _create_objective_function(df, combinations, args):
                 'ascending': ascending
             })
 
+        # 生成过滤条件（如果启用）
+        filter_conditions = None
+        if enable_filter_opt:
+            try:
+                from lude.utils.filter_generator import create_filter_conditions_for_trial
+                # 获取数据中可用的因子列表
+                available_factors = [col for col in df.columns if col not in ['date', 'bond_id', 'bond_nm', 'stock_id']]
+                filter_conditions = create_filter_conditions_for_trial(trial, available_factors)
+                
+                # 记录生成的过滤条件
+                if filter_conditions:
+                    trial.set_user_attr("filter_conditions", filter_conditions)
+                    logger.debug(f"Trial {trial.number}: 生成了 {len(filter_conditions)} 个过滤条件")
+                else:
+                    logger.debug(f"Trial {trial.number}: 未生成过滤条件")
+                    
+            except Exception as e:
+                logger.error(f"生成过滤条件时出错: {e}")
+                filter_conditions = None
+
         # 计算CAGR
         try:
             cagr = calculate_bonds_cagr(
@@ -55,6 +76,7 @@ def _create_objective_function(df, combinations, args):
                 min_price=args.price_min if args else 100,
                 max_price=args.price_max if args else 150,
                 rank_factors=rank_factors,
+                filter_conditions=filter_conditions,  # 传递过滤条件
             )
 
             # 保存rank_factors到trial
@@ -141,7 +163,7 @@ def _create_study(study_name, args, sampler_type="random"):
     return study
 
 
-def _run_first_stage_optimization(df, factors, num_factors, args, max_combinations):
+def _run_first_stage_optimization(df, factors, num_factors, args, max_combinations, enable_filter_opt=False):
     """运行第一阶段优化
     
     Args:
@@ -150,6 +172,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
         num_factors: 因子数量
         args: 参数
         max_combinations: 最大组合数量
+        enable_filter_opt: 是否启用过滤优化
         
     Returns:
         first_stage_study: 第一阶段研究
@@ -165,7 +188,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     first_stage_study = _create_study(study_name, args, "random")
     
     # 创建目标函数
-    objective_func = _create_objective_function(df, first_stage_combinations, args)
+    objective_func = _create_objective_function(df, first_stage_combinations, args, enable_filter_opt)
     
     # 执行第一阶段优化
     n_trials_first_stage = min(args.n_trials // 2, 2000)
@@ -339,7 +362,7 @@ def _add_first_stage_best_to_second_stage(second_stage_study, first_stage_best_p
 
 
 def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_best_params, 
-                                  first_stage_best_value, first_stage_combinations, max_combinations):
+                                  first_stage_best_value, first_stage_combinations, max_combinations, enable_filter_opt=False):
     """运行第二阶段优化
     
     Args:
@@ -351,6 +374,7 @@ def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_b
         first_stage_best_value: 第一阶段最佳值
         first_stage_combinations: 第一阶段因子组合
         max_combinations: 最大组合数量
+        enable_filter_opt: 是否启用过滤优化
         
     Returns:
         second_stage_study: 第二阶段研究
@@ -376,7 +400,7 @@ def _run_second_stage_optimization(df, factors, num_factors, args, first_stage_b
         second_stage_combinations, num_factors)
     
     # 创建目标函数
-    objective_func = _create_objective_function(df, second_stage_combinations, args)
+    objective_func = _create_objective_function(df, second_stage_combinations, args, enable_filter_opt)
     
     # 执行第二阶段优化
     n_trials_first_stage = min(args.n_trials // 2, 2000)
@@ -541,7 +565,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
     
     # 第一阶段：探索因子组合
     first_stage_study, first_stage_combinations = _run_first_stage_optimization(
-        df, factors, num_factors, args, max_combinations)
+        df, factors, num_factors, args, max_combinations, enable_filter_opt)
     
     # 获取第一阶段结果
     first_stage_best_params, first_stage_best_value, best_combination = _get_first_stage_results(
@@ -554,7 +578,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
     # 第二阶段：优化权重和排序方向
     second_stage_study, second_stage_combinations = _run_second_stage_optimization(
         df, factors, num_factors, args, first_stage_best_params, 
-        first_stage_best_value, first_stage_combinations, max_combinations)
+        first_stage_best_value, first_stage_combinations, max_combinations, enable_filter_opt)
     
     # 创建最终研究并合并结果
     final_study, all_combinations = _create_final_study_and_merge_results(
