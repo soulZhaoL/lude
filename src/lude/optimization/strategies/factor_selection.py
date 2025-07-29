@@ -289,8 +289,14 @@ def prescreen_factors(df, factors, top_n=30, args=None, enable_filter_opt=False)
     return selected_factors, combinations
 
 
+# NOTE: choose_strategy函数已被弃用，请使用lude.optimization.strategies.strategy_runner.run_strategy
+# 保留此函数仅为向后兼容性，但建议直接使用统一的策略运行器
+
 def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=50000, enable_filter_opt=False):
-    """根据选择的策略生成因子组合
+    """
+    [已弃用] 根据选择的策略生成因子组合
+    
+    注意：此函数已弃用，请使用 lude.optimization.strategies.strategy_runner.run_strategy
     
     Args:
         strategy: 策略名称
@@ -305,25 +311,15 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         factors: 因子列表
         combinations: 因子组合列表
     """
-    # 为非multistage策略提供向后兼容性，但建议使用multistage
-    if strategy == 'multistage':
-        logger.error("multistage策略应该直接调用multistage_optimization函数，而不是通过choose_strategy")
-        # 提供错误信息后，回退到领域知识策略
-        strategy = 'domain'
-    
-    if enable_filter_opt and strategy != 'multistage':
-        logger.warning(f"{strategy}策略不完全支持过滤优化，建议使用multistage策略")
+    logger.warning("choose_strategy函数已弃用，建议使用strategy_runner.run_strategy统一接口")
     
     if strategy == 'domain':
-        # 使用领域知识生成组合
         logger.info("使用领域知识生成组合")
         return domain_knowledge_combinations(df, num_factors, max_combinations)
     elif strategy == 'prescreen':
-        # 使用预筛选策略
         logger.info("使用预筛选策略")
         return prescreen_factors(df, factors, top_n=30, args=args, enable_filter_opt=enable_filter_opt)
     elif strategy == 'filter':
-        # 使用冗余因子过滤策略
         logger.info("使用冗余因子过滤策略")
         from lude.utils.common_utils import filter_redundant_factors
         filtered_factors = filter_redundant_factors(factors)
@@ -342,6 +338,5 @@ def choose_strategy(strategy, df, factors, num_factors, args, max_combinations=5
         logger.info(f"从 {len(filtered_factors)} 个过滤后的因子中生成了 {len(combinations)} 个组合")
         return filtered_factors, combinations  
     else:
-        # 默认使用领域知识，并记录警告
         logger.warning(f"未知策略 '{strategy}'，回退到领域知识策略")
         return domain_knowledge_combinations(df, num_factors, max_combinations)

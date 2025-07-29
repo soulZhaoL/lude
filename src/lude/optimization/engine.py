@@ -67,59 +67,13 @@ def run_optimization(df, args):
     enable_filter_opt = getattr(args, 'enable_filter_opt', False)
     logger.info(f"过滤优化状态: {'启用' if enable_filter_opt else '禁用'}")
 
-    # 根据策略选择不同的优化路径
-    if args.strategy == 'multistage':
-        # 多阶段优化策略：直接执行多阶段优化，内部会处理因子组合生成
-        from lude.optimization.strategies.multistage import multistage_optimization
-        factors, factor_combinations, study = multistage_optimization(
-            df, factors, args.n_factors, args, max_combinations=50000,
-            enable_filter_opt=enable_filter_opt
-        )
-    else:
-        # 其他策略：使用choose_strategy生成因子组合
-        from lude.optimization.strategies.factor_selection import choose_strategy
-        
-        factors, factor_combinations = choose_strategy(
-            args.strategy, df, factors, args.n_factors, args, max_combinations=50000,
-            enable_filter_opt=enable_filter_opt
-        )
-        
-        # 创建研究
-        study_name = f"{args.strategy}_{args.method}_{args.n_factors}factors_{args.seed}"
-        # 将数据库文件保存到optimization_results目录
-        db_path = os.path.join(RESULTS_DIR, f"{study_name}.db")
-        storage_name = f"sqlite:///{db_path}"
-
-        try:
-            # 尝试加载已有的研究
-            study = optuna.load_study(study_name=study_name, storage=storage_name)
-            logger.info(f"加载已有的研究，已完成 {len(study.trials)} 次试验")
-        except:
-            # 创建新的研究
-            study = optuna.create_study(
-                study_name=study_name,
-                storage=storage_name,
-                direction="maximize",
-                sampler=create_sampler(args.method, args.seed),
-                load_if_exists=True
-            )
-            logger.info("创建新的研究")
-
-        # 定义目标函数
-        from lude.optimization.strategies.multistage import objective
-
-        # 执行优化
-        try:
-            study.optimize(
-                lambda trial: objective(trial, df, factors, factor_combinations, args),
-                n_trials=args.n_trials,
-                n_jobs=args.n_jobs,
-                gc_after_trial=True
-            )
-        except KeyboardInterrupt:
-            logger.warning("用户中断了优化")
-        except Exception as e:
-            logger.error(f"优化过程出错: {e}")
+    # 统一调用策略运行器
+    from lude.optimization.strategies.strategy_runner import run_strategy
+    
+    factors, factor_combinations, study = run_strategy(
+        args.strategy, df, factors, args.n_factors, args, 
+        max_combinations=50000, enable_filter_opt=enable_filter_opt
+    )
 
     # 打印最佳结果
     if len(study.trials) > 0:
@@ -152,33 +106,14 @@ def run_optimization(df, args):
                 if 'combination_idx' in study.best_params:
                     combination_idx = study.best_params['combination_idx']
 
-                    # 根据策略获取正确的组合
-                    if args.strategy == 'multistage':
-                        from lude.optimization.strategies.multistage import multistage_optimization
-                        # 使用一个很小的dummy函数绕过完整优化过程获取组合
-                        def dummy_objective(*args, **kwargs):
-                            return 0
-
-                        # 伪造一个study对象防止覆盖原始数据
-                        dummy_study = optuna.create_study()
-                        # 绕过优化过程直接获取第二阶段组合
-                        _, second_stage_combinations, _ = multistage_optimization(
-                            df, factors, args.n_factors, args, max_combinations=1
-                        )
-                        if combination_idx < len(second_stage_combinations):
-                            combination = second_stage_combinations[combination_idx]
-                        else:
-                            logger.warning(f"警告: combination_idx={combination_idx}超出组合范围")
-                            combination = None
+                    # 从factor_combinations获取组合
+                    if combination_idx < len(factor_combinations):
+                        combination_indices = factor_combinations[combination_idx]
+                        combination = [factors[i] for i in combination_indices] if isinstance(
+                            combination_indices[0], int) else combination_indices
                     else:
-                        # 从factor_combinations获取组合
-                        if combination_idx < len(factor_combinations):
-                            combination_indices = factor_combinations[combination_idx]
-                            combination = [factors[i] for i in combination_indices] if isinstance(
-                                combination_indices[0], int) else combination_indices
-                        else:
-                            logger.warning(f"警告: combination_idx={combination_idx}超出组合范围")
-                            combination = None
+                        logger.warning(f"警告: combination_idx={combination_idx}超出组合范围")
+                        combination = None
 
                     # 如果成功获取到组合，重建rank_factors
                     if combination:
