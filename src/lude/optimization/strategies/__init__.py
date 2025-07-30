@@ -6,10 +6,9 @@
 """
 
 from .factor_selection import choose_strategy
-from .multistage import multistage_optimization, objective
+from .multistage import multistage_optimization
 
 __all__ = [
     'choose_strategy',
-    'multistage_optimization', 
-    'objective'
+    'multistage_optimization'
 ]

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source:*)",
+      "Bash(conda activate:*)",
+      "Bash(python test_multistage_optimization.py:*)",
+      "Bash(rm:*)",
+      "Bash(python:*)"
+    ],
+    "deny": []
+  }
+}
