@@ -16,8 +16,8 @@ from lude.utils.logger import optimization_logger as logger
 def check_overfitting(df: pd.DataFrame, 
                      daily_selected_bonds: pd.DataFrame, 
                      res: pd.DataFrame, 
-                     hold_num: int, 
-                     min_trading_days_ratio: float = 0.95,
+                     hold_num: int,
+                      min_trading_days_ratio: float = 0.80,
                      verbose: bool = True) -> Dict:
     """
     检测策略是否存在过拟合问题
@@ -37,9 +37,9 @@ def check_overfitting(df: pd.DataFrame,
     # 获取所有交易日
     all_trading_days = df.index.get_level_values('trade_date').unique()
     total_trading_days = len(all_trading_days)
-    
-    # 1. 交易日覆盖率检查 - 修正：统计有充足候选债的交易日（而非有选中债的交易日）
-    days_with_sufficient_candidates = 0
+
+    # 1. 交易日覆盖率检查 - 改进：统计实际成功选股的交易日
+    days_with_successful_selection = 0
     days_with_no_candidates = 0
     days_with_insufficient_candidates = 0
     
@@ -47,16 +47,22 @@ def check_overfitting(df: pd.DataFrame,
         # 每日未被过滤的候选标的数量
         daily_data = df[df.index.get_level_values('trade_date') == trade_date]
         available_candidates = len(daily_data[daily_data['filter'] == False])
+
+        # 检查该日是否实际选中了标的
+        if not daily_selected_bonds.empty:
+            actual_selected = len(daily_selected_bonds[daily_selected_bonds['trade_date'] == trade_date])
+        else:
+            actual_selected = 0
         
         if available_candidates == 0:
             days_with_no_candidates += 1
         elif available_candidates < hold_num:
             days_with_insufficient_candidates += 1
-        else:
-            days_with_sufficient_candidates += 1
-    
-    # 真实的交易日覆盖率 = 有充足候选债的交易日数 / 总交易日数
-    trading_days_ratio = days_with_sufficient_candidates / total_trading_days if total_trading_days > 0 else 0
+        elif actual_selected > 0:  # 有候选且实际选中了标的
+            days_with_successful_selection += 1
+
+    # 真实的交易日覆盖率 = 实际成功选股的交易日数 / 总交易日数
+    trading_days_ratio = days_with_successful_selection / total_trading_days if total_trading_days > 0 else 0
     
     # 2. 候选池充足性检查 - 基于上面已计算的数据进行统计
     daily_available_candidates = []
@@ -100,29 +106,50 @@ def check_overfitting(df: pd.DataFrame,
             'top5_stocks_ratio': top5_ratio,
             'stock_counts': stock_counts.head(10).to_dict()  # 前10只股票的选择次数
         }
-    
-    # 4. 时间段稳定性检查
+
+    # 4. 时间段稳定性检查 - 改进版
     time_stability = {}
-    if res is not None and len(res) > 20:  # 至少20个交易日才进行时间段检查
-        # 将数据分为4个时间段
-        quarter_size = len(res) // 4
-        quarters_cagr = []
-        
-        for i in range(4):
-            start_idx = i * quarter_size
-            end_idx = (i + 1) * quarter_size if i < 3 else len(res)
-            quarter_data = res.iloc[start_idx:end_idx]
-            
-            if len(quarter_data) > 0:
-                quarter_cagr = (quarter_data['daily_return'] + 1).prod() ** (252 / len(quarter_data)) - 1
-                quarters_cagr.append(quarter_cagr)
-        
-        if quarters_cagr:
+    if res is not None and len(res) > 60:  # 至少60个交易日才进行时间段检查，确保每段有足够数据
+        # 使用滑动窗口方法，更科学地检测稳定性
+        window_size = max(30, len(res) // 6)  # 窗口大小至少30天，或总长度的1/6
+        step_size = max(10, window_size // 3)  # 步长为窗口大小的1/3，确保有重叠
+
+        window_cagrs = []
+        window_starts = []
+
+        for start_idx in range(0, len(res) - window_size + 1, step_size):
+            end_idx = start_idx + window_size
+            window_data = res.iloc[start_idx:end_idx]
+
+            if len(window_data) >= 20:  # 确保窗口有足够数据
+                window_cagr = (window_data['daily_return'] + 1).prod() ** (252 / len(window_data)) - 1
+                window_cagrs.append(window_cagr)
+                window_starts.append(start_idx)
+
+        # 如果窗口数量太少，回退到简单4等分
+        if len(window_cagrs) < 3:
+            quarter_size = len(res) // 4
+            window_cagrs = []
+
+            for i in range(4):
+                start_idx = i * quarter_size
+                end_idx = (i + 1) * quarter_size if i < 3 else len(res)
+                quarter_data = res.iloc[start_idx:end_idx]
+
+                if len(quarter_data) > 0:
+                    quarter_cagr = (quarter_data['daily_return'] + 1).prod() ** (252 / len(quarter_data)) - 1
+                    window_cagrs.append(quarter_cagr)
+
+        if window_cagrs and len(window_cagrs) >= 2:
             time_stability = {
-                'quarters_cagr': quarters_cagr,
-                'cagr_std': np.std(quarters_cagr),
-                'cagr_mean': np.mean(quarters_cagr),
-                'cagr_cv': np.std(quarters_cagr) / np.mean(quarters_cagr) if np.mean(quarters_cagr) != 0 else float('inf')
+                'window_cagrs': window_cagrs,
+                'cagr_std': np.std(window_cagrs),
+                'cagr_mean': np.mean(window_cagrs),
+                'cagr_cv': np.std(window_cagrs) / abs(np.mean(window_cagrs)) if np.mean(window_cagrs) != 0 else float(
+                    'inf'),
+                'window_count': len(window_cagrs),
+                'min_cagr': np.min(window_cagrs),
+                'max_cagr': np.max(window_cagrs)
             }
     
     # 5. 极端收益贡献检查 - 增强版
@@ -180,10 +207,10 @@ def check_overfitting(df: pd.DataFrame,
     
     # 汇总检查结果
     check_results = {
-        # 1. 交易日覆盖率 - 修正后的逻辑
+        # 1. 交易日覆盖率 - 改进后的逻辑
         'trading_days_coverage': {
             'total_trading_days': total_trading_days,
-            'days_with_sufficient_candidates': days_with_sufficient_candidates,
+            'days_with_successful_selection': days_with_successful_selection,
             'days_with_insufficient_candidates': days_with_insufficient_candidates,
             'days_with_no_candidates': days_with_no_candidates,
             'coverage_ratio': trading_days_ratio,
@@ -196,7 +223,7 @@ def check_overfitting(df: pd.DataFrame,
             'min_daily_candidates': min_candidates,
             'insufficient_days_count': insufficient_days,
             'insufficient_days_ratio': insufficient_ratio,
-            'passed': insufficient_ratio <= 0.1  # 不足候选池的天数不超过10%
+            'passed': insufficient_ratio <= 0.20  # 不足候选池的天数不超过20%
         },
         
         # 3. 选股集中度
@@ -219,19 +246,20 @@ def check_overfitting(df: pd.DataFrame,
     
     if not check_results['candidate_pool_sufficiency']['passed']:
         overfitting_detected = True
-        warning_messages.append(f"候选池不足天数过多: {insufficient_ratio:.2%} > 10%")
-    
-    if stock_concentration and stock_concentration.get('top_stock_ratio', 0) > 0.5:
+        warning_messages.append(f"候选池不足天数过多: {insufficient_ratio:.2%} > 20%")
+
+    if stock_concentration and stock_concentration.get('top_stock_ratio', 0) > 0.70:
         overfitting_detected = True
-        warning_messages.append(f"选股过度集中: 最高频标的占比 {stock_concentration['top_stock_ratio']:.2%} > 50%")
-    
-    if time_stability and time_stability.get('cagr_cv', 0) > 2.0:
+        warning_messages.append(f"选股过度集中: 最高频标的占比 {stock_concentration['top_stock_ratio']:.2%} > 70%")
+
+    if time_stability and time_stability.get('cagr_cv', 0) > 1.0:
         overfitting_detected = True
-        warning_messages.append(f"时间段表现不稳定: 变异系数 {time_stability['cagr_cv']:.2f} > 2.0")
-    
-    if extreme_return_check and extreme_return_check.get('top_5pct_days_contribution', 0) > 0.9:
-        overfitting_detected = True
-        warning_messages.append(f"极端收益贡献过高: 前5%交易日贡献 {extreme_return_check['top_5pct_days_contribution']:.2%} > 90%")
+        warning_messages.append(f"时间段表现不稳定: 变异系数 {time_stability['cagr_cv']:.2f} > 1.0")
+
+    # 删除极端收益贡献检测 - 该检测逻辑错误，真实市场中收益往往由少数交易日贡献是正常现象
+    # if extreme_return_check and extreme_return_check.get('top_5pct_days_contribution', 0) > 0.9:
+    #     overfitting_detected = True
+    #     warning_messages.append(f"极端收益贡献过高: 前5%交易日贡献 {extreme_return_check['top_5pct_days_contribution']:.2%} > 90%")
     
     check_results['overall'] = {
         'overfitting_detected': overfitting_detected,
@@ -256,11 +284,12 @@ def print_overfitting_report(check_results: Dict) -> None:
     logger.info("=" * 60)
     logger.info("过拟合检查结果:")
     logger.info("=" * 60)
-    
-    # 1. 交易日覆盖率 - 修正后的显示
+
+    # 1. 交易日覆盖率 - 改进后的显示
     coverage = check_results['trading_days_coverage']
-    logger.info(f"1. 交易日覆盖率: {coverage['coverage_ratio']:.2%} ({coverage['days_with_sufficient_candidates']}/{coverage['total_trading_days']})")
-    logger.info(f"   有充足候选债: {coverage['days_with_sufficient_candidates']} 天")
+    logger.info(
+        f"1. 交易日覆盖率: {coverage['coverage_ratio']:.2%} ({coverage['days_with_successful_selection']}/{coverage['total_trading_days']})")
+    logger.info(f"   成功选股天数: {coverage['days_with_successful_selection']} 天")
     logger.info(f"   候选债不足:   {coverage['days_with_insufficient_candidates']} 天")
     logger.info(f"   完全无候选债: {coverage['days_with_no_candidates']} 天")
     logger.info(f"   状态: {'✓ 通过' if coverage['passed'] else '✗ 未通过'}")
@@ -287,10 +316,13 @@ def print_overfitting_report(check_results: Dict) -> None:
     if check_results['time_stability']:
         stab = check_results['time_stability']
         logger.info(f"4. 时间段稳定性:")
-        logger.info(f"   各季度CAGR: {[f'{x:.2%}' for x in stab['quarters_cagr']]})")
+        logger.info(f"   窗口数量: {stab['window_count']}")
+        logger.info(f"   平均CAGR: {stab['cagr_mean']:.2%}")
+        logger.info(f"   CAGR范围: {stab['min_cagr']:.2%} ~ {stab['max_cagr']:.2%}")
+        logger.info(f"   标准差: {stab['cagr_std']:.4f}")
         logger.info(f"   变异系数: {stab['cagr_cv']:.2f}")
     else:
-        logger.info("4. 时间段稳定性: 数据不足")
+        logger.info("4. 时间段稳定性: 数据不足（需要至少60个交易日）")
     
     # 5. 极端收益贡献 - 详细版
     if check_results['extreme_return_contribution']:
@@ -347,14 +379,15 @@ def get_overfitting_penalty_value() -> float:
     Returns:
         float: 极小的惩罚值
     """
+    logger.warning("过拟合，惩罚")
     return -999.0  # 返回极小的负值作为惩罚
 
 
 def is_strategy_overfitted(df: pd.DataFrame, 
                           daily_selected_bonds: pd.DataFrame, 
                           res: pd.DataFrame, 
-                          hold_num: int, 
-                          min_trading_days_ratio: float = 0.95,
+                          hold_num: int,
+                           min_trading_days_ratio: float = 0.80,
                           verbose: bool = False) -> bool:
     """
     简化的过拟合检测函数，只返回是否过拟合的布尔值

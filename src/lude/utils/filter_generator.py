@@ -127,47 +127,59 @@ class FilterFactorGenerator:
                 })
         
         return conditions
-    
-    def generate_filter_conditions(self, trial=None, selected_factors: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+
+    def generate_filter_conditions_with_trial(self, trial, selected_factors: Optional[List[str]] = None) -> List[
+        Dict[str, Any]]:
         """
-        生成完整的过滤条件组合
+        使用Optuna trial生成过滤条件（仅优化每个因子的具体条件值）
         
         Args:
             trial: Optuna trial对象
-            selected_factors: 指定的因子列表，如果None则从配置中选择
+            selected_factors: 指定的因子列表，如果None则使用配置中的所有因子
             
         Returns:
             过滤条件列表
         """
-        # 获取组合规则
-        combination_rules = self.config.get('combination_rules', {})
-        max_factors = combination_rules.get('max_factors', 4)
-        
-        # 确定要使用的因子
+        # 确定要使用的因子 - 完全由配置文件驱动
         if selected_factors is None:
-            available_factors = self.get_available_factors()
-            if not available_factors:
+            selected_factors = self.get_available_factors()
+            if not selected_factors:
                 logger.warning("没有可用的过滤因子")
                 return []
-            
-            if trial is not None:
-                # 选择要使用的因子数量
-                num_factors = trial.suggest_int("filter_num_factors", 1, min(max_factors, len(available_factors)))
-                # 选择具体的因子
-                selected_factors = trial.suggest_categorical(f"filter_factors", 
-                    [list(combo) for combo in itertools.combinations(available_factors, num_factors)])[0]
-                if not isinstance(selected_factors, list):
-                    selected_factors = list(itertools.combinations(available_factors, num_factors))[selected_factors]
-            else:
-                selected_factors = available_factors[:max_factors]
-        
-        # 为每个选中的因子生成条件
+
+        # 为每个选中的因子生成条件（只优化具体的条件值，不优化因子选择）
         all_conditions = []
         for factor_name in selected_factors:
             factor_conditions = self.generate_single_factor_conditions(factor_name, trial)
             all_conditions.extend(factor_conditions)
         
         logger.debug(f"生成了 {len(all_conditions)} 个过滤条件，涉及因子: {selected_factors}")
+        return all_conditions
+
+    def generate_default_filter_conditions(self, selected_factors: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        生成默认的过滤条件组合（不依赖trial）
+        
+        Args:
+            selected_factors: 指定的因子列表，如果None则使用配置中的所有因子
+            
+        Returns:
+            过滤条件列表
+        """
+        # 确定要使用的因子
+        if selected_factors is None:
+            selected_factors = self.get_available_factors()
+            if not selected_factors:
+                logger.warning("没有可用的过滤因子")
+                return []
+
+        # 为每个选中的因子生成默认条件
+        all_conditions = []
+        for factor_name in selected_factors:
+            factor_conditions = self.generate_single_factor_conditions(factor_name, trial=None)
+            all_conditions.extend(factor_conditions)
+
+        logger.info(f"生成了 {len(all_conditions)} 个默认过滤条件，涉及因子: {selected_factors}")
         return all_conditions
     
     def validate_conditions(self, conditions: List[Dict[str, Any]]) -> bool:
@@ -209,12 +221,11 @@ class FilterFactorGenerator:
         return True
 
 
-def create_filter_conditions_for_trial(trial, available_factors_in_data: List[str]) -> List[Dict[str, Any]]:
+def create_default_filter_conditions() -> List[Dict[str, Any]]:
     """
-    为Optuna trial创建过滤条件的便捷函数
+    创建默认过滤条件的便捷函数（不依赖trial）
     
     Args:
-        trial: Optuna trial对象
         available_factors_in_data: 数据中实际可用的因子列表
         
     Returns:
@@ -224,14 +235,9 @@ def create_filter_conditions_for_trial(trial, available_factors_in_data: List[st
     
     # 只使用数据中实际存在的因子
     config_factors = generator.get_available_factors()
-    valid_factors = [f for f in config_factors if f in available_factors_in_data]
-    
-    if not valid_factors:
-        logger.warning("没有在数据中找到配置的过滤因子")
-        return []
-    
-    # 生成过滤条件
-    conditions = generator.generate_filter_conditions(trial, valid_factors)
+
+    # 生成默认过滤条件
+    conditions = generator.generate_default_filter_conditions(config_factors)
     
     # 验证条件合理性
     if not generator.validate_conditions(conditions):
@@ -248,7 +254,7 @@ if __name__ == "__main__":
     print("可用的过滤因子:", generator.get_available_factors())
     
     # 测试生成默认条件
-    conditions = generator.generate_filter_conditions()
+    conditions = generator.generate_default_filter_conditions()
     print(f"生成的默认过滤条件 ({len(conditions)} 个):")
     for condition in conditions:
         print(f"  {condition}")
