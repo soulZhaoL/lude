@@ -10,7 +10,9 @@ import sys
 import warnings
 
 import pandas as pd
+import numpy as np
 from numpy import nan
+from typing import Dict
 from lude.utils.logger import optimization_logger as logger
 
 from lude.utils.cagr_utils import calculate_cagr_manually
@@ -23,11 +25,71 @@ warnings.filterwarnings('ignore')
 SP = 0.06  # 盘中止盈条件，6%止盈
 C_RATE = 2 / 1000  # 买卖一次花费的总佣金和滑点（双边）
 threshold_num = None  # 轮动阈值
+YEARLY_FACTOR = 245  # 交易日标准年化因子
+RISK_FREE = 0.0  # 无风险利率
+
+
+def calculate_risk_metrics(returns: pd.Series, cagr: float) -> Dict[str, float]:
+    """
+    计算风险指标
+    
+    参数:
+        returns: 日收益率序列
+        cagr: 年化收益率
+    
+    返回:
+        Dict: 风险指标字典
+    """
+    try:
+        # 尝试使用quantstats库计算指标
+        import quantstats as qs
+        
+        # 计算风险指标
+        max_drawdown = abs(qs.stats.max_drawdown(returns))
+        sharpe_ratio = qs.stats.sharpe(returns, rf=RISK_FREE, periods=YEARLY_FACTOR)
+        sortino_ratio = qs.stats.sortino(returns, rf=RISK_FREE, periods=YEARLY_FACTOR)
+        calmar_ratio = cagr / max_drawdown if max_drawdown > 0 else float('inf')
+        
+    except (ImportError, Exception):
+        # 使用标准方法计算风险指标
+        
+        # 计算累计收益率
+        cum_returns = (1 + returns).cumprod() - 1
+        
+        # 计算最大回撤
+        running_max = cum_returns.cummax()
+        drawdown = (cum_returns - running_max) / (1 + running_max)
+        max_drawdown = abs(drawdown.min())
+        
+        # 计算年化标准差
+        annual_std = returns.std() * np.sqrt(YEARLY_FACTOR)
+        
+        # 计算夏普比率
+        sharpe_ratio = (cagr - RISK_FREE) / annual_std if annual_std > 0 else 0
+        
+        # 计算索提诺比率
+        downside_returns = returns[returns < 0]
+        if len(downside_returns) > 0:
+            downside_std = downside_returns.std() * np.sqrt(YEARLY_FACTOR)
+            sortino_ratio = (cagr - RISK_FREE) / downside_std if downside_std > 0 else 0
+        else:
+            sortino_ratio = float('inf')
+        
+        # 计算卡玛比率
+        calmar_ratio = cagr / max_drawdown if max_drawdown > 0 else float('inf')
+    
+    # 返回所有风险指标
+    return {
+        'max_drawdown': max_drawdown,
+        'sharpe_ratio': sharpe_ratio,
+        'sortino_ratio': sortino_ratio,
+        'calmar_ratio': calmar_ratio
+    }
 
 
 def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_price,
                          rank_factors, threshold_num=None, filter_conditions=None,
-                         check_overfitting=True, verbose_overfitting=False):
+                         check_overfitting=True, verbose_overfitting=False, return_details=False):
     """
     计算可转债组合的CAGR
     
@@ -43,10 +105,19 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         filter_conditions: 排除因子组合，格式为[{'factor': '因子名', 'operator': '>=', 'value': 阈值}, ...]
         check_overfitting: 是否进行过拟合检测，默认为True
         verbose_overfitting: 是否打印过拟合检测详细信息，默认为False
+        return_details: 是否返回详细信息（包含风险指标、选中债券等），默认为False
     
     返回：
-        cagr: 使用手动计算法得到的CAGR值，如果检测到过拟合则返回惩罚值
-        （可选）如果需要更多信息，可以返回详细结果字典
+        如果 return_details=False: 返回 CAGR 值（float）
+        如果 return_details=True: 返回详细结果字典，包含：
+            - cagr: 年化收益率
+            - max_drawdown: 最大回撤率  
+            - sharpe_ratio: 夏普比率
+            - sortino_ratio: 索提诺比率
+            - calmar_ratio: 卡玛比率
+            - daily_selected_bonds: 每日选中的可转债DataFrame
+            - daily_returns: 每日收益率DataFrame
+            - processed_df: 处理后的数据框
     """
     logger.info(f"rank_factors:{rank_factors}, filter_conditions:{filter_conditions}")
     # 数据筛选 - 按日期范围
@@ -187,6 +258,11 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 检查是否有符合条件的债券
     if df.empty:
         logger.warning(f"没有符合条件的债券数据，返回CAGR为0")
+        if return_details:
+            return {
+                'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
+                'daily_selected_bonds': pd.DataFrame(), 'daily_returns': pd.DataFrame(), 'processed_df': df
+            }
         return 0.0
     
     df.sort_values(by='trade_date', inplace=True)
@@ -200,6 +276,11 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 检查时间回报序列是否为空
     if time_return_series.empty:
         logger.warning(f"时间回报序列为空，返回CAGR为0")
+        if return_details:
+            return {
+                'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
+                'daily_selected_bonds': daily_selected_bonds, 'daily_returns': pd.DataFrame(), 'processed_df': df
+            }
         return 0.0
 
     res['time_return'] = time_return_series
@@ -211,6 +292,11 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 检查pos_df是否为空
     if pos_df.empty:
         logger.warning(f"持仓数据为空，返回CAGR为0")
+        if return_details:
+            return {
+                'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
+                'daily_selected_bonds': daily_selected_bonds, 'daily_returns': res, 'processed_df': df
+            }
         return 0.0
 
     cost_series = pos_df.diff().abs().sum(axis=1) * C_RATE / (pos_df.shift().sum(axis=1) + pos_df.sum(axis=1))
@@ -230,6 +316,8 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     cagr = calculate_cagr_manually(res['daily_return'], start_date, end_date)
     
     # 过拟合检测
+    final_cagr = cagr  # 保存最终的CAGR值
+    
     if check_overfitting:
         from lude.core.overfitting_detector import is_strategy_overfitted, get_overfitting_penalty_value
         
@@ -245,24 +333,40 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
             )
             
             if is_overfitted:
-                # 如果检测到过拟合，返回极小的惩罚值
-                penalty_cagr = get_overfitting_penalty_value()
+                # 如果检测到过拟合，使用惩罚值
+                final_cagr = get_overfitting_penalty_value()
                 if verbose_overfitting:
-                    logger.warning(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {penalty_cagr:.6f}")
-                return penalty_cagr
+                    logger.warning(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {final_cagr:.6f}")
             else:
                 if verbose_overfitting:
                     logger.info(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")
-                return cagr
                 
         except Exception as e:
-            # 过拟合检测出错时，打印警告但仍返回原始CAGR
+            # 过拟合检测出错时，打印警告但仍使用原始CAGR
             logger.error(f"过拟合检测出错: {e}")
-            return cagr
     else:
-        # 不进行过拟合检测，直接返回CAGR
+        # 不进行过拟合检测，使用原始CAGR
         logger.info(f"不进行过拟合检测，直接返回CAGR: {cagr:.6f}")
-        return cagr
+    
+    # 根据return_details参数决定返回格式
+    if return_details:
+        # 计算风险指标
+        risk_metrics = calculate_risk_metrics(res['daily_return'], final_cagr)
+        
+        # 返回详细信息字典
+        return {
+            'cagr': final_cagr,
+            'max_drawdown': risk_metrics['max_drawdown'],
+            'sharpe_ratio': risk_metrics['sharpe_ratio'],
+            'sortino_ratio': risk_metrics['sortino_ratio'],
+            'calmar_ratio': risk_metrics['calmar_ratio'],
+            'daily_selected_bonds': daily_selected_bonds,
+            'daily_returns': res,
+            'processed_df': df
+        }
+    else:
+        # 返回简单的CAGR值（保持向后兼容）
+        return final_cagr
 
 
 if __name__ == '__main__':

@@ -16,7 +16,8 @@ from tqdm import tqdm
 
 from lude.config.paths import DATA_DIR, HIGH_PERFORMANCE_FACTORS4_1_PATH, HIGH_PERFORMANCE_FACTORS4_2_PATH, HIGH_PERFORMANCE_FACTORS4_3_PATH, HIGH_PERFORMANCE_FACTORS4_4_PATH, HIGH_PERFORMANCE_FACTORS5_1_PATH, HIGH_PERFORMANCE_FACTORS5_2_PATH, HIGH_PERFORMANCE_FACTORS6_1_PATH, HIGH_PERFORMANCE_FACTORS6_2_PATH
 from lude.config.paths import DINGDING_OPT_RESULT_PATH_TEST, PROJECT_ROOT
-from lude.utils.performance_metrics import calculate_performance_metrics
+from lude.core.cagr_calculator import calculate_bonds_cagr
+from lude.core.overfitting_detector import check_overfitting
 
 
 def parse_factor_combination(text: str) -> List[Dict[str, Any]]:
@@ -270,7 +271,7 @@ def process_single_factor_combination(args):
     返回:
         performance: 包含绩效指标的字典
     """
-    result, df, start_date, end_date, hold_num, min_price, max_price, threshold_num, take_profit_rate = args
+    result, df, start_date, end_date, hold_num, min_price, max_price, threshold_num, take_profit_rate, enable_overfitting_check = args
 
     factors = result['factors']
 
@@ -279,10 +280,10 @@ def process_single_factor_combination(args):
                     for factor in factors]
     factor_str = ', '.join(factor_names)
 
-    # 计算绩效指标
+    # 计算绩效指标 - 使用统一的cagr_calculator.py
     try:
-        perf = calculate_performance_metrics(
-            df=df,
+        perf = calculate_bonds_cagr(
+            df=df.copy(),  # 传入数据副本避免修改原数据
             start_date=start_date,
             end_date=end_date,
             hold_num=hold_num,
@@ -290,11 +291,42 @@ def process_single_factor_combination(args):
             max_price=max_price,
             rank_factors=factors,
             threshold_num=threshold_num,
-            SP=take_profit_rate
+            filter_conditions=None,  # 暂不使用额外的筛选条件
+            check_overfitting=False,  # 在外部进行过拟合检测
+            verbose_overfitting=False,
+            return_details=True  # 返回详细信息
         )
+
+        # 进行过拟合检测（如果启用）
+        if enable_overfitting_check:
+            overfitting_result = check_overfitting(
+                df=perf['processed_df'],  # 使用处理后的数据框，包含filter列
+                daily_selected_bonds=perf['daily_selected_bonds'],
+                res=perf['daily_returns'],
+                hold_num=hold_num,
+                min_trading_days_ratio=0.80,
+                verbose=False  # 多线程环境下关闭详细输出
+            )
+        else:
+            # 创建空的过拟合检测结果
+            overfitting_result = {
+                'overall': {'overfitting_detected': False, 'warning_messages': []},
+                'trading_days_coverage': {'coverage_ratio': None, 'days_with_successful_selection': None},
+                'candidate_pool_sufficiency': {'insufficient_days_count': None, 'avg_daily_candidates': None, 'min_daily_candidates': None},
+                'stock_concentration': None,
+                'time_stability': None
+            }
 
         # 将因子组合转换为JSON格式
         factors_json = json.dumps(factors, ensure_ascii=False)
+
+        # 格式化过拟合检测结果摘要
+        if enable_overfitting_check:
+            overfitting_summary = "通过" if not overfitting_result['overall']['overfitting_detected'] else "过拟合"
+            warning_summary = "; ".join(overfitting_result['overall']['warning_messages']) if overfitting_result['overall']['warning_messages'] else "无警告"
+        else:
+            overfitting_summary = "未检测"
+            warning_summary = "已禁用过拟合检测"
 
         # 记录计算结果
         performance = {
@@ -310,13 +342,37 @@ def process_single_factor_combination(args):
             '因子数量': len(factors),
             '因子组合': factor_str,
             '因子JSON': factors_json,
+            '过拟合检测': overfitting_summary,
+            '过拟合警告': warning_summary,
+            # 过拟合检测详细结果
+            '交易日覆盖率': overfitting_result['trading_days_coverage']['coverage_ratio'],
+            '成功选股天数': overfitting_result['trading_days_coverage']['days_with_successful_selection'],
+            '候选池不足天数': overfitting_result['candidate_pool_sufficiency']['insufficient_days_count'],
+            '平均候选数': overfitting_result['candidate_pool_sufficiency']['avg_daily_candidates'],
+            '最少候选数': overfitting_result['candidate_pool_sufficiency']['min_daily_candidates'],
             '成功': True,
             '日志': f"因子组合: {factor_str}\n计算结果 - 实际CAGR: {perf['cagr']:.6f}\n" + \
                     (
                         f"预期CAGR: {result['expected_cagr']:.6f}, 差异: {perf['cagr'] - result['expected_cagr']:.6f}\n" if result.get(
                             'expected_cagr') else "") + \
-                    f"最大回撤: {perf['max_drawdown']:.6f}, 夏普比率: {perf['sharpe_ratio']:.6f}"
+                    f"最大回撤: {perf['max_drawdown']:.6f}, 夏普比率: {perf['sharpe_ratio']:.6f}\n" + \
+                    f"过拟合检测: {overfitting_summary}"
         }
+
+        # 添加选股集中度信息（如果有）
+        if overfitting_result['stock_concentration']:
+            stock_conc = overfitting_result['stock_concentration']
+            performance['选股标的总数'] = stock_conc.get('total_unique_stocks', 0)
+            performance['最高频标的占比'] = stock_conc.get('top_stock_ratio', 0)
+            performance['前5标的占比'] = stock_conc.get('top5_stocks_ratio', 0)
+
+        # 添加时间稳定性信息（如果有）
+        if overfitting_result['time_stability']:
+            time_stab = overfitting_result['time_stability']
+            performance['时间段数'] = time_stab.get('window_count', 0)
+            performance['CAGR变异系数'] = time_stab.get('cagr_cv', 0)
+            performance['CAGR均值'] = time_stab.get('cagr_mean', 0)
+            performance['CAGR标准差'] = time_stab.get('cagr_std', 0)
 
         # 添加模型组信息（如果有）
         if 'model_group' in result:
@@ -348,6 +404,21 @@ def process_single_factor_combination(args):
             '因子数量': len(factors),
             '因子组合': factor_str,
             '因子JSON': factors_json,
+            '过拟合检测': '计算失败',
+            '过拟合警告': f'绩效计算异常: {str(e)}',
+            # 过拟合检测详细结果 - 设为None以保持列结构一致
+            '交易日覆盖率': None,
+            '成功选股天数': None,
+            '候选池不足天数': None,
+            '平均候选数': None,
+            '最少候选数': None,
+            '选股标的总数': None,
+            '最高频标的占比': None,
+            '前5标的占比': None,
+            '时间段数': None,
+            'CAGR变异系数': None,
+            'CAGR均值': None,
+            'CAGR标准差': None,
             '错误信息': str(e),
             '成功': False,
             '日志': f"因子组合: {factor_str}\n计算失败: {e}"
@@ -368,6 +439,68 @@ def process_single_factor_combination(args):
     return performance
 
 
+def _generate_output_files(
+    performance_df: pd.DataFrame, 
+    output_file: str, 
+    enable_overfitting_check: bool, 
+    generate_detailed_report: bool
+) -> None:
+    """
+    生成输出文件：主要文件和详细文件
+    
+    参数:
+        performance_df: 绩效分析结果DataFrame
+        output_file: 主输出文件路径
+        enable_overfitting_check: 是否启用了过拟合检测
+        generate_detailed_report: 是否生成详细报告
+    """
+    # 定义核心字段
+    core_fields = [
+        '优化时间', '策略类型', '预期CAGR', '实际CAGR', 'CAGR差异', 
+        '最大回撤', '夏普比率', '索提诺比率', '卡玛比率', 
+        '因子数量', '因子组合', '因子JSON', '成功'
+    ]
+    
+    # 如果启用了过拟合检测，添加核心过拟合字段
+    if enable_overfitting_check:
+        core_fields.extend(['过拟合检测', '过拟合警告', '交易日覆盖率'])
+    
+    # 添加模型相关字段（如果存在）
+    if '模型组' in performance_df.columns:
+        core_fields.append('模型组')
+    if '模型编号' in performance_df.columns:
+        core_fields.append('模型编号')
+    if '因子数量(元数据)' in performance_df.columns:
+        core_fields.append('因子数量(元数据)')
+    
+    # 过滤出存在的字段
+    available_core_fields = [field for field in core_fields if field in performance_df.columns]
+    
+    # 生成主要文件（核心指标）
+    main_df = performance_df[available_core_fields].copy()
+    print(f"\n保存主要结果到文件: {output_file}")
+    main_df.to_excel(output_file, index=False)
+    print(f"主要结果已保存到: {output_file}")
+    
+    # 生成详细文件（如果启用）
+    if generate_detailed_report and enable_overfitting_check:
+        # 生成详细文件路径
+        file_dir = os.path.dirname(output_file)
+        file_name = os.path.basename(output_file)
+        name_without_ext = os.path.splitext(file_name)[0]
+        detailed_file = os.path.join(file_dir, f"{name_without_ext}_detailed.xlsx")
+        
+        print(f"保存详细结果到文件: {detailed_file}")
+        performance_df.to_excel(detailed_file, index=False)
+        print(f"详细结果已保存到: {detailed_file}")
+        
+        print(f"\n文件说明:")
+        print(f"  - 主要文件 ({os.path.basename(output_file)}): 包含核心绩效指标和过拟合检测结果")
+        print(f"  - 详细文件 ({os.path.basename(detailed_file)}): 包含完整的过拟合检测细节")
+    elif not enable_overfitting_check:
+        print(f"\n注意: 过拟合检测已禁用，仅生成核心绩效指标文件")
+
+
 def calculate_factor_performances(
         factor_results: List[Dict[str, Any]],
         data_file: str,
@@ -378,7 +511,8 @@ def calculate_factor_performances(
         max_price: float,
         threshold_num: Optional[int] = None,
         take_profit_rate: Optional[float] = 0.06,
-        max_workers: int = None  # 最大线程数，默认为None (CPU核心数 * 5)
+        max_workers: int = None,  # 最大线程数，默认为None (CPU核心数 * 5)
+        enable_overfitting_check: bool = True  # 是否启用过拟合检测
 ) -> pd.DataFrame:
     """
     使用多线程计算所有因子组合的绩效指标
@@ -394,6 +528,7 @@ def calculate_factor_performances(
         threshold_num: 轮动阈值，默认为None
         take_profit_rate: 止盈比例，默认为0.06 (6%)
         max_workers: 最大线程数，默认为None (CPU核心数 * 5)
+        enable_overfitting_check: 是否启用过拟合检测，默认为True
 
     返回:
         performance_df: 包含所有因子组合绩效指标的DataFrame
@@ -409,7 +544,7 @@ def calculate_factor_performances(
     print(f"\n开始多线程计算 {total} 个因子组合的绩效指标...")
 
     # 准备线程池参数
-    args_list = [(result, df, start_date, end_date, hold_num, min_price, max_price, threshold_num, take_profit_rate)
+    args_list = [(result, df, start_date, end_date, hold_num, min_price, max_price, threshold_num, take_profit_rate, enable_overfitting_check)
                  for result in factor_results]
 
     # 使用线程池并行处理
@@ -450,7 +585,9 @@ def main(
         max_price: float = 150.0,
         threshold_num: Optional[int] = None,
         take_profit_rate: Optional[float] = 0.06,
-        max_workers: int = 10  # 最大线程数，默认为None (CPU核心数 * 5)
+        max_workers: int = 10,  # 最大线程数，默认为None (CPU核心数 * 5)
+        enable_overfitting_check: bool = True,  # 是否启用过拟合检测
+        generate_detailed_report: bool = True   # 是否生成详细报告
 ):
     """
     主函数 - 允许通过参数灵活控制计算过程
@@ -466,6 +603,8 @@ def main(
         max_price: 最高价格筛选，默认150.0
         threshold_num: 轮动阈值，默认为None
         take_profit_rate: 止盈比例，默认为0.06 (6%)
+        enable_overfitting_check: 是否启用过拟合检测，默认为True
+        generate_detailed_report: 是否生成详细报告（包含所有过拟合检测字段），默认为True
     """
     # 设置默认的输入输出文件路径
     if opt_file is None:
@@ -515,6 +654,9 @@ def main(
     print(f"正在计算绩效指标...")
     print(f"参数配置: 持仓数={hold_num}, 价格范围={min_price}-{max_price}, "
           f"日期={start_date}-{end_date}, 止盈={take_profit_rate}, 轮动阈值={threshold_num}")
+    print(f"过拟合检测: {'启用' if enable_overfitting_check else '禁用'}")
+    print(f"详细报告: {'生成' if generate_detailed_report else '仅主要指标'}")
+    
     # 计算绩效指标
     performance_df = calculate_factor_performances(
         factor_results=factor_results,
@@ -526,7 +668,8 @@ def main(
         max_price=max_price,
         threshold_num=threshold_num,
         take_profit_rate=take_profit_rate,
-        max_workers=max_workers  # 传递线程池大小参数
+        max_workers=max_workers,  # 传递线程池大小参数
+        enable_overfitting_check=enable_overfitting_check
     )
 
     # 按实际CAGR排序，处理可能的None值
@@ -536,22 +679,54 @@ def main(
         # 按CAGR降序排序，NaN值放在最后
         performance_df = performance_df.sort_values(by='实际CAGR', ascending=False, na_position='last')
 
-    # 保存结果到Excel文件
-    print(f"保存结果到文件: {output_file}")
-    performance_df.to_excel(output_file, index=False)
-    print(f"结果已保存到: {output_file}")
+    # 统计过拟合检测结果
+    if enable_overfitting_check and '过拟合检测' in performance_df.columns:
+        overfitting_stats = performance_df['过拟合检测'].value_counts()
+        print(f"\n过拟合检测结果统计:")
+        for status, count in overfitting_stats.items():
+            print(f"  - {status}: {count} 个因子组合")
+        
+        # 显示过拟合因子组合的详细信息
+        overfitted_df = performance_df[performance_df['过拟合检测'] == '过拟合']
+        if len(overfitted_df) > 0:
+            print(f"\n检测到 {len(overfitted_df)} 个过拟合因子组合:")
+            for idx, row in overfitted_df.head(5).iterrows():  # 只显示前5个
+                cagr_value = row.get('实际CAGR', 'N/A')
+                cagr_str = f"{cagr_value:.4f}" if pd.notnull(cagr_value) and cagr_value != 'N/A' else 'N/A'
+                print(f"  - {row['因子组合'][:50]}... (CAGR: {cagr_str})")
+                if row.get('过拟合警告') and row['过拟合警告'] != '无警告':
+                    print(f"    警告: {row['过拟合警告']}")
+
+    # 生成输出文件
+    _generate_output_files(performance_df, output_file, enable_overfitting_check, generate_detailed_report)
+    
+    # 为用户提供一些使用建议
+    if enable_overfitting_check and '过拟合检测' in performance_df.columns:
+        total_factors = len(performance_df)
+        passed_factors = len(performance_df[performance_df['过拟合检测'] == '通过'])
+        print(f"\n建议:")
+        print(f"  - 总共分析了 {total_factors} 个因子组合")
+        print(f"  - 其中 {passed_factors} 个通过过拟合检测，建议优先考虑")
+        print(f"  - 主要文件包含核心指标，详细文件包含完整的过拟合检测结果")
 
 
 if __name__ == '__main__':
-    # 使用默认线程数（CPU核心数 * 5）
-    # python factor_performance_analyzer.py --opt_file=/path/to/dd_opt.txt
-    # python factor_performance_analyzer.py --opt_file=/data/high_performance_factors.json
-
-    # 指定线程数为16
-    # python factor_performance_analyzer.py --opt_file=/path/to/dd_opt.txt --max_workers=16
-
-    # 同时指定其他参数
-    # python factor_performance_analyzer.py --opt_file=/path/to/dd_opt.txt --max_workers=16 --hold_num=10 --min_price=120 --max_price=160
+    # 使用示例:
+    # 
+    # 1. 默认运行（启用过拟合检测）:
+    # python factor_performance_analyzer.py
+    # 
+    # 2. 禁用过拟合检测（快速分析）:
+    # python factor_performance_analyzer.py --disable_overfitting_check
+    # 
+    # 3. 只生成主要文件（不生成详细报告）:
+    # python factor_performance_analyzer.py --no_detailed_report
+    # 
+    # 4. 自定义参数:
+    # python factor_performance_analyzer.py --max_workers=16 --hold_num=10 --min_price=120 --max_price=160
+    #
+    # 5. 完全自定义:
+    # python factor_performance_analyzer.py --disable_overfitting_check --no_detailed_report --max_workers=8
 
     import argparse
 
@@ -566,8 +741,14 @@ if __name__ == '__main__':
     parser.add_argument('--min_price', type=float, default=100.0, help='最低价格筛选')
     parser.add_argument('--max_price', type=float, default=150.0, help='最高价格筛选')
     parser.add_argument('--threshold_num', type=int, help='轮动阈值')
-    parser.add_argument('--take_profit_rate', type=float, default=0.06, help='止盈比例，默认为0.06 (6%)')
-    parser.add_argument('--max_workers', type=int, help='最大线程数，默认为CPU核心数 * 5')
+    parser.add_argument('--take_profit_rate', type=float, default=0.06, help='止盈比例，默认为0.06 (6%%)')
+    parser.add_argument('--max_workers', type=int, help='最大线程数，默认为CPU核心数乘以5')
+    
+    # 新增的过拟合检测控制参数
+    parser.add_argument('--disable_overfitting_check', action='store_true', 
+                       help='禁用过拟合检测(提高分析速度)')
+    parser.add_argument('--no_detailed_report', action='store_true',
+                       help='不生成详细报告,仅生成主要指标文件')
 
     args = parser.parse_args()
 
@@ -582,7 +763,7 @@ if __name__ == '__main__':
     # output_path 路径等于path 移除文件部分
     output_path = path.replace('merged_factors.json', '')
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = os.path.join(output_path, f'factor_performance_results_{current_time}.xlsx')
+    output_file = os.path.join(output_path, f'factor_performance_results_test_{current_time}.xlsx')
     # 调用主函数
     main(
         opt_file=path,
@@ -595,5 +776,7 @@ if __name__ == '__main__':
         max_price=args.max_price,
         threshold_num=args.threshold_num,
         take_profit_rate=args.take_profit_rate,
-        max_workers=args.max_workers
+        max_workers=args.max_workers,
+        enable_overfitting_check=not args.disable_overfitting_check,  # 默认启用，除非明确禁用
+        generate_detailed_report=not args.no_detailed_report          # 默认生成，除非明确禁用
     )

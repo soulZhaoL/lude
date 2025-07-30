@@ -356,7 +356,8 @@ def calculate_performance_metrics(
         'sortino_ratio': risk_metrics['sortino_ratio'],
         'calmar_ratio': risk_metrics['calmar_ratio'],
         'daily_selected_bonds': daily_selected_bonds,
-        'daily_returns': daily_returns
+        'daily_returns': daily_returns,
+        'processed_df': df  # 添加处理后的数据框，供过拟合检测使用
     }
     
     return results

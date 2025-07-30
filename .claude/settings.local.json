@@ -5,7 +5,8 @@
       "Bash(conda activate:*)",
       "Bash(python test_multistage_optimization.py:*)",
       "Bash(rm:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(timeout 60 python:*)"
     ],
     "deny": []
   }
