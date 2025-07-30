@@ -48,6 +48,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         cagr: 使用手动计算法得到的CAGR值，如果检测到过拟合则返回惩罚值
         （可选）如果需要更多信息，可以返回详细结果字典
     """
+    logger.info(f"rank_factors:{rank_factors}, filter_conditions:{filter_conditions}")
     # 数据筛选 - 按日期范围
     df = df[(df.index.get_level_values('trade_date') >= start_date) &
             (df.index.get_level_values('trade_date') <= end_date)]
@@ -68,13 +69,13 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     df.loc[df.close < min_price, 'filter'] = True  # 排除价格过低
     
     # 应用排除因子组合过滤条件
-    if filter_conditions is None:
-        # 如果没有提供排除因子，使用默认排除因子
-        filter_conditions = [
-            {'factor': 'amount', 'operator': '<', 'value': 1000},  # 默认排除成交额小于1000万
-            {'factor': 'close', 'operator': '>', 'value': max_price},  # 默认排除价格过高
-            {'factor': 'close', 'operator': '<', 'value': min_price},  # 默认排除价格过低
-        ]
+    # if filter_conditions is None:
+    #     # 如果没有提供排除因子，使用默认排除因子
+    #     filter_conditions = [
+    #         {'factor': 'amount', 'operator': '<', 'value': 1000},  # 默认排除成交额小于1000万
+    #         {'factor': 'close', 'operator': '>', 'value': max_price},  # 默认排除价格过高
+    #         {'factor': 'close', 'operator': '<', 'value': min_price},  # 默认排除价格过低
+    #     ]
     
     # 应用动态排除因子条件
     if filter_conditions:
@@ -182,19 +183,42 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 删除没有标记的行并按日期排序
     df.dropna(subset=['signal'], inplace=True)
+
+    # 检查是否有符合条件的债券
+    if df.empty:
+        logger.warning(f"没有符合条件的债券数据，返回CAGR为0")
+        return 0.0
+    
     df.sort_values(by='trade_date', inplace=True)
 
     # 计算组合回报
     res = pd.DataFrame()
 
     # 按等权计算组合回报
-    res['time_return'] = df.groupby('trade_date')['time_return'].mean()
+    time_return_series = df.groupby('trade_date')['time_return'].mean()
+
+    # 检查时间回报序列是否为空
+    if time_return_series.empty:
+        logger.warning(f"时间回报序列为空，返回CAGR为0")
+        return 0.0
+
+    res['time_return'] = time_return_series
 
     # 计算手续费
     pos_df = df['signal'].unstack('code')
     pos_df.fillna(0, inplace=True)
-    res['cost'] = pos_df.diff().abs().sum(axis=1) * C_RATE / (pos_df.shift().sum(axis=1) + pos_df.sum(axis=1))
-    res.iloc[0, 1] = 0.5 * C_RATE  # 修正首行手续费
+
+    # 检查pos_df是否为空
+    if pos_df.empty:
+        logger.warning(f"持仓数据为空，返回CAGR为0")
+        return 0.0
+
+    cost_series = pos_df.diff().abs().sum(axis=1) * C_RATE / (pos_df.shift().sum(axis=1) + pos_df.sum(axis=1))
+    res['cost'] = cost_series
+
+    # 安全地修正首行手续费 - 确保res有数据且有cost列
+    if len(res) > 0 and 'cost' in res.columns:
+        res.iloc[0, res.columns.get_loc('cost')] = 0.5 * C_RATE  # 修正首行手续费
 
     # 扣除手续费及佣金后的回报
     res['daily_return'] = (res['time_return'] + 1) * (1 - res['cost']) - 1
@@ -237,6 +261,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
             return cagr
     else:
         # 不进行过拟合检测，直接返回CAGR
+        logger.info(f"不进行过拟合检测，直接返回CAGR: {cagr:.6f}")
         return cagr
 
 
@@ -274,7 +299,8 @@ if __name__ == '__main__':
 
     # 计算启用止盈情况的CAGR
     cagr = calculate_bonds_cagr(
-        df, start_date, end_date, hold_num, min_price, max_price, factors, None
+        df, start_date, end_date, hold_num, min_price, max_price, factors, None,
+        check_overfitting=False, verbose_overfitting=False
     )
 
     # 打印CAGR结果

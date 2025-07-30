@@ -59,10 +59,16 @@ def run_optimization(df, args):
     # 添加自定义因子
     # df = add_custom_factors(df)
 
-    # 获取所有可用因子
-    factors = [col for col in df.columns if col not in ['date', 'bond_id', 'bond_nm', 'stock_id']]
-    logger.info(f"数据中共有 {len(factors)} 个因子")
+    # 获取所有可用因子 - 使用factor_mapping_filter.json定义的因子列表
+    factor_mapping = load_factor_mapping()
+    available_factors = list(factor_mapping.keys())
 
+    # 只保留在数据中实际存在且在映射文件中定义的因子
+    factors = [col for col in df.columns if col in available_factors]
+
+    logger.info(f"因子映射文件中定义了 {len(available_factors)} 个因子")
+    logger.info(f"数据中实际可用的因子有 {len(factors)} 个")
+    
     # 检查是否启用过滤优化
     enable_filter_opt = getattr(args, 'enable_filter_opt', False)
     logger.info(f"过滤优化状态: {'启用' if enable_filter_opt else '禁用'}")
@@ -145,12 +151,9 @@ def run_optimization(df, args):
         # 获取配置的CAGR阈值
         cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold', 0.55)
 
-        # 如果有最佳因子组合，加载因子映射并初始化因子数据
-        factor_mapping = {}
+        # 如果有最佳因子组合，初始化因子数据（factor_mapping已在前面加载）
         factor_data = []
         if best_rank_factors:
-            # 加载因子中英文映射（只加载一次）
-            factor_mapping = load_factor_mapping()
 
             # 准备因子组合详细数据
             factor_data = [{
