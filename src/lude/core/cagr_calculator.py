@@ -300,7 +300,7 @@ if __name__ == '__main__':
     # 计算启用止盈情况的CAGR
     cagr = calculate_bonds_cagr(
         df, start_date, end_date, hold_num, min_price, max_price, factors, None,
-        check_overfitting=False, verbose_overfitting=False
+        check_overfitting=True, verbose_overfitting=True
     )
 
     # 打印CAGR结果
