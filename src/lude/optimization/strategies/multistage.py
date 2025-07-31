@@ -608,6 +608,12 @@ def _create_final_study_and_merge_results(
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
             elif param_name == "num_filter_conditions":
                 distributions[param_name] = optuna.distributions.IntDistribution(0, 6)  # 根据实际配置调整
+            elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
+                # 为filter_condition_*_idx参数设置正确的分布范围
+                if all_filter_conditions:
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
+                else:
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
             else:
                 # 其他参数类型处理
                 if isinstance(param_value, int):

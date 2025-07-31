@@ -303,5 +303,5 @@ filter_factors:
 
 # 排除因子组合规则
 combination_rules:
-  max_factors: 2  # 缩减到最多8个排除因子
+  max_factors: 3  # 缩减到最多8个排除因子
   max_combinations: 6000  # 硬性限制总组合数
