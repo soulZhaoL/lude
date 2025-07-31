@@ -1,4 +1,11 @@
 """
+模块已过期
+==========
+本模块将在未来版本中删除，请迁移至 `factor_performance_analyzer.py`
+
+作者：Lei.Zhao
+最后更新：2025-07-31
+
 绩效指标计算模块
 
 提供计算可转债组合年化收益率(CAGR)和其他风险收益指标的高效函数，支持多种筛选条件和排序因子。
@@ -285,7 +292,6 @@ def calculate_risk_metrics(
         'sortino_ratio': sortino_ratio,
         'calmar_ratio': calmar_ratio
     }
-
 
 def calculate_performance_metrics(
     df: pd.DataFrame, 

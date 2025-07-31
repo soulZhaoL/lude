@@ -144,10 +144,20 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
             trial.set_user_attr("filter_conditions", selected_filter_conditions)
 
             return cagr
+        except ValueError as e:
+            # 处理参数组合无效的情况（过拟合、条件过严等）
+            if "过拟合" in str(e) or "无符合条件" in str(e):
+                logger.info(f"跳过无效参数组合: {e}")
+                logger.debug(f"当前打分因子: {rank_factors}")
+                logger.debug(f"当前排除因子: {selected_filter_conditions}")
+                raise optuna.exceptions.TrialPruned()
+            else:
+                # 其他ValueError重新抛出
+                raise
         except Exception as e:
-            # 添加更详细的错误信息
+            # 处理其他未预期的错误
             import traceback
-            logger.error(f"计算CAGR时出错: {e}")
+            logger.error(f"计算CAGR时出现未预期错误: {e}")
             logger.error(f"错误详情: {traceback.format_exc()}")
             logger.error(f"当前打分因子: {rank_factors}")
             logger.error(f"当前排除因子: {selected_filter_conditions}")
@@ -587,14 +597,25 @@ def _create_final_study_and_merge_results(
         best_params = best_study.best_params
         rank_factors = _build_rank_factors(best_params, best_combinations, num_factors)
 
-        # 创建分布字典
+        # 创建分布字典，完全匹配best_params中的参数
         distributions = {}
-        distributions["combination_idx"] = optuna.distributions.IntDistribution(0, len(best_combinations) - 1)
-        for i in range(num_factors):
-            weight_param = f"factor{i}_weight"
-            asc_param = f"factor{i}_ascending"
-            distributions[weight_param] = optuna.distributions.IntDistribution(1, 5)
-            distributions[asc_param] = optuna.distributions.CategoricalDistribution([True, False])
+        for param_name, param_value in best_params.items():
+            if param_name == "combination_idx":
+                distributions[param_name] = optuna.distributions.IntDistribution(0, len(best_combinations) - 1)
+            elif param_name.endswith("_weight"):
+                distributions[param_name] = optuna.distributions.IntDistribution(1, 5)
+            elif param_name.endswith("_ascending"):
+                distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
+            elif param_name == "num_filter_conditions":
+                distributions[param_name] = optuna.distributions.IntDistribution(0, 6)  # 根据实际配置调整
+            else:
+                # 其他参数类型处理
+                if isinstance(param_value, int):
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, 100)
+                elif isinstance(param_value, bool):
+                    distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
+                else:
+                    logger.warning(f"未知参数类型: {param_name} = {param_value}")
 
         # 创建最终trial
         trial = optuna.trial.create_trial(
@@ -607,10 +628,24 @@ def _create_final_study_and_merge_results(
 
         # 打印最佳结果
         logger.info(f"\n最佳因子组合 (CAGR: {best_value:.6f}):")
+        logger.info("📊 打分因子:")
         for i, factor in enumerate(rank_factors):
             logger.info(f"  {i + 1}. {factor['name']}")
             logger.info(f"     - 权重: {factor['weight']}")
             logger.info(f"     - 排序方向: {'升序' if factor['ascending'] else '降序'}")
+
+        # 打印排除因子信息
+        try:
+            best_filter_conditions = best_study.best_trial.user_attrs.get('filter_conditions', [])
+            if best_filter_conditions:
+                logger.info("\n🚫 排除因子:")
+                for i, condition in enumerate(best_filter_conditions):
+                    logger.info(f"  {i + 1}. {condition['factor']} {condition['operator']} {condition['value']}")
+            else:
+                logger.info("\n🚫 排除因子: 无")
+        except Exception as filter_e:
+            logger.warning(f"获取排除因子信息时出错: {filter_e}")
+            logger.info("\n🚫 排除因子: 无法获取")
 
     except Exception as e:
         logger.error(f"创建最终研究时出错: {e}")

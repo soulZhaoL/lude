@@ -257,13 +257,8 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 检查是否有符合条件的债券
     if df.empty:
-        logger.warning(f"没有符合条件的债券数据，返回CAGR为0")
-        if return_details:
-            return {
-                'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
-                'daily_selected_bonds': pd.DataFrame(), 'daily_returns': pd.DataFrame(), 'processed_df': df
-            }
-        return 0.0
+        logger.warning("排除条件过严，无符合条件的债券数据，抛出异常以跳过该试验")
+        raise ValueError("排除条件过严，无符合条件的债券数据")
     
     df.sort_values(by='trade_date', inplace=True)
 
@@ -340,10 +335,13 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
             else:
                 if verbose_overfitting:
                     logger.info(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")
-                
+
+        except ValueError as e:
+            # 过拟合检测异常，重新抛出让上层处理
+            raise e
         except Exception as e:
-            # 过拟合检测出错时，打印警告但仍使用原始CAGR
-            logger.error(f"过拟合检测出错: {e}")
+            # 其他过拟合检测错误，打印警告但仍使用原始CAGR
+            logger.warning(f"过拟合检测遇到未预期错误: {e}")
     else:
         # 不进行过拟合检测，使用原始CAGR
         logger.info(f"不进行过拟合检测，直接返回CAGR: {cagr:.6f}")
