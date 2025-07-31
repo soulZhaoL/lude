@@ -64,14 +64,13 @@ class FilterFactorGenerator:
             'ne': '!='
         }
         return operator_map.get(op, op)
-    
-    def generate_single_factor_conditions(self, factor_name: str, trial=None) -> List[Dict[str, Any]]:
+
+    def generate_single_factor_conditions(self, factor_name: str) -> List[Dict[str, Any]]:
         """
         为单个因子生成过滤条件
         
         Args:
             factor_name: 因子名称
-            trial: Optuna trial对象，用于参数建议
             
         Returns:
             过滤条件列表
@@ -91,74 +90,46 @@ class FilterFactorGenerator:
         if not value_options:
             logger.warning(f"因子 {factor_name} 没有配置可选值")
             return []
-        
-        # 根据最大条件数生成条件
-        if trial is not None:
-            # 使用Optuna建议参数
-            num_conditions = trial.suggest_int(f"{factor_name}_num_conditions", 1, max_conditions)
-            
-            for i in range(num_conditions):
-                # 选择操作符
-                operator = trial.suggest_categorical(f"{factor_name}_op_{i}", operators)
-                # 选择数值
-                value = trial.suggest_categorical(f"{factor_name}_val_{i}", value_options)
-                
-                conditions.append({
-                    'factor': factor_name,
-                    'operator': self._convert_operator(operator),
-                    'value': value
-                })
+
+        # 根据max_conditions生成条件组合
+        if max_conditions == 1:
+            # 单条件：从operators和value_options中各选一个
+            # 这里生成所有可能的单条件组合，供Optuna选择
+            for operator in operators:
+                for value in value_options:
+                    conditions.append({
+                        'factor': factor_name,
+                        'operator': self._convert_operator(operator),
+                        'value': value
+                    })
         else:
-            # 使用默认范围
-            default_range = factor_config.get('default_range', {})
-            
-            if default_range.get('min_op') and default_range.get('min_val') is not None:
-                conditions.append({
-                    'factor': factor_name,
-                    'operator': self._convert_operator(default_range['min_op']),
-                    'value': default_range['min_val']
-                })
-            
-            if default_range.get('max_op') and default_range.get('max_val') is not None:
-                conditions.append({
-                    'factor': factor_name,
-                    'operator': self._convert_operator(default_range['max_op']),
-                    'value': default_range['max_val']
-                })
+            # 多条件：生成逻辑合理的范围条件
+            # 确保生成的条件数量不超过max_conditions
+            sorted_values = sorted(value_options)
+
+            # 生成范围条件：一个>=和一个<=
+            if len(sorted_values) >= 2 and max_conditions >= 2:
+                for i in range(len(sorted_values)):
+                    for j in range(i + 1, len(sorted_values)):
+                        range_conditions = [
+                            {
+                                'factor': factor_name,
+                                'operator': '>=',
+                                'value': sorted_values[i]
+                            },
+                            {
+                                'factor': factor_name,
+                                'operator': '<=',
+                                'value': sorted_values[j]
+                            }
+                        ]
+                        conditions.extend(range_conditions)
         
         return conditions
 
-    def generate_filter_conditions_with_trial(self, trial, selected_factors: Optional[List[str]] = None) -> List[
-        Dict[str, Any]]:
-        """
-        使用Optuna trial生成过滤条件（仅优化每个因子的具体条件值）
-        
-        Args:
-            trial: Optuna trial对象
-            selected_factors: 指定的因子列表，如果None则使用配置中的所有因子
-            
-        Returns:
-            过滤条件列表
-        """
-        # 确定要使用的因子 - 完全由配置文件驱动
-        if selected_factors is None:
-            selected_factors = self.get_available_factors()
-            if not selected_factors:
-                logger.warning("没有可用的过滤因子")
-                return []
-
-        # 为每个选中的因子生成条件（只优化具体的条件值，不优化因子选择）
-        all_conditions = []
-        for factor_name in selected_factors:
-            factor_conditions = self.generate_single_factor_conditions(factor_name, trial)
-            all_conditions.extend(factor_conditions)
-        
-        logger.debug(f"生成了 {len(all_conditions)} 个过滤条件，涉及因子: {selected_factors}")
-        return all_conditions
-
     def generate_default_filter_conditions(self, selected_factors: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
-        生成默认的过滤条件组合（不依赖trial）
+        生成默认的过滤条件组合（使用配置中的第一个值作为默认值）
         
         Args:
             selected_factors: 指定的因子列表，如果None则使用配置中的所有因子
@@ -173,11 +144,27 @@ class FilterFactorGenerator:
                 logger.warning("没有可用的过滤因子")
                 return []
 
-        # 为每个选中的因子生成默认条件
+        # 为每个选中的因子生成一个默认条件
         all_conditions = []
         for factor_name in selected_factors:
-            factor_conditions = self.generate_single_factor_conditions(factor_name, trial=None)
-            all_conditions.extend(factor_conditions)
+            factor_config = self.config['filter_factors'][factor_name]
+            operators = factor_config.get('operators', ['gte', 'lte'])
+            value_options = factor_config.get('value_options', [])
+            # max_conditions 在新逻辑中不需要了，因为每个因子只生成一个默认条件
+
+            if not value_options:
+                continue
+
+            # 使用第一个操作符和中位数值作为默认条件
+            default_operator = operators[0] if operators else 'gte'
+            default_value = value_options[len(value_options) // 2] if value_options else value_options[0]
+
+            condition = {
+                'factor': factor_name,
+                'operator': self._convert_operator(default_operator),
+                'value': default_value
+            }
+            all_conditions.append(condition)
 
         logger.info(f"生成了 {len(all_conditions)} 个默认过滤条件，涉及因子: {selected_factors}")
         return all_conditions
@@ -214,7 +201,7 @@ class FilterFactorGenerator:
                 if gte_vals and lte_vals:
                     min_gte = min(gte_vals)
                     max_lte = max(lte_vals)
-                    if min_gte > max_lte:
+                    if min_gte >= max_lte:  # 修改为>=，因为相等也是矛盾的
                         logger.warning(f"因子 {factor} 的条件存在逻辑矛盾: >= {min_gte} 和 <= {max_lte}")
                         return False
         

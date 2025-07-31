@@ -73,12 +73,13 @@ def extract_cagr_from_output(output):
         # 查找多阶段优化的第二阶段结果
         second_stage_cagr = 0.0
         for line in output.split('\n'):
-            if "第二阶段结果" in line and "优于第一阶段" in line:
+            if "第二阶段结果" in line and ("优于第一阶段" in line or "基本相同" in line):
                 try:
-                    # 提取格式为"第二阶段结果 (0.2702) 优于第一阶段 (0.2215)"中的第一个括号内数字
+                    # 提取格式为"第二阶段结果 (0.2702) 优于第一阶段 (0.2215)"或"第二阶段结果 (0.391601) 与第一阶段 (0.391601) 基本相同"中的第一个括号内数字
                     match = re.search(r"第二阶段结果 \(([0-9.]+)\)", line)
                     if match:
                         second_stage_cagr = float(match.group(1))
+                        logger.info(f"成功提取第二阶段CAGR: {second_stage_cagr}")
                 except Exception as e:
                     logger.error(f"提取第二阶段CAGR时出错: {e}")
         
@@ -386,6 +387,42 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
     logger.info(f"最佳模型路径: {best_record['best_model_path']}")
     logger.info(f"发现时间: {best_record['timestamp']}")
     logger.info(f"总耗时: {total_elapsed/60:.2f} 分钟")
+
+    # 尝试从最佳记录中提取详细信息
+    try:
+        if 'model_details' in best_record and best_record['model_details']:
+            details = best_record['model_details']
+
+            logger.info("\n============== 最佳策略详情 ==============")
+
+            # 打印最佳打分因子组合
+            if 'rank_factors' in details:
+                logger.info("📊 最佳打分因子组合:")
+                for i, factor in enumerate(details['rank_factors']):
+                    direction = "升序排列" if factor['ascending'] else "降序排列"
+                    logger.info(f"  {i + 1}. {factor['name']} (权重: {factor['weight']}, {direction})")
+
+            # 打印最佳排除因子组合
+            if 'filter_conditions' in details and details['filter_conditions']:
+                logger.info("\n🚫 最佳排除因子组合:")
+                for i, condition in enumerate(details['filter_conditions']):
+                    logger.info(f"  {i + 1}. {condition['factor']} {condition['operator']} {condition['value']}")
+            else:
+                logger.info("\n🚫 排除因子组合: 无")
+
+            # 打印策略参数
+            if 'strategy_params' in details:
+                params = details['strategy_params']
+                logger.info(f"\n⚙️ 策略参数:")
+                logger.info(f"  - 回测期间: {params.get('start_date', 'N/A')} ~ {params.get('end_date', 'N/A')}")
+                logger.info(f"  - 价格范围: {params.get('price_min', 'N/A')} ~ {params.get('price_max', 'N/A')}")
+                logger.info(f"  - 持仓数量: {params.get('hold_num', 'N/A')} 只")
+
+    except Exception as e:
+        logger.warning(f"提取最佳策略详情时出错: {e}")
+        logger.info("请查看最佳模型文件获取详细信息")
+
+    logger.info("\n" + "=" * 50)
 
 def extract_important_results(output):
     """从优化输出中提取重要结果"""
