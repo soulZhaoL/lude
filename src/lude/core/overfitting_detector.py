@@ -372,15 +372,15 @@ def print_overfitting_report(check_results: Dict) -> None:
 
 def get_overfitting_penalty_value() -> float:
     """
-    获取过拟合惩罚值
+    检测到过拟合时抛出异常，而不是返回惩罚值
     
-    返回极小的负值，确保过拟合的策略在优化过程中被排除
+    这样可以让Optuna优雅地跳过无效试验，而不是用错误的负值污染优化空间
     
-    Returns:
-        float: 极小的惩罚值
+    Raises:
+        ValueError: 检测到过拟合策略
     """
-    logger.warning("过拟合，惩罚")
-    return -999.0  # 返回极小的负值作为惩罚
+    logger.warning("检测到过拟合策略，抛出异常以跳过该试验")
+    raise ValueError("检测到过拟合策略，参数组合无效")
 
 
 def is_strategy_overfitted(df: pd.DataFrame, 

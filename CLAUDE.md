@@ -34,6 +34,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # - "AttributeError: _ARRAY_API not found"
 # - 其他依赖包版本冲突错误
 
+# 🚨 重要：项目路径配置
+
+# 项目已升级为更稳健的路径配置系统，支持多种路径发现方式：
+
+#  
+
+# 1. 环境变量方式（推荐用于生产环境）：
+
+# export LUDE_PROJECT_ROOT="/path/to/your/lude/project"
+
+# 或使用提供的脚本：source set_env.sh
+
+#
+
+# 2. 自动发现方式（默认）：
+
+# 系统会自动查找包含 pyproject.toml、setup.py 等标志文件的目录作为项目根目录
+
+#
+
+# 3. 路径验证：
+
+# 可以通过以下代码验证路径配置是否正确：
+
+# from lude.config.paths import get_path_info
+
+# print(get_path_info())
 
 本文件为Claude Code (claude.ai/code) 在该代码仓库中工作时提供指导。
 
@@ -48,10 +75,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # 开发模式安装
 pip install -e .
 
-# 或使用安装脚本
+# 或使用安装脚本（推荐，会自动设置环境变量）
 chmod +x install_dev.sh
 ./install_dev.sh
 ```
+
+**注意**: 安装脚本 `install_dev.sh` 现在会自动调用 `set_env.sh` 来设置项目环境变量 `LUDE_PROJECT_ROOT`
+，确保路径配置的稳健性。如果你手动安装项目，请记得运行 `source set_env.sh` 来设置环境变量。
 
 ### 测试
 ```bash

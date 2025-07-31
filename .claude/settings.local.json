@@ -6,7 +6,14 @@
       "Bash(python test_multistage_optimization.py:*)",
       "Bash(rm:*)",
       "Bash(python:*)",
-      "Bash(timeout 60 python:*)"
+      "Bash(timeout 60 python:*)",
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(sed:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(./set_env.sh)",
+      "Bash(bash:*)"
     ],
     "deny": []
   }
