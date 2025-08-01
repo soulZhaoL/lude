@@ -23,7 +23,9 @@
 
 import itertools
 import os
-
+import json
+import time
+from typing import Dict, Optional
 
 import numpy as np
 import optuna
@@ -31,6 +33,162 @@ import optuna
 from lude.core.cagr_calculator import calculate_bonds_cagr
 from lude.utils.common_utils import RESULTS_DIR  # 导入结果目录常量
 from lude.utils.logger import optimization_logger as logger
+
+
+class RedisStorageManager:
+    """Redis存储管理器
+    
+    核心策略：
+    - 高并发 (>10 jobs): 使用Redis分布式存储
+    - 低并发 (<=10 jobs): 使用传统SQLite存储
+    - 自动连接检测和回退机制
+    """
+
+    def __init__(self, study_base_name: str, n_jobs: int, seed: int):
+        self.study_base_name = study_base_name
+        self.n_jobs = n_jobs
+        self.seed = seed
+        self.storage_strategy = "redis" if n_jobs > 10 else "sqlite"
+        self.redis_config = self._load_redis_config()
+
+        logger.info(f"存储策略: {self.storage_strategy}, 进程数: {n_jobs}")
+
+        # 验证Redis连接
+        if self.storage_strategy == "redis":
+            if not self._test_redis_connection():
+                logger.warning("Redis连接失败，回退到SQLite存储")
+                self.storage_strategy = "sqlite"
+
+    def _load_redis_config(self) -> Dict:
+        """加载Redis配置"""
+        # Redis配置文件在项目根目录下的redis文件夹中
+        # 从RESULTS_DIR向上找到项目根目录（RESULTS_DIR通常是 project_root/optimization_results）
+        project_root = os.path.dirname(RESULTS_DIR)
+        config_file = os.path.join(project_root, "redis", "redis_config.json")
+        default_config = {
+            "host": "localhost",
+            "port": 6379,
+            "db": 0,
+            "password": None,
+            "socket_connect_timeout": 30,
+            "socket_timeout": 30,
+            "retry_on_timeout": True,
+            "health_check_interval": 30
+        }
+
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    user_config = json.load(f)
+                    default_config.update(user_config)
+                    logger.info(f"加载Redis配置: {config_file}")
+            except Exception as e:
+                logger.warning(f"加载Redis配置失败，使用默认配置: {e}")
+
+        return default_config
+
+    def _test_redis_connection(self) -> bool:
+        """测试Redis连接"""
+        try:
+            import redis
+
+            client = redis.Redis(
+                host=self.redis_config["host"],
+                port=self.redis_config["port"],
+                db=self.redis_config["db"],
+                password=self.redis_config["password"],
+                socket_connect_timeout=5,  # 快速测试
+                socket_timeout=5
+            )
+
+            # 执行ping测试
+            client.ping()
+            logger.info(f"Redis连接成功: {self.redis_config['host']}:{self.redis_config['port']}")
+            return True
+
+        except ImportError:
+            logger.error("redis-py模块未安装，请运行: pip install redis")
+            return False
+        except Exception as e:
+            logger.warning(f"Redis连接测试失败: {e}")
+            return False
+
+    def get_storage_url(self) -> str:
+        """获取存储URL"""
+        if self.storage_strategy == "redis":
+            # 构建Redis URL
+            auth_part = ""
+            if self.redis_config["password"]:
+                auth_part = f":{self.redis_config['password']}@"
+
+            return (f"redis://{auth_part}{self.redis_config['host']}:"
+                    f"{self.redis_config['port']}/{self.redis_config['db']}")
+        else:
+            # SQLite存储（回退方案）
+            db_path = os.path.join(RESULTS_DIR, f"{self.study_base_name}.db")
+            return f"sqlite:///{db_path}"
+
+    def create_storage(self):
+        """创建存储实例"""
+        storage_url = self.get_storage_url()
+
+        if self.storage_strategy == "redis":
+            try:
+                # 使用Optuna的Redis存储 (Optuna 3.x需要用JournalStorage包装JournalRedisStorage)
+                journal_redis_storage = optuna.storages.JournalRedisStorage(
+                    url=storage_url
+                )
+                storage = optuna.storages.JournalStorage(journal_redis_storage)
+                logger.info("创建Redis存储成功")
+                return storage
+            except Exception as e:
+                logger.error(f"创建Redis存储失败: {e}")
+                # 回退到SQLite
+                self.storage_strategy = "sqlite"
+                storage_url = self.get_storage_url()
+
+        # SQLite存储（默认或回退）
+        logger.info("使用SQLite存储")
+        return storage_url  # Optuna会自动处理SQLite URL
+
+    def get_study_name(self) -> str:
+        """获取研究名称"""
+        return self.study_base_name
+
+    def save_performance_metrics(self, study):
+        """保存性能指标"""
+        if not study or len(study.trials) == 0:
+            return
+
+        metrics = {
+            'study_name': study.study_name,
+            'total_trials': len(study.trials),
+            'best_value': study.best_value,
+            'best_params': study.best_params,
+            'storage_strategy': self.storage_strategy,
+            'n_jobs': self.n_jobs,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+        # 保存到文件
+        metrics_file = os.path.join(RESULTS_DIR, f"{self.study_base_name}_metrics.json")
+        with open(metrics_file, 'w') as f:
+            json.dump(metrics, f, indent=2)
+
+        logger.info(f"性能指标已保存: {metrics_file}")
+        logger.info(f"最佳CAGR: {study.best_value:.6f}, 总试验: {len(study.trials)}")
+
+
+# 全局存储管理器实例
+_storage_manager: Optional[RedisStorageManager] = None
+
+
+def get_storage_manager(study_base_name: str, n_jobs: int, seed: int) -> RedisStorageManager:
+    """获取存储管理器实例（单例模式）"""
+    global _storage_manager
+    if _storage_manager is None or _storage_manager.study_base_name != study_base_name:
+        _storage_manager = RedisStorageManager(study_base_name, n_jobs, seed)
+    return _storage_manager
 
 
 def _prepare_all_filter_conditions(df, enable_filter_opt):
@@ -213,13 +371,15 @@ def _create_study(study_name, args, sampler_type="random"):
     Returns:
         study: optuna研究对象
     """
-    db_path = os.path.join(RESULTS_DIR, f"{study_name}.db")
-    storage_name = f"sqlite:///{db_path}"
+    # 获取存储管理器
+    storage_manager = get_storage_manager(study_name, args.n_jobs, args.seed)
+    storage = storage_manager.create_storage()
+    final_study_name = storage_manager.get_study_name()
 
     try:
         # 尝试加载已有的研究
-        study = optuna.load_study(study_name=study_name, storage=storage_name)
-        logger.info(f"加载已有的研究 {study_name}，已完成 {len(study.trials)} 次试验")
+        study = optuna.load_study(study_name=final_study_name, storage=storage)
+        logger.info(f"加载已有的研究 {final_study_name}，已完成 {len(study.trials)} 次试验")
     except:
         # 创建新的研究
         if sampler_type == "random":
@@ -228,9 +388,9 @@ def _create_study(study_name, args, sampler_type="random"):
             sampler = optuna.samplers.TPESampler(seed=args.seed)
 
         study = optuna.create_study(
-            study_name=study_name, storage=storage_name, direction="maximize", sampler=sampler, load_if_exists=True
+            study_name=final_study_name, storage=storage, direction="maximize", sampler=sampler, load_if_exists=True
         )
-        logger.info(f"创建新的研究 {study_name}")
+        logger.info(f"创建新的研究 {final_study_name} (存储策略: {storage_manager.storage_strategy})")
 
     return study
 
@@ -544,6 +704,7 @@ def _create_final_study_and_merge_results(
         second_stage_combinations,
         first_stage_best_value,
         num_factors,
+        all_filter_conditions=None,
 ):
     """创建最终研究并合并结果
 
@@ -555,6 +716,7 @@ def _create_final_study_and_merge_results(
         second_stage_combinations: 第二阶段组合
         first_stage_best_value: 第一阶段最佳值
         num_factors: 因子数量
+        all_filter_conditions: 所有排除因子条件列表
 
     Returns:
         final_study: 最终研究
@@ -723,6 +885,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         second_stage_combinations,
         first_stage_best_value,
         num_factors,
+        all_filter_conditions,
     )
 
     return factors, all_combinations, final_study
