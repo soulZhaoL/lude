@@ -2,6 +2,7 @@
 # 核心数据处理
 pandas==2.0.2
 numpy==1.26.4
+redis==6.2.0
 # Parquet 支持
 pyarrow==14.0.1
 # fastparquet==0.10.2
