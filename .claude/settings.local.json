@@ -13,7 +13,14 @@
       "Bash(ls:*)",
       "Bash(chmod:*)",
       "Bash(./set_env.sh)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(mkdir:*)",
+      "Bash(pip install:*)",
+      "Bash(mv:*)",
+      "Bash(docker-compose:*)",
+      "Bash(./start_redis.sh:*)",
+      "Bash(docker exec:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
