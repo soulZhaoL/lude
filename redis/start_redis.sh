@@ -60,13 +60,13 @@ start_dev() {
     echo -e "${YELLOW}等待Redis启动...${NC}"
     sleep 3
     
-    if docker exec optuna-redis-dev redis-cli ping &> /dev/null; then
+    if docker exec lude-redis-dev redis-cli ping &> /dev/null; then
         echo -e "${GREEN}✅ 开发环境Redis启动成功!${NC}"
         echo -e "连接信息: ${YELLOW}localhost:6379${NC}"
-        echo -e "测试连接: ${YELLOW}docker exec optuna-redis-dev redis-cli ping${NC}"
+        echo -e "测试连接: ${YELLOW}docker exec lude-redis-dev redis-cli ping${NC}"
     else
         echo -e "${RED}❌ Redis启动失败，请检查日志${NC}"
-        docker logs optuna-redis-dev
+        docker logs lude-redis-dev
         exit 1
     fi
 }
@@ -79,14 +79,14 @@ start_prod() {
     echo -e "${YELLOW}等待Redis启动...${NC}"
     sleep 5
     
-    if docker exec optuna-redis-prod redis-cli ping &> /dev/null; then
+    if docker exec lude-redis-prod redis-cli ping &> /dev/null; then
         echo -e "${GREEN}✅ 生产环境Redis启动成功!${NC}"
         echo -e "连接信息: ${YELLOW}localhost:6380${NC}"
         echo -e "内存配置: ${YELLOW}3GB${NC}"
-        echo -e "测试连接: ${YELLOW}docker exec optuna-redis-prod redis-cli ping${NC}"
+        echo -e "测试连接: ${YELLOW}docker exec lude-redis-prod redis-cli ping${NC}"
     else
         echo -e "${RED}❌ Redis启动失败，请检查日志${NC}"
-        docker logs optuna-redis-prod
+        docker logs lude-redis-prod
         exit 1
     fi
 }
@@ -99,7 +99,7 @@ start_monitor() {
     echo -e "${YELLOW}等待服务启动...${NC}"
     sleep 8
     
-    if docker exec optuna-redis-prod redis-cli ping &> /dev/null; then
+    if docker exec lude-redis-prod redis-cli ping &> /dev/null; then
         echo -e "${GREEN}✅ Redis + 监控启动成功!${NC}"
         echo -e "Redis连接: ${YELLOW}localhost:6380${NC}"
         echo -e "监控面板: ${YELLOW}http://localhost:8001${NC}"
@@ -132,13 +132,13 @@ show_status() {
     docker-compose ps
     echo ""
     
-    if docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "(redis|optuna)" | grep -q "Up"; then
+    if docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "(redis|lude)" | grep -q "Up"; then
         echo -e "${GREEN}✅ 有Redis服务正在运行${NC}"
         
         # 检查开发环境
-        if docker ps | grep -q "optuna-redis-dev"; then
+        if docker ps | grep -q "lude-redis-dev"; then
             echo -e "开发环境: ${GREEN}运行中${NC} (端口: 6379)"
-            if docker exec optuna-redis-dev redis-cli ping &> /dev/null; then
+            if docker exec lude-redis-dev redis-cli ping &> /dev/null; then
                 echo -e "  连接状态: ${GREEN}正常${NC}"
             else
                 echo -e "  连接状态: ${RED}异常${NC}"
@@ -146,12 +146,12 @@ show_status() {
         fi
         
         # 检查生产环境
-        if docker ps | grep -q "optuna-redis-prod"; then
+        if docker ps | grep -q "lude-redis-prod"; then
             echo -e "生产环境: ${GREEN}运行中${NC} (端口: 6380)"
-            if docker exec optuna-redis-prod redis-cli ping &> /dev/null; then
+            if docker exec lude-redis-prod redis-cli ping &> /dev/null; then
                 echo -e "  连接状态: ${GREEN}正常${NC}"
                 # 显示内存使用
-                memory_info=$(docker exec optuna-redis-prod redis-cli info memory | grep used_memory_human)
+                memory_info=$(docker exec lude-redis-prod redis-cli info memory | grep used_memory_human)
                 echo -e "  内存使用: ${YELLOW}${memory_info#*:}${NC}"
             else
                 echo -e "  连接状态: ${RED}异常${NC}"
@@ -159,7 +159,7 @@ show_status() {
         fi
         
         # 检查监控面板
-        if docker ps | grep -q "redis-insight"; then
+        if docker ps | grep -q "lude-redis-insight"; then
             echo -e "监控面板: ${GREEN}运行中${NC} (http://localhost:8001)"
         fi
     else
@@ -178,15 +178,15 @@ show_logs() {
     case $choice in
         1)
             echo -e "${BLUE}开发环境Redis日志:${NC}"
-            docker logs -f optuna-redis-dev
+            docker logs -f lude-redis-dev
             ;;
         2)
             echo -e "${BLUE}生产环境Redis日志:${NC}"
-            docker logs -f optuna-redis-prod
+            docker logs -f lude-redis-prod
             ;;
         3)
             echo -e "${BLUE}监控面板日志:${NC}"
-            docker logs -f redis-insight
+            docker logs -f lude-redis-insight
             ;;
         *)
             echo -e "${RED}无效选择${NC}"
@@ -199,54 +199,54 @@ test_connection() {
     echo -e "${BLUE}测试Redis连接...${NC}"
     
     # 测试开发环境
-    if docker ps | grep -q "optuna-redis-dev"; then
+    if docker ps | grep -q "lude-redis-dev"; then
         echo -e "\n${YELLOW}测试开发环境 (端口6379):${NC}"
-        if docker exec optuna-redis-dev redis-cli ping &> /dev/null; then
+        if docker exec lude-redis-dev redis-cli ping &> /dev/null; then
             echo -e "  基础连接: ${GREEN}✅ 成功${NC}"
             
             # 测试写入读取
-            docker exec optuna-redis-dev redis-cli set test_key "Hello Optuna" > /dev/null
-            result=$(docker exec optuna-redis-dev redis-cli get test_key)
+            docker exec lude-redis-dev redis-cli set test_key "Hello Optuna" > /dev/null
+            result=$(docker exec lude-redis-dev redis-cli get test_key)
             if [ "$result" = "Hello Optuna" ]; then
                 echo -e "  读写测试: ${GREEN}✅ 成功${NC}"
             else
                 echo -e "  读写测试: ${RED}❌ 失败${NC}"
             fi
-            docker exec optuna-redis-dev redis-cli del test_key > /dev/null
+            docker exec lude-redis-dev redis-cli del test_key > /dev/null
         else
             echo -e "  基础连接: ${RED}❌ 失败${NC}"
         fi
     fi
     
     # 测试生产环境
-    if docker ps | grep -q "optuna-redis-prod"; then
+    if docker ps | grep -q "lude-redis-prod"; then
         echo -e "\n${YELLOW}测试生产环境 (端口6380):${NC}"
-        if docker exec optuna-redis-prod redis-cli ping &> /dev/null; then
+        if docker exec lude-redis-prod redis-cli ping &> /dev/null; then
             echo -e "  基础连接: ${GREEN}✅ 成功${NC}"
             
             # 测试写入读取
-            docker exec optuna-redis-prod redis-cli set test_key "Hello Optuna Prod" > /dev/null
-            result=$(docker exec optuna-redis-prod redis-cli get test_key)
+            docker exec lude-redis-prod redis-cli set test_key "Hello Optuna Prod" > /dev/null
+            result=$(docker exec lude-redis-prod redis-cli get test_key)
             if [ "$result" = "Hello Optuna Prod" ]; then
                 echo -e "  读写测试: ${GREEN}✅ 成功${NC}"
             else
                 echo -e "  读写测试: ${RED}❌ 失败${NC}"
             fi
-            docker exec optuna-redis-prod redis-cli del test_key > /dev/null
+            docker exec lude-redis-prod redis-cli del test_key > /dev/null
             
             # 显示性能信息
             echo -e "  性能信息:"
-            memory_info=$(docker exec optuna-redis-prod redis-cli info memory | grep used_memory_human)
+            memory_info=$(docker exec lude-redis-prod redis-cli info memory | grep used_memory_human)
             echo -e "    内存使用: ${YELLOW}${memory_info#*:}${NC}"
             
-            clients_info=$(docker exec optuna-redis-prod redis-cli info clients | grep connected_clients)
+            clients_info=$(docker exec lude-redis-prod redis-cli info clients | grep connected_clients)
             echo -e "    连接数: ${YELLOW}${clients_info#*:}${NC}"
         else
             echo -e "  基础连接: ${RED}❌ 失败${NC}"
         fi
     fi
     
-    if ! docker ps | grep -q -E "(optuna-redis-dev|optuna-redis-prod)"; then
+    if ! docker ps | grep -q -E "(lude-redis-dev|lude-redis-prod)"; then
         echo -e "\n${YELLOW}⚠️  没有Redis服务在运行${NC}"
         echo -e "请先运行: ${BLUE}$0 dev${NC} 或 ${BLUE}$0 prod${NC}"
     fi

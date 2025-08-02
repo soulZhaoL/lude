@@ -16,7 +16,7 @@
    - 提高执行效率和代码可读性
 
 3. 配置驱动优化：
-   - 过滤因子的选择完全由配置文件filter_factors_config.yaml驱动
+   - 过滤因子的选择完全由配置文件filter_factors_optimized_config.yaml驱动
    - max_factors参数严格按照配置文件中的combination_rules.max_factors执行
    - 移除trial中不必要的因子选择逻辑
 """
@@ -206,10 +206,10 @@ def _prepare_all_filter_conditions(df, enable_filter_opt):
         return None
 
     try:
-        from lude.utils.filter_generator import FilterFactorGenerator
+        from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
 
-        # 直接从配置文件获取排除因子列表
-        generator = FilterFactorGenerator()
+        # 直接从优化配置文件获取排除因子列表
+        generator = OptimizedFilterFactorGenerator()
         config_factors = generator.get_available_factors()
 
         logger.info(f"配置文件中的排除因子: {config_factors}")
@@ -217,19 +217,9 @@ def _prepare_all_filter_conditions(df, enable_filter_opt):
         # 生成所有可能的排除因子条件组合
         all_filter_conditions = []
         for factor_name in config_factors:
-            factor_config = generator.config['filter_factors'][factor_name]
-            operators = factor_config.get('operators', ['gte', 'lte'])
-            value_options = factor_config.get('value_options', [])
-
-            # 为每个因子生成所有可能的条件
-            for operator in operators:
-                for value in value_options:
-                    condition = {
-                        'factor': factor_name,
-                        'operator': generator._convert_operator(operator),
-                        'value': value
-                    }
-                    all_filter_conditions.append(condition)
+            # 使用新生成器的方法生成单因子条件
+            conditions = generator.generate_single_factor_conditions(factor_name)
+            all_filter_conditions.extend(conditions)
 
         logger.info(f"成功生成 {len(all_filter_conditions)} 个可能的排除因子条件")
         logger.info(
@@ -305,7 +295,7 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         except ValueError as e:
             # 处理参数组合无效的情况（过拟合、条件过严等）
             if "过拟合" in str(e) or "无符合条件" in str(e):
-                logger.info(f"跳过无效参数组合: {e}")
+                logger.info(f"跳过无效参数组合: {e}, 当前打分因子: {rank_factors}, 当前排除因子: {selected_filter_conditions}")
                 logger.debug(f"当前打分因子: {rank_factors}")
                 logger.debug(f"当前排除因子: {selected_filter_conditions}")
                 raise optuna.exceptions.TrialPruned()
@@ -416,12 +406,14 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     first_stage_combinations = _prepare_first_stage_combinations(factors, num_factors, args, max_combinations)
 
     # 创建第一阶段研究
-    study_name = f"first_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.seed}"
+    # 包含所有关键参数避免数据混合
+    filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
+    study_name = f"first_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
     first_stage_study = _create_study(study_name, args, "random")
 
     # 获取max_filter_factors配置（一次性加载，避免重复）
-    from lude.utils.filter_generator import FilterFactorGenerator
-    generator = FilterFactorGenerator()
+    from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
+    generator = OptimizedFilterFactorGenerator()
     max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 6)
 
     # 创建目标函数（使用所有可能的排除因子条件）
@@ -632,8 +624,10 @@ def _run_second_stage_optimization(
         factors, num_factors, best_combination, max_combinations, args
     )
 
-    # 创建第二阶段研究
-    study_name = f"second_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.seed}"
+    # 创建第二阶段研究  
+    # 包含所有关键参数避免数据混合
+    filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
+    study_name = f"second_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
     second_stage_study = _create_study(study_name, args, args.method)
 
     # 将第一阶段最佳结果添加到第二阶段
@@ -642,8 +636,8 @@ def _run_second_stage_optimization(
     )
 
     # 获取max_filter_factors配置（复用第一阶段的配置，避免重复加载）
-    from lude.utils.filter_generator import FilterFactorGenerator
-    generator = FilterFactorGenerator()
+    from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
+    generator = OptimizedFilterFactorGenerator()
     max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 6)
 
     # 创建目标函数（使用所有可能的排除因子条件）
@@ -723,7 +717,9 @@ def _create_final_study_and_merge_results(
         all_combinations: 所有组合
     """
     # 创建最终研究
-    study_name = f"final_{args.strategy}_{args.method}_{args.n_factors}factors_{args.seed}"
+    # 包含所有关键参数避免数据混合
+    filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
+    study_name = f"final_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
     final_study = _create_study(study_name, args, args.method)
 
     # 比较两个阶段的结果

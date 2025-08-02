@@ -119,7 +119,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
             - daily_returns: 每日收益率DataFrame
             - processed_df: 处理后的数据框
     """
-    logger.info(f"rank_factors:{rank_factors}, filter_conditions:{filter_conditions}")
+    # logger.info(f"rank_factors:{rank_factors}, filter_conditions:{filter_conditions}")
     # 数据筛选 - 按日期范围
     df = df[(df.index.get_level_values('trade_date') >= start_date) &
             (df.index.get_level_values('trade_date') <= end_date)]
@@ -314,11 +314,11 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     final_cagr = cagr  # 保存最终的CAGR值
     
     if check_overfitting:
-        from lude.core.overfitting_detector import is_strategy_overfitted, get_overfitting_penalty_value
+        from lude.core.overfitting_detector import check_overfitting
         
         try:
-            # 进行过拟合检测
-            is_overfitted = is_strategy_overfitted(
+            # 进行详细的过拟合检测
+            check_results = check_overfitting(
                 df=df,
                 daily_selected_bonds=daily_selected_bonds,
                 res=res,
@@ -327,11 +327,17 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
                 verbose=verbose_overfitting
             )
             
+            is_overfitted = check_results['overall']['overfitting_detected']
+            
             if is_overfitted:
-                # 如果检测到过拟合，使用惩罚值
-                final_cagr = get_overfitting_penalty_value()
-                if verbose_overfitting:
-                    logger.warning(f"检测到过拟合！原CAGR: {cagr:.6f} -> 惩罚CAGR: {final_cagr:.6f}")
+                # 获取具体的过拟合原因
+                warning_messages = check_results['overall']['warning_messages']
+                reason_summary = "; ".join(warning_messages) if warning_messages else "未知过拟合原因"
+                
+                # 抛出包含详细原因的异常
+                error_msg = f"过拟合检测失败: {reason_summary}"
+                logger.debug(error_msg)
+                raise ValueError(error_msg)
             else:
                 if verbose_overfitting:
                     logger.info(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")

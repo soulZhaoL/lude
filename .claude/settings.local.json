@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Bash(source:*)",
@@ -20,7 +21,11 @@
       "Bash(docker-compose:*)",
       "Bash(./start_redis.sh:*)",
       "Bash(docker exec:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cp:*)",
+      "Bash(timeout:*)",
+      "Bash(gtimeout:*)",
+      "Bash(./run_optimizer.sh:*)"
     ],
     "deny": []
   }

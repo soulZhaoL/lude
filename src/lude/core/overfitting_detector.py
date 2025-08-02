@@ -9,8 +9,91 @@
 
 import pandas as pd
 import numpy as np
+import yaml
+import os
 from typing import Dict, Optional
 from lude.utils.logger import optimization_logger as logger
+from lude.config.paths import get_project_root
+
+
+def _load_overfitting_config() -> Dict:
+    """
+    加载过拟合检测配置
+    
+    返回:
+        dict: 过拟合检测配置字典
+    
+    抛出:
+        FileNotFoundError: 配置文件不存在
+        yaml.YAMLError: YAML文件格式错误
+        KeyError: 配置文件缺少必需的overfitting_detection节点
+    """
+    project_root = get_project_root()
+    config_path = os.path.join(project_root, "src", "lude", "config", "filter_factors_optimized_config.yaml")
+    
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"过拟合检测配置文件不存在: {config_path}")
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"配置文件YAML格式错误: {config_path}, 错误: {e}")
+    
+    if 'overfitting_detection' not in config:
+        raise KeyError(f"配置文件缺少必需的'overfitting_detection'节点: {config_path}")
+    
+    overfitting_config = config['overfitting_detection']
+    
+    # 验证必需的配置项
+    required_keys = ['time_stability']
+    for key in required_keys:
+        if key not in overfitting_config:
+            raise KeyError(f"配置文件缺少必需的'{key}'配置: {config_path}")
+    
+    return overfitting_config
+
+
+def _detect_outlier_windows(window_cagrs: list, iqr_multiplier: float = 1.5) -> Dict:
+    """
+    检测异常窗口
+    
+    参数:
+        window_cagrs: 窗口CAGR列表
+        iqr_multiplier: IQR倍数，用于异常值检测
+    
+    返回:
+        dict: 异常值检测结果
+    """
+    if len(window_cagrs) < 4:
+        return {
+            'outliers': [],
+            'outlier_count': 0,
+            'is_outlier_detected': False,
+            'q25': 0,
+            'q75': 0,
+            'iqr': 0,
+            'outlier_bounds': (0, 0)
+        }
+    
+    q25 = np.percentile(window_cagrs, 25)
+    q75 = np.percentile(window_cagrs, 75)
+    iqr = q75 - q25
+    
+    lower_bound = q25 - iqr_multiplier * iqr
+    upper_bound = q75 + iqr_multiplier * iqr
+    
+    outliers = [x for x in window_cagrs if x < lower_bound or x > upper_bound]
+    
+    return {
+        'outliers': outliers,
+        'outlier_count': len(outliers),
+        'is_outlier_detected': len(outliers) > 0,
+        'q25': q25,
+        'q75': q75,
+        'iqr': iqr,
+        'outlier_bounds': (lower_bound, upper_bound)
+    }
 
 
 def check_overfitting(df: pd.DataFrame, 
@@ -141,15 +224,44 @@ def check_overfitting(df: pd.DataFrame,
                     window_cagrs.append(quarter_cagr)
 
         if window_cagrs and len(window_cagrs) >= 2:
+            # 加载过拟合检测配置
+            overfitting_config = _load_overfitting_config()
+            time_config = overfitting_config.get('time_stability', {})
+            
+            # 进行异常值检测
+            outlier_result = _detect_outlier_windows(
+                window_cagrs, 
+                time_config.get('outlier_iqr_multiplier', 1.5)
+            )
+            
+            # 计算基本统计指标
+            cagr_mean = np.mean(window_cagrs)
+            cagr_std = np.std(window_cagrs)
+            cagr_cv = cagr_std / abs(cagr_mean) if cagr_mean != 0 else float('inf')
+            
+            # 根据异常值情况选择阈值
+            max_outlier_windows = time_config.get('max_outlier_windows', 2)
+            if outlier_result['outlier_count'] > max_outlier_windows or len(window_cagrs) < 4:
+                # 异常值较多或样本不足，使用宽松阈值
+                cv_threshold = time_config.get('outlier_tolerant_cv_threshold', 1.5)
+                threshold_type = "outlier_tolerant"
+            else:
+                # 异常值少且样本充足，使用严格阈值
+                cv_threshold = time_config.get('normal_cv_threshold', 1.2)
+                threshold_type = "normal"
+            
             time_stability = {
                 'window_cagrs': window_cagrs,
-                'cagr_std': np.std(window_cagrs),
-                'cagr_mean': np.mean(window_cagrs),
-                'cagr_cv': np.std(window_cagrs) / abs(np.mean(window_cagrs)) if np.mean(window_cagrs) != 0 else float(
-                    'inf'),
+                'cagr_std': cagr_std,
+                'cagr_mean': cagr_mean,
+                'cagr_cv': cagr_cv,
                 'window_count': len(window_cagrs),
                 'min_cagr': np.min(window_cagrs),
-                'max_cagr': np.max(window_cagrs)
+                'max_cagr': np.max(window_cagrs),
+                # 新增异常值检测信息
+                'outlier_detection': outlier_result,
+                'cv_threshold': cv_threshold,
+                'threshold_type': threshold_type
             }
     
     # 5. 极端收益贡献检查 - 增强版
@@ -252,9 +364,21 @@ def check_overfitting(df: pd.DataFrame,
         overfitting_detected = True
         warning_messages.append(f"选股过度集中: 最高频标的占比 {stock_concentration['top_stock_ratio']:.2%} > 70%")
 
-    if time_stability and time_stability.get('cagr_cv', 0) > 1.0:
-        overfitting_detected = True
-        warning_messages.append(f"时间段表现不稳定: 变异系数 {time_stability['cagr_cv']:.2f} > 1.0")
+    if time_stability:
+        cv_value = time_stability.get('cagr_cv', 0)
+        cv_threshold = time_stability.get('cv_threshold', 1.2)
+        threshold_type = time_stability.get('threshold_type', 'normal')
+        
+        if cv_value > cv_threshold:
+            overfitting_detected = True
+            outlier_info = ""
+            if threshold_type == "outlier_tolerant":
+                outlier_count = time_stability.get('outlier_detection', {}).get('outlier_count', 0)
+                outlier_info = f" (检测到{outlier_count}个异常窗口，使用宽松阈值)"
+            
+            warning_messages.append(
+                f"时间段表现不稳定: 变异系数 {cv_value:.2f} > {cv_threshold} ({threshold_type}){outlier_info}"
+            )
 
     # 删除极端收益贡献检测 - 该检测逻辑错误，真实市场中收益往往由少数交易日贡献是正常现象
     # if extreme_return_check and extreme_return_check.get('top_5pct_days_contribution', 0) > 0.9:
@@ -321,6 +445,24 @@ def print_overfitting_report(check_results: Dict) -> None:
         logger.info(f"   CAGR范围: {stab['min_cagr']:.2%} ~ {stab['max_cagr']:.2%}")
         logger.info(f"   标准差: {stab['cagr_std']:.4f}")
         logger.info(f"   变异系数: {stab['cagr_cv']:.2f}")
+        
+        # 显示异常值检测信息
+        if 'outlier_detection' in stab:
+            outlier_info = stab['outlier_detection']
+            if outlier_info['is_outlier_detected']:
+                logger.info(f"   异常窗口检测: 发现{outlier_info['outlier_count']}个异常窗口")
+                logger.info(f"   异常窗口CAGR: {[f'{x:.2%}' for x in outlier_info['outliers']]}")
+                logger.info(f"   正常范围: {outlier_info['outlier_bounds'][0]:.2%} ~ {outlier_info['outlier_bounds'][1]:.2%}")
+            else:
+                logger.info(f"   异常窗口检测: 未发现异常窗口")
+        
+        # 显示使用的阈值信息
+        cv_threshold = stab.get('cv_threshold', 1.2)
+        threshold_type = stab.get('threshold_type', 'normal')
+        logger.info(f"   变异系数阈值: {cv_threshold} ({threshold_type})")
+        
+        cv_passed = stab['cagr_cv'] <= cv_threshold
+        logger.info(f"   状态: {'✓ 通过' if cv_passed else '✗ 未通过'}")
     else:
         logger.info("4. 时间段稳定性: 数据不足（需要至少60个交易日）")
     
@@ -368,19 +510,6 @@ def print_overfitting_report(check_results: Dict) -> None:
         for msg in overall['warning_messages']:
             logger.warning(f"  - {msg}")
     logger.info("=" * 60)
-
-
-def get_overfitting_penalty_value() -> float:
-    """
-    检测到过拟合时抛出异常，而不是返回惩罚值
-    
-    这样可以让Optuna优雅地跳过无效试验，而不是用错误的负值污染优化空间
-    
-    Raises:
-        ValueError: 检测到过拟合策略
-    """
-    logger.warning("检测到过拟合策略，抛出异常以跳过该试验")
-    raise ValueError("检测到过拟合策略，参数组合无效")
 
 
 def is_strategy_overfitted(df: pd.DataFrame, 

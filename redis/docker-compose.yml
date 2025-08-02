@@ -2,25 +2,25 @@ services:
   # 基础Redis服务（开发环境）
   redis-dev:
     image: redis:7-alpine
-    container_name: optuna-redis-dev
+    container_name: lude-redis-dev
     ports:
       - "6379:6379"
     volumes:
-      - redis-dev-data:/data
+      - lude-redis-dev-data:/data
       - ./redis-dev.conf:/usr/local/etc/redis/redis.conf:ro
     command: redis-server /usr/local/etc/redis/redis.conf
     restart: unless-stopped
     networks:
-      - optuna-network
+      - lude-network
 
   # 生产级Redis服务（高性能+持久化）
   redis-prod:
     image: redis:7-alpine
-    container_name: optuna-redis-prod
+    container_name: lude-redis-prod
     ports:
       - "6380:6379"  # 使用不同端口避免冲突
     volumes:
-      - redis-prod-data:/data
+      - lude-redis-prod-data:/data
       - ./redis-prod.conf:/usr/local/etc/redis/redis.conf:ro
       - ./logs:/var/log/redis
     command: redis-server /usr/local/etc/redis/redis.conf
@@ -32,30 +32,30 @@ services:
         reservations:
           memory: 2G
     networks:
-      - optuna-network
+      - lude-network
 
   # Redis监控面板（可选）
   redis-insight:
     image: redislabs/redisinsight:latest
-    container_name: redis-insight
+    container_name: lude-redis-insight
     ports:
       - "8001:8001"
     volumes:
-      - redis-insight-data:/db
+      - lude-redis-insight-data:/db
     restart: unless-stopped
     networks:
-      - optuna-network
+      - lude-network
     depends_on:
       - redis-prod
 
 volumes:
-  redis-dev-data:
+  lude-redis-dev-data:
     driver: local
-  redis-prod-data:
+  lude-redis-prod-data:
     driver: local
-  redis-insight-data:
+  lude-redis-insight-data:
     driver: local
 
 networks:
-  optuna-network:
+  lude-network:
     driver: bridge

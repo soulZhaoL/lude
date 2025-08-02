@@ -35,31 +35,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # - 其他依赖包版本冲突错误
 
 # 🚨 重要：项目路径配置
-
 # 项目已升级为更稳健的路径配置系统，支持多种路径发现方式：
-
-#  
-
 # 1. 环境变量方式（推荐用于生产环境）：
-
 # export LUDE_PROJECT_ROOT="/path/to/your/lude/project"
-
 # 或使用提供的脚本：source set_env.sh
-
-#
-
 # 2. 自动发现方式（默认）：
-
 # 系统会自动查找包含 pyproject.toml、setup.py 等标志文件的目录作为项目根目录
-
-#
-
 # 3. 路径验证：
-
 # 可以通过以下代码验证路径配置是否正确：
-
 # from lude.config.paths import get_path_info
-
 # print(get_path_info())
 
 本文件为Claude Code (claude.ai/code) 在该代码仓库中工作时提供指导。
@@ -113,6 +97,31 @@ mypy src/
 
 ## 关键命令
 
+### 环境管理
+```bash
+# 设置项目环境变量
+source set_env.sh
+
+# 开发模式安装（推荐）
+./install_dev.sh
+
+# 手动安装
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude
+pip install -e .
+```
+
+### Redis 服务管理
+```bash
+# 启动Redis（高并发优化时需要）
+./redis/start_redis.sh dev     # 开发环境
+./redis/start_redis.sh prod    # 生产环境
+./redis/start_redis.sh stop    # 停止服务
+./redis/start_redis.sh status  # 查看状态
+
+# 测试Redis连接
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_redis_connection.py
+```
+
 ### 运行优化
 ```bash
 # 单次优化运行
@@ -125,6 +134,15 @@ mypy src/
 ./run_optimizer.sh -m continuous --method tpe --strategy multistage \
   --start 20220729 --end 20240607 --min 100 --max 150 \
   --jobs 5 --trials 3000 --hold 15 --factors 3
+
+# 后台运行优化
+./run_optimizer.sh -m continuous -b -l optimization.log
+
+# 停止后台优化进程
+./run_optimizer.sh --stop
+
+# 检查优化进程状态
+./run_optimizer.sh --status
 
 # 获取帮助
 ./run_optimizer.sh --help
@@ -143,6 +161,9 @@ mypy src/
 
 # 查看模型详情
 ./view_model.sh --detailed
+
+# 查看模型内部结构
+./view_model.sh --inspect --depth 5
 ```
 
 ## 架构
@@ -155,23 +176,52 @@ mypy src/
    - `paths.py`: 集中路径管理
 
 2. **优化引擎** (`src/lude/optimization/`)
-   - `optimization_engine.py`: 主要优化协调器
+   - `unified_optimizer.py`: 统一优化器入口，支持多种运行模式
+   - `engine.py`: 主要优化协调器
    - `continuous_optimizer.py`: 持续优化逻辑
-   - `domain_knowledge_optimizer.py`: 领域特定优化策略
+   - `strategies/multistage.py`: 多阶段优化策略核心实现
+   - `strategies/strategy_runner.py`: 策略运行器
 
-3. **因子策略** (`src/lude/strategies/`)
-   - `factor_strategies.py`: 因子选择和组合策略
-   - `multistage_optimizer.py`: 多阶段优化实现
+3. **核心计算** (`src/lude/core/`)
+   - `cagr_calculator.py`: CAGR计算核心引擎
+   - `overfitting_detector.py`: 过拟合检测器
+   - `cal_factor_util.py`: 因子计算工具
+   - `daily_analysis_helper.py`: 日度分析辅助工具
 
 4. **数据处理** (`src/lude/data/`)
-   - 可转债数据的Parquet文件
+   - 可转债数据的Parquet文件 (`cb_data.pq`, `index.pq`)
    - 按因子数量组织的因子性能结果 (fac4_1, fac5_1, etc.)
+   - 每个目录包含Excel性能报告和合并的因子JSON
 
 5. **工具集** (`src/lude/utils/`)
    - `cagr_utils.py`: CAGR计算工具
    - `performance_metrics.py`: 性能评估指标
    - `dingtalk/`: 结果钉钉通知系统
    - `logger.py`: 集中日志配置
+   - `filter_generator_optimized.py`: 优化的过滤条件生成器
+   - `factor_distribution_analyzer.py`: 因子分布分析工具
+   - `factor_performance_analyzer.py`: 因子性能分析器
+
+6. **模型管理** (`src/lude/models/`)
+   - `view_best_model.py`: 最佳模型查看器
+
+### 系统特性
+
+1. **分布式计算支持**
+   - 高并发（>10 jobs）时自动使用Redis分布式存储
+   - 低并发（<=10 jobs）时使用SQLite本地存储
+   - 自动连接检测和回退机制
+
+2. **智能优化策略**
+   - **domain**: 领域知识分组优化
+   - **prescreen**: 预筛选优化
+   - **multistage**: 多阶段优化（探索+精细化）
+   - **filter**: 过滤冗余因子优化
+
+3. **环境自适应**
+   - 自动检测服务器环境（autodl-tmp）vs本地环境
+   - 动态conda环境激活和管理
+   - 支持多种路径发现方式
 
 ### 关键数据结构
 
@@ -243,4 +293,52 @@ source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude
 ```bash
 conda init bash  # 或者 conda init zsh
 source ~/.bashrc  # 或者 source ~/.zshrc
+```
+
+## 日志和调试
+
+### 日志文件位置
+- `logs/lude.log`: 主程序日志
+- `logs/optimization.log`: 优化过程日志  
+- `logs/dingtalk.log`: 钉钉通知日志
+- `redis/logs/`: Redis服务日志
+
+### 常用调试命令
+```bash
+# 查看实时优化日志
+tail -f logs/optimization.log
+
+# 查看后台运行的优化进程
+./run_optimizer.sh --status
+
+# 检查Redis连接
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_redis_connection.py
+
+# 验证路径配置
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python -c "from lude.config.paths import get_path_info; print(get_path_info())"
+
+# 查看因子分布
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python -m lude.utils.factor_distribution_analyzer
+```
+
+### 性能监控
+- CAGR阈值超过0.45时自动发送钉钉通知
+- 模型保存CAGR阈值: 0.40
+- 结果自动保存到 `optimization_results/` 目录
+- 最佳模型记录在 `optimization_results/best_record.json`
+
+## 批量操作脚本
+
+### 多环境管理
+```bash
+# 批量初始化环境
+./batch_init_env.sh
+
+# 批量服务管理
+./batch_manage_services.sh start   # 启动所有环境的Redis
+./batch_manage_services.sh stop    # 停止所有环境的Redis
+./batch_manage_services.sh status  # 查看所有环境状态
+
+# 批量运行优化
+./batch_run_opt.sh
 ```
