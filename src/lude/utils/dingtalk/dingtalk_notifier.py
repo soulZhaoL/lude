@@ -14,6 +14,7 @@ from lude.utils.logger import dingtalk_logger as logger
 def send_optimization_result_to_dingtalk(
         cagr,
         rank_factors,
+        filter_conditions=None,
         seed=None,
         strategy="default",
         n_trials=None,
@@ -30,6 +31,7 @@ def send_optimization_result_to_dingtalk(
     Args:
         cagr: 年化收益率
         rank_factors: 因子数据列表，每个元素为字典，包含 name、description、weight、ascending 等字段
+        filter_conditions: 排除因子条件列表
         seed: 随机种子
         strategy: 策略名称
         n_trials: 试验次数
@@ -92,6 +94,19 @@ def send_optimization_result_to_dingtalk(
 
                 factors_info += f"\n{i + 1}. {factor_display} (权重: {weight}, {direction})"
 
+        # 排除因子信息
+        filter_info = ""
+        if filter_conditions:
+            filter_info = "\n\n排除因子条件:"
+            for i, condition in enumerate(filter_conditions):
+                factor_name = condition.get('factor', 'unknown')
+                operator = condition.get('operator', '>=')
+                value = condition.get('value', 0)
+                desc = condition.get('desc', '')
+                
+                desc_part = f" ({desc})" if desc else ""
+                filter_info += f"\n{i + 1}. {factor_name} {operator} {value}{desc_part}"
+
         # 完整消息
         message = f"【可转债优化新结果】{current_time}\n" \
                   f"年化收益率(CAGR): {cagr:.6f} {seed_info}\n" \
@@ -99,7 +114,8 @@ def send_optimization_result_to_dingtalk(
                   f"{params_info}" \
                   f"{model_info}" \
                   f"{iteration_info}" \
-                  f"{factors_info}"
+                  f"{factors_info}" \
+                  f"{filter_info}"
 
         # 发送消息
         manager.send_message(message)
