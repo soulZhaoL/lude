@@ -12,8 +12,15 @@
 # 明确指定清空结果目录
 # /root/batch_run_opt.sh --clear
 # 可以与其他参数一起使用
-# /root/batch_run_opt.sh         --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
-# /root/batch_run_opt.sh --clear --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
+# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5
+# 启用过滤优化
+# /root/batch_run_opt.sh --clear --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5 --enable_filter_opt
+
+# TODO 
+# 我有一个问题.  我发现 @batch_run_opt.sh  -> @run_opt.sh  -> @run_optimizer.sh
+  #  ,  似乎可以省略掉 @run_opt.sh , 直接调用 @run_optimizer.sh , 请你评估是否合理. 如果可以合并,请帮我合并.
+  # 我发现 job数量是写死的,请你帮我调整成可配置的.
+
 
 # 设置优化参数
 MODE="continuous"
@@ -49,6 +56,10 @@ while [ $# -gt 0 ]; do
     --factors|-f)
       FACTORS="$2"
       shift 2
+      ;;
+    --enable_filter_opt)
+      ENABLE_FILTER_OPT=true
+      shift
       ;;
     *)
       echo "错误: 未知参数 $1"

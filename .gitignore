@@ -16,3 +16,4 @@ __pycache__/
 .optimizer_pid
 *.log
 /logs
+high_performance_factors.json
