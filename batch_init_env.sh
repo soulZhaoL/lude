@@ -3,9 +3,9 @@
 # 将上面内容粘贴进去并保存
 # source /etc/network_turbo
 # chmod +x ~/*.sh
-# ~/batch_init_env.sh 5 3 1
+# ~/batch_init_env.sh 5 3 1 (建议使用 11 行)
 # 或者
-# ~/batch_init_env.sh lude_100_150_hold5_fac3_num1
+# ~/batch_init_env.sh lude_100_150_hold5_fac3_num1  (建议使用 11 行)
 # 或者
 # 切换conda 并初始化pip 环境
 # while read h f n; do    ~/batch_init_env.sh "$h" "$f" "$n";  done < ~/batch_init_env_param.txt
@@ -20,7 +20,7 @@ git config --global http.postBuffer 524288000
 # —— 配置区 —— #
 BASE_DIR="/root/autodl-tmp"                                # 所有项目目录的根目录
 REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
-PQ_SOURCE="/root/*.pq"                                     # .pq 文件来源
+PQ_SOURCE="/autodl-fs/data/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
 CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
 PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
