@@ -6,7 +6,7 @@ notification:
   # 钉钉推送相关配置
   dingtalk:
     # CAGR阈值：年化收益率超过此值才发送钉钉推送
-    cagr_threshold: 0.45
+    cagr_threshold: 0.3
     # 是否启用钉钉推送
     enabled: true
     # 消息模板配置
