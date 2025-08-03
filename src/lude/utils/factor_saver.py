@@ -16,15 +16,17 @@ from lude.utils.logger import optimization_logger as logger
 
 
 def save_high_performance_factors(
-    factors: List[Dict[str, Any]], 
+    rank_factors: List[Dict[str, Any]], 
     cagr: float, 
+    filter_conditions: Optional[List[Dict[str, Any]]] = None,
     metadata: Optional[Dict[str, Any]] = None
 ) -> bool:
     """保存高绩效因子组合到文件
     
     Args:
-        factors: 因子组合列表，每个元素为包含name,description,weight,ascending的字典
+        rank_factors: 打分因子组合列表，每个元素为包含name,description,weight,ascending的字典
         cagr: 年化收益率
+        filter_conditions: 排除因子条件列表，每个元素为包含factor,operator,value等信息的字典
         metadata: 额外的元数据信息，如开始日期、结束日期、策略名称等
         
     Returns:
@@ -41,12 +43,16 @@ def save_high_performance_factors(
         factor_record = {
             "timestamp": current_time,
             "cagr": cagr,
-            "factors": factors
+            "rank_factors": rank_factors,  # 重命名为更明确的名称
+            "filter_conditions": filter_conditions or []  # 排除因子与打分因子同级
         }
         
-        # 添加可选元数据
+        # 添加可选元数据（不包含filter_conditions，因为已经提升为顶级字段）
         if metadata:
-            factor_record.update(metadata)
+            # 确保不重复添加filter_conditions
+            metadata_copy = metadata.copy()
+            metadata_copy.pop('filter_conditions', None)  # 移除可能存在的filter_conditions
+            factor_record.update(metadata_copy)
             
         # 尝试加载现有文件
         existing_records = []

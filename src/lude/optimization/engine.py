@@ -145,8 +145,15 @@ def run_optimization(df, args):
             except Exception as e:
                 logger.error(f"尝试重建最佳因子组合时出错: {e}")
 
-        # 保存最佳模型
-        model_path = save_optimization_result(study, factors, factor_combinations, args, best_rank_factors)
+        # 获取排除因子信息
+        best_filter_conditions = []
+        if hasattr(study, 'best_filter_conditions'):
+            best_filter_conditions = study.best_filter_conditions
+        elif hasattr(study.best_trial, 'user_attrs') and 'filter_conditions' in study.best_trial.user_attrs:
+            best_filter_conditions = study.best_trial.user_attrs['filter_conditions']
+
+        # 保存最佳模型（包含排除因子信息）
+        model_path = save_optimization_result(study, factors, factor_combinations, args, best_rank_factors, best_filter_conditions)
 
         # 获取配置的CAGR阈值
         cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold', 0.55)
@@ -154,7 +161,6 @@ def run_optimization(df, args):
         # 如果有最佳因子组合，初始化因子数据（factor_mapping已在前面加载）
         factor_data = []
         if best_rank_factors:
-
             # 准备因子组合详细数据
             factor_data = [{
                 'name': factor['name'],
@@ -163,11 +169,10 @@ def run_optimization(df, args):
                 'ascending': factor['ascending']
             } for factor in best_rank_factors]
 
-        # 年化收益率超过阈值时保存高绩效因子组合
+        # 年化收益率超过阈值时统一处理保存和推送
         if study.best_value >= cagr_threshold and best_rank_factors:
             try:
-
-                # 准备元数据
+                # 准备元数据（不包含排除因子，因为排除因子已提升为独立参数）
                 metadata = {
                     'strategy': args.strategy if hasattr(args, 'strategy') else 'default',
                     'start_date': args.start_date if hasattr(args, 'start_date') else None,
@@ -175,42 +180,38 @@ def run_optimization(df, args):
                     'hold_num': args.hold_num if hasattr(args, 'hold_num') else None,
                     'n_trials': args.n_trials if hasattr(args, 'n_trials') else None,
                     'seed': args.seed if hasattr(args, 'seed') else None,
-                    'price_range': [args.min_price, args.max_price] if hasattr(args, 'min_price') and hasattr(args,
-                                                                                                              'max_price') else None,
+                    'price_range': [args.min_price, args.max_price] if hasattr(args, 'min_price') and hasattr(args, 'max_price') else None,
                     'model_path': model_path
                 }
 
-                # 保存高绩效因子组合
-                save_high_performance_factors(factor_data, study.best_value, metadata)
-                logger.info(f"已保存高绩效因子组合 (CAGR: {study.best_value:.6f})")
+                # 保存高绩效因子组合（排除因子作为独立参数传递）
+                save_high_performance_factors(factor_data, study.best_value, best_filter_conditions, metadata)
+                logger.info(f"已保存高绩效因子组合 (CAGR: {study.best_value:.6f}) 到文件")
+
+                # 发送优化结果到钉钉
+                dingtalk_enabled = get_optimization_config('notification.dingtalk.enabled', True)
+                if dingtalk_enabled:
+                    send_optimization_result_to_dingtalk(
+                        cagr=study.best_value,
+                        rank_factors=factor_data,
+                        filter_conditions=best_filter_conditions,  # 添加排除因子信息
+                        seed=args.seed,
+                        strategy=args.strategy,
+                        n_trials=args.n_trials,
+                        start_date=args.start_date,
+                        end_date=args.end_date,
+                        hold_num=args.hold_num,
+                        price_range=[args.min_price, args.max_price] if hasattr(args, 'min_price') else None,
+                        model_path=model_path
+                    )
+                    logger.info("已发送结果到钉钉")
+                else:
+                    logger.info("钉钉推送已禁用")
 
             except Exception as e:
-                logger.error(f"保存高绩效因子组合时出错: {e}")
-
-        # 发送优化结果到钉钉
-        try:
-            # 检查是否启用了钉钉推送
-            dingtalk_enabled = get_optimization_config('notification.dingtalk.enabled', True)
-
-            # 年化收益率超过配置的阈值且启用了推送才发送
-            if study.best_value >= cagr_threshold and dingtalk_enabled:
-                send_optimization_result_to_dingtalk(
-                    cagr=study.best_value,
-                    rank_factors=factor_data,
-                    seed=args.seed,
-                    strategy=args.strategy,
-                    n_trials=args.n_trials,
-                    start_date=args.start_date,
-                    end_date=args.end_date,
-                    hold_num=args.hold_num,
-                    price_range=[args.min_price, args.max_price] if hasattr(args, 'min_price') else None,
-                    model_path=model_path
-                )
-                logger.info("已发送结果到钉钉")
-            else:
-                logger.info(f"年化收益率未达到{cagr_threshold * 100}%，不推送")
-        except Exception as e:
-            logger.error(f"发送钉钉通知时出错: {e}")
+                logger.error(f"保存高绩效因子组合或发送钉钉通知时出错: {e}")
+        else:
+            logger.info(f"年化收益率未达到{cagr_threshold * 100}%，不推送")
 
         return model_path
     else:

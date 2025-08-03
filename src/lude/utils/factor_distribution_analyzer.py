@@ -409,7 +409,7 @@ if __name__ == "__main__":
     # 设置要分析的因子名称
     # 可以根据需要修改这里的因子名称
     target_factors = [
-        'theory_conv_prem',          
+        'theory_bias',          
         # 'amount',          # 金额相关
         # 'conv_prem',       # 转换溢价率
         # 'bias_5',          # 5日偏差

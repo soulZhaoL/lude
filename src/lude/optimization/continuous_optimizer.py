@@ -11,8 +11,8 @@ import json
 import glob
 import importlib.util
 import threading
-import re
 import sys
+import re
 from lude.utils.logger import optimization_logger as logger
 
 # 设置环境变量，确保Python输出不被缓存
@@ -34,9 +34,21 @@ def load_best_record():
     """加载历史最佳记录"""
     global global_best_record
     if os.path.exists(BEST_RECORD_FILE):
-        with open(BEST_RECORD_FILE, 'r') as f:
+        with open(BEST_RECORD_FILE, 'r', encoding='utf-8') as f:
             try:
-                global_best_record = json.load(f)
+                loaded_record = json.load(f)
+                
+                # 向后兼容：如果是旧格式（使用factors字段），转换为新格式
+                if 'factors' in loaded_record and 'rank_factors' not in loaded_record:
+                    loaded_record['rank_factors'] = loaded_record.pop('factors')
+                    logger.info("已将旧格式的factors字段转换为rank_factors")
+                
+                # 如果没有filter_conditions字段，添加空数组
+                if 'filter_conditions' not in loaded_record:
+                    loaded_record['filter_conditions'] = []
+                    logger.info("为历史记录添加空的filter_conditions字段")
+                
+                global_best_record = loaded_record
                 return global_best_record
             except:
                 return {"best_cagr": 0, "best_model_path": "", "timestamp": ""}
@@ -46,8 +58,8 @@ def save_best_record(record):
     """保存最佳记录"""
     global global_best_record
     global_best_record = record
-    with open(BEST_RECORD_FILE, 'w') as f:
-        json.dump(record, f, indent=4)
+    with open(BEST_RECORD_FILE, 'w', encoding='utf-8') as f:
+        json.dump(record, f, indent=4, ensure_ascii=False)
 
 def find_latest_model(pattern=None):
     """查找最新的模型文件
@@ -114,77 +126,6 @@ def extract_cagr_from_output(output):
     
     return 0
 
-def extract_best_factors_from_output(output):
-    """从输出中提取最佳因子组合"""
-    try:
-        # 保存所有找到的因子组合
-        all_factor_sets = []
-        
-        # 将输出按行分割
-        lines = output.split('\n')
-        
-        # 遍历所有行寻找最佳因子组合部分
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            # 寻找因子组合的开始标记
-            if "最佳因子组合" in line or "第二阶段最佳因子组合" in line:
-                current_factors = []
-                i += 1  # 移到下一行
-                
-                # 逐行解析因子数据，直到遇到空行或分隔线
-                while i < len(lines) and not (lines[i].strip() == "" or "=" * 10 in lines[i]):
-                    line = lines[i]
-                    
-                    # 尝试匹配因子行，格式类似于 "  1. factor_name"
-                    factor_match = re.search(r"\s+\d+\.\s+([^\s]+)", line)
-                    if factor_match:
-                        factor_name = factor_match.group(1)
-                        
-                        # 初始化权重和排序方向
-                        weight = 1
-                        ascending = False
-                        
-                        # 向后查找权重和排序方向信息
-                        if i + 1 < len(lines) and "权重" in lines[i + 1]:
-                            weight_line = lines[i + 1]
-                            weight_match = re.search(r"权重:\s+(\d+(\.\d+)?)", weight_line)
-                            if weight_match:
-                                weight = float(weight_match.group(1))
-                                i += 1  # 移过权重行
-                        
-                        # 向后查找排序方向信息
-                        if i + 1 < len(lines) and "排序方向" in lines[i + 1]:
-                            direction_line = lines[i + 1]
-                            direction_match = re.search(r"排序方向:\s+(.+)", direction_line)
-                            if direction_match:
-                                direction = direction_match.group(1)
-                                ascending = "升序" in direction
-                                i += 1  # 移过排序方向行
-                        
-                        # 添加解析出的因子信息
-                        current_factors.append({
-                            "name": factor_name,
-                            "weight": weight,
-                            "ascending": ascending
-                        })
-                    
-                    i += 1
-                
-                # 如果找到了因子，保存这组因子
-                if current_factors:
-                    all_factor_sets.append(current_factors)
-            else:
-                i += 1
-        
-        # 返回最后一组找到的因子（优先返回第二阶段结果）
-        if all_factor_sets:
-            return all_factor_sets[-1]
-        
-        return []
-    except Exception as e:
-        logger.error(f"提取最佳因子组合时出错: {e}")
-        return []
 
 def show_progress(seconds=10):
     """显示简单的进度指示器"""
@@ -321,11 +262,31 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                 if current_cagr > best_record['best_cagr']:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     
-                    # 提取最佳因子组合
-                    best_factors = extract_best_factors_from_output(output)
-                    
                     # 保存模型文件
                     save_model_path = find_latest_model()
+                    
+                    # 从最新保存的模型文件中获取正确的因子信息，而不是解析文本输出
+                    best_factors = []
+                    best_filter_conditions = []
+                    
+                    if save_model_path and os.path.exists(save_model_path):
+                        try:
+                            import joblib
+                            model_data = joblib.load(save_model_path)
+                            
+                            # 从模型文件中获取正确的因子信息
+                            if 'best_rank_factors' in model_data:
+                                best_factors = model_data['best_rank_factors']
+                                logger.info(f"从模型文件中获取到 {len(best_factors)} 个打分因子")
+                            
+                            if 'best_filter_conditions' in model_data:
+                                best_filter_conditions = model_data['best_filter_conditions']
+                                logger.info(f"从模型文件中获取到 {len(best_filter_conditions)} 个排除因子条件")
+                                
+                        except Exception as e:
+                            logger.error(f"从模型文件读取因子信息失败: {e}")
+                    else:
+                        logger.warning(f"模型文件不存在，无法获取因子信息: {save_model_path}")
                     
                     if save_model_path:
                         # 复制到最佳模型目录
@@ -344,7 +305,8 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                                 "best_cagr": current_cagr,
                                 "best_model_path": new_model_path,
                                 "timestamp": timestamp,
-                                "factors": best_factors,
+                                "rank_factors": best_factors,  # 重命名为更明确的名称
+                                "filter_conditions": best_filter_conditions,  # 添加排除因子信息
                                 "parameters": current_params
                             }
                             save_best_record(best_record)
@@ -358,7 +320,8 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                             "best_cagr": current_cagr,
                             "best_model_path": "",
                             "timestamp": timestamp,
-                            "factors": best_factors,
+                            "rank_factors": best_factors,  # 重命名为更明确的名称
+                            "filter_conditions": best_filter_conditions,  # 添加排除因子信息
                             "parameters": current_params
                         }
                         save_best_record(best_record)

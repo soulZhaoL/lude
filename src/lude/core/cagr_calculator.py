@@ -18,6 +18,46 @@ from lude.utils.logger import optimization_logger as logger
 from lude.utils.cagr_utils import calculate_cagr_manually
 from lude.config.paths import DATA_DIR
 
+
+def calculate_overfitting_severity(warning_messages):
+    """
+    根据过拟合警告信息计算严重程度
+    
+    参数:
+        warning_messages: 过拟合警告信息列表
+    
+    返回:
+        float: 严重程度系数 (1.0-3.0)
+    """
+    if not warning_messages:
+        return 1.0
+    
+    severity = 1.0
+    for msg in warning_messages:
+        if "变异系数" in msg:
+            # 提取变异系数数值
+            try:
+                import re
+                cv_match = re.search(r'变异系数\s+([\d.]+)', msg)
+                if cv_match:
+                    cv_value = float(cv_match.group(1))
+                    # 变异系数越大，严重程度越高
+                    if cv_value > 2.0:
+                        severity = min(severity + 1.0, 3.0)
+                    elif cv_value > 1.5:
+                        severity = min(severity + 0.5, 3.0)
+            except:
+                severity = min(severity + 0.3, 3.0)
+        
+        elif "交易天数不足" in msg:
+            severity = min(severity + 0.8, 3.0)
+        elif "表现不稳定" in msg:
+            severity = min(severity + 0.6, 3.0)
+        else:
+            severity = min(severity + 0.2, 3.0)
+    
+    return severity
+
 # 忽略警告
 warnings.filterwarnings('ignore')
 
@@ -310,6 +350,17 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 使用手动计算法计算CAGR
     cagr = calculate_cagr_manually(res['daily_return'], start_date, end_date)
     
+    # 🎯 早期CAGR质量检查（优化性能）
+    if cagr <= 0.0:
+        penalty_score = cagr - 0.1  # 负收益额外惩罚
+        logger.warning(f"CAGR为负({cagr:.6f})，返回惩罚分数: {penalty_score:.6f}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
+        if return_details:
+            return {
+                'cagr': penalty_score, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
+                'daily_selected_bonds': daily_selected_bonds, 'daily_returns': res, 'processed_df': df
+            }
+        return penalty_score
+    
     # 过拟合检测
     final_cagr = cagr  # 保存最终的CAGR值
     
@@ -334,10 +385,13 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
                 warning_messages = check_results['overall']['warning_messages']
                 reason_summary = "; ".join(warning_messages) if warning_messages else "未知过拟合原因"
                 
-                # 抛出包含详细原因的异常
-                error_msg = f"过拟合检测失败: {reason_summary}"
-                logger.debug(error_msg)
-                raise ValueError(error_msg)
+                # 🎯 计算过拟合惩罚分数，让Optuna学习'坏'参数组合
+                overfitting_severity = calculate_overfitting_severity(warning_messages)
+                penalty = 0.05 * overfitting_severity  # 根据严重程度调整惩罚
+                penalty_score = max(cagr - penalty, -0.05)  # 保证不会过度惩罚
+                
+                logger.warning(f"过拟合惩罚: CAGR {cagr:.4f} → {penalty_score:.4f}, 原因: {reason_summary}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
+                final_cagr = penalty_score
             else:
                 if verbose_overfitting:
                     logger.info(f"未检测到过拟合，返回正常CAGR: {cagr:.6f}")

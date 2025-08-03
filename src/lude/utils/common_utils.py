@@ -56,7 +56,7 @@ def create_sampler(method, seed=None):
         return optuna.samplers.TPESampler(seed=seed)
 
 
-def save_optimization_result(study, factors, combinations, args, best_rank_factors=None):
+def save_optimization_result(study, factors, combinations, args, best_rank_factors=None, best_filter_conditions=None):
     """保存优化结果
     
     Args:
@@ -65,6 +65,7 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
         combinations: 因子组合列表
         args: 参数
         best_rank_factors: 最佳因子配置
+        best_filter_conditions: 最佳排除因子条件
     
     Returns:
         model_path: 保存的模型路径
@@ -76,11 +77,17 @@ def save_optimization_result(study, factors, combinations, args, best_rank_facto
     if best_rank_factors is None and hasattr(study.best_trial,
                                              'user_attrs') and 'rank_factors' in study.best_trial.user_attrs:
         best_rank_factors = study.best_trial.user_attrs['rank_factors']
+    
+    # 如果没有提供best_filter_conditions，尝试从study中提取
+    if best_filter_conditions is None and hasattr(study.best_trial,
+                                                  'user_attrs') and 'filter_conditions' in study.best_trial.user_attrs:
+        best_filter_conditions = study.best_trial.user_attrs['filter_conditions']
 
     model_data = {
         "study_name": study.study_name,
         "best_value": study.best_value,
         "best_rank_factors": best_rank_factors,
+        "best_filter_conditions": best_filter_conditions,  # 添加排除因子信息
         "best_params": study.best_params,
         "factors": factors,
         "combinations": combinations,

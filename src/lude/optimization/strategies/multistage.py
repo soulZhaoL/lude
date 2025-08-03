@@ -262,15 +262,17 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         # ========== 选择排除因子组合 ==========
         selected_filter_conditions = []
         if all_filter_conditions and len(all_filter_conditions) > 0:
-            # 动态选择排除因子数量 (0到max_filter_factors之间)
-            num_filter_conditions = trial.suggest_int("num_filter_conditions", 0,
-                                                      min(max_filter_factors, len(all_filter_conditions)))
+            # 🎯 使用配置文件中的max_factors设置，在1-max_factors之间选择
+            # 避免大量空排除因子试验，确保充分利用排除因子优化能力
 
-            if num_filter_conditions > 0:
-                # 选择具体的排除因子条件
-                for i in range(num_filter_conditions):
-                    condition_idx = trial.suggest_int(f"filter_condition_{i}_idx", 0, len(all_filter_conditions) - 1)
-                    selected_filter_conditions.append(all_filter_conditions[condition_idx])
+            max_cond =  min(max_filter_factors, len(all_filter_conditions))
+            min_cond = max_cond - 1
+            num_filter_conditions = trial.suggest_int("num_filter_conditions", min_cond, max_cond)
+
+            # 选择具体的排除因子条件
+            for i in range(num_filter_conditions):
+                condition_idx = trial.suggest_int(f"filter_condition_{i}_idx", 0, len(all_filter_conditions) - 1)
+                selected_filter_conditions.append(all_filter_conditions[condition_idx])
 
         # 计算CAGR
         try:
@@ -295,7 +297,7 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         except ValueError as e:
             # 处理参数组合无效的情况（过拟合、条件过严等）
             if "过拟合" in str(e) or "无符合条件" in str(e):
-                logger.info(f"跳过无效参数组合: {e}, 当前打分因子: {rank_factors}, 当前排除因子: {selected_filter_conditions}")
+                logger.warning(f"跳过无效参数组合: {e}, 当前打分因子: {rank_factors}, 当前排除因子: {selected_filter_conditions}")
                 logger.debug(f"当前打分因子: {rank_factors}")
                 logger.debug(f"当前排除因子: {selected_filter_conditions}")
                 raise optuna.exceptions.TrialPruned()
@@ -406,9 +408,11 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     first_stage_combinations = _prepare_first_stage_combinations(factors, num_factors, args, max_combinations)
 
     # 创建第一阶段研究
-    # 包含所有关键参数避免数据混合
+    # 包含所有关键参数避免数据混合，添加时间戳确保每次运行独立
     filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
-    study_name = f"first_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
+    timestamp = int(time.time())  # 添加时间戳确保唯一性
+    args._optimization_timestamp = timestamp  # 保存时间戳供后续阶段使用
+    study_name = f"first_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{args.n_trials}trials_{filter_suffix}_{args.seed}_{timestamp}"
     first_stage_study = _create_study(study_name, args, "random")
 
     # 获取max_filter_factors配置（一次性加载，避免重复）
@@ -540,7 +544,7 @@ def _prepare_second_stage_combinations(factors, num_factors, best_combination, m
 
 
 def _add_first_stage_best_to_second_stage(
-        second_stage_study, first_stage_best_params, first_stage_best_value, second_stage_combinations, num_factors
+        second_stage_study, first_stage_study, first_stage_best_params, first_stage_best_value, second_stage_combinations, num_factors
 ):
     """将第一阶段最佳结果添加到第二阶段研究中
 
@@ -567,6 +571,11 @@ def _add_first_stage_best_to_second_stage(
             if asc_param in first_stage_best_params:
                 new_params[asc_param] = first_stage_best_params[asc_param]
 
+        # 🎯 复制排除因子相关参数
+        for param_name, param_value in first_stage_best_params.items():
+            if param_name.startswith("num_filter_conditions") or param_name.startswith("filter_condition_"):
+                new_params[param_name] = param_value
+
         # 创建分布字典
         distributions = {}
         distributions["combination_idx"] = optuna.distributions.IntDistribution(0, len(second_stage_combinations) - 1)
@@ -576,10 +585,46 @@ def _add_first_stage_best_to_second_stage(
             distributions[weight_param] = optuna.distributions.IntDistribution(1, 5)
             distributions[asc_param] = optuna.distributions.CategoricalDistribution([True, False])
 
-        # 创建trial并添加到研究中
-        trial = optuna.trial.create_trial(params=new_params, distributions=distributions, value=first_stage_best_value)
+        # 🎯 为排除因子参数创建分布 - 使用配置文件中的max_factors
+        from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
+        generator = OptimizedFilterFactorGenerator()
+        max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
+        
+        for param_name in new_params:
+            if param_name.startswith("num_filter_conditions"):
+                param_value = new_params[param_name]
+                # 🎯 动态调整分布范围以兼容历史数据
+                min_value = min(1, param_value)  
+                max_value = max(max_filter_factors, param_value)
+                logger.info(f"第二阶段为{param_name}创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
+                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
+            elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
+                # 需要获取all_filter_conditions的长度，但这个函数没有传入该参数
+                # 重新生成来获取正确的范围
+                config_factors = generator.get_available_factors()
+                all_filter_conditions = []
+                for factor_name in config_factors:
+                    conditions = generator.generate_single_factor_conditions(factor_name)
+                    all_filter_conditions.extend(conditions)
+                
+                if all_filter_conditions:
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
+                else:
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
+
+        # 获取第一阶段最佳trial的user_attrs，确保filter_conditions被正确传递
+        first_stage_user_attrs = first_stage_study.best_trial.user_attrs
+        logger.info(f"调试：第一阶段最佳trial的user_attrs: {first_stage_user_attrs}")
+        
+        # 创建trial并添加到研究中，保留第一阶段的user_attrs
+        trial = optuna.trial.create_trial(
+            params=new_params, 
+            distributions=distributions, 
+            value=first_stage_best_value,
+            user_attrs=first_stage_user_attrs
+        )
         second_stage_study.add_trial(trial)
-        logger.info("成功将第一阶段最佳参数添加到第二阶段研究中")
+        logger.info("成功将第一阶段最佳参数（包括user_attrs）添加到第二阶段研究中")
     except Exception as e:
         logger.error(f"添加第一阶段最佳参数到第二阶段时出错: {e}")
         logger.warning("继续执行第二阶段...")
@@ -590,6 +635,7 @@ def _run_second_stage_optimization(
         factors,
         num_factors,
         args,
+        first_stage_study,
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
@@ -625,14 +671,16 @@ def _run_second_stage_optimization(
     )
 
     # 创建第二阶段研究  
-    # 包含所有关键参数避免数据混合
+    # 包含所有关键参数避免数据混合，使用相同时间戳保持一致性
     filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
-    study_name = f"second_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
+    # 使用与第一阶段相同的时间戳，保持多阶段研究的关联性
+    timestamp = getattr(args, '_optimization_timestamp', int(time.time()))
+    study_name = f"second_stage_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{args.n_trials}trials_{filter_suffix}_{args.seed}_{timestamp}"
     second_stage_study = _create_study(study_name, args, args.method)
 
     # 将第一阶段最佳结果添加到第二阶段
     _add_first_stage_best_to_second_stage(
-        second_stage_study, first_stage_best_params, first_stage_best_value, second_stage_combinations, num_factors
+        second_stage_study, first_stage_study, first_stage_best_params, first_stage_best_value, second_stage_combinations, num_factors
     )
 
     # 获取max_filter_factors配置（复用第一阶段的配置，避免重复加载）
@@ -717,9 +765,11 @@ def _create_final_study_and_merge_results(
         all_combinations: 所有组合
     """
     # 创建最终研究
-    # 包含所有关键参数避免数据混合
+    # 包含所有关键参数避免数据混合，使用相同时间戳保持一致性
     filter_suffix = "filter" if getattr(args, 'enable_filter_opt', False) else "nofilter"
-    study_name = f"final_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{filter_suffix}_{args.seed}"
+    # 使用与前两阶段相同的时间戳
+    timestamp = getattr(args, '_optimization_timestamp', int(time.time()))
+    study_name = f"final_{args.strategy}_{args.method}_{args.n_factors}factors_{args.start_date}_{args.end_date}_{args.price_min}_{args.price_max}_{args.hold_num}_{args.n_trials}trials_{filter_suffix}_{args.seed}_{timestamp}"
     final_study = _create_study(study_name, args, args.method)
 
     # 比较两个阶段的结果
@@ -764,8 +814,20 @@ def _create_final_study_and_merge_results(
                 distributions[param_name] = optuna.distributions.IntDistribution(1, 5)
             elif param_name.endswith("_ascending"):
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
+            elif param_name == "use_filter":
+                distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
             elif param_name == "num_filter_conditions":
-                distributions[param_name] = optuna.distributions.IntDistribution(0, 6)  # 根据实际配置调整
+                # 使用配置文件中的max_factors设置
+                from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
+                generator = OptimizedFilterFactorGenerator()
+                max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
+                
+                # 🎯 关键修复：根据实际参数值动态调整分布范围
+                min_value = min(1, param_value)  # 如果参数值为0，则最小值设为0；否则为1
+                max_value = max(max_filter_factors, param_value)  # 确保包含当前参数值
+                
+                logger.info(f"为num_filter_conditions创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
+                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
             elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
                 # 为filter_condition_*_idx参数设置正确的分布范围
                 if all_filter_conditions:
@@ -781,14 +843,23 @@ def _create_final_study_and_merge_results(
                 else:
                     logger.warning(f"未知参数类型: {param_name} = {param_value}")
 
-        # 创建最终trial
+        # 获取原始trial的filter_conditions
+        original_filter_conditions = best_study.best_trial.user_attrs.get('filter_conditions', [])
+        logger.info(f"调试：从原始trial获取的filter_conditions: {original_filter_conditions}")
+        
+        # 创建最终trial，保存完整的user_attrs
+        user_attrs = {
+            "rank_factors": rank_factors,
+            "filter_conditions": original_filter_conditions
+        }
         trial = optuna.trial.create_trial(
-            params=best_params, distributions=distributions, value=best_value, user_attrs={"rank_factors": rank_factors}
+            params=best_params, distributions=distributions, value=best_value, user_attrs=user_attrs
         )
         final_study.add_trial(trial)
 
-        # 直接添加属性确保能被获取到
+        # 直接添加属性确保能被获取到（备用机制）
         setattr(final_study, "best_rank_factors", rank_factors)
+        setattr(final_study, "best_filter_conditions", original_filter_conditions)
 
         # 打印最佳结果
         logger.info(f"\n最佳因子组合 (CAGR: {best_value:.6f}):")
@@ -800,19 +871,25 @@ def _create_final_study_and_merge_results(
 
         # 打印排除因子信息
         try:
-            best_filter_conditions = best_study.best_trial.user_attrs.get('filter_conditions', [])
+            # 调试信息：查看final_study最佳trial的所有user_attrs
+            logger.info(f"调试：final_study最佳trial的所有user_attrs: {final_study.best_trial.user_attrs}")
+            
+            best_filter_conditions = final_study.best_trial.user_attrs.get('filter_conditions', [])
+            logger.info(f"调试：从final_study获取到的best_filter_conditions: {best_filter_conditions}")
+            
             if best_filter_conditions:
-                logger.info("\n🚫 排除因子:")
+                logger.info("🚫 排除因子:")
                 for i, condition in enumerate(best_filter_conditions):
                     logger.info(f"  {i + 1}. {condition['factor']} {condition['operator']} {condition['value']}")
             else:
-                logger.info("\n🚫 排除因子: 无")
+                logger.info("🚫 排除因子: 无")
         except Exception as filter_e:
             logger.warning(f"获取排除因子信息时出错: {filter_e}")
             logger.info("\n🚫 排除因子: 无法获取")
 
     except Exception as e:
         logger.error(f"创建最终研究时出错: {e}")
+        raise e
 
     # 返回所有探索过的因子组合
     all_combinations = list(set(first_stage_combinations + second_stage_combinations))
@@ -865,6 +942,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         factors,
         num_factors,
         args,
+        first_stage_study,
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
