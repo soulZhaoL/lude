@@ -297,7 +297,7 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         except ValueError as e:
             # 处理参数组合无效的情况（过拟合、条件过严等）
             if "过拟合" in str(e) or "无符合条件" in str(e):
-                logger.warning(f"跳过无效参数组合: {e}, 当前打分因子: {rank_factors}, 当前排除因子: {selected_filter_conditions}")
+                logger.debug(f"跳过无效参数组合: {e}, 当前打分因子: {rank_factors}, 当前排除因子: {selected_filter_conditions}")
                 logger.debug(f"当前打分因子: {rank_factors}")
                 logger.debug(f"当前排除因子: {selected_filter_conditions}")
                 raise optuna.exceptions.TrialPruned()

@@ -50,7 +50,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-这是一个可转债多因子优化系统，使用贝叶斯优化来寻找可转债选择策略的最优因子组合。系统以复合年增长率(CAGR)作为主要性能指标。
+这是一个可转债多因子优化系统，使用贝叶斯优化（Optuna + TPE）来寻找可转债选择策略的最优因子组合。系统支持：
+- 多种因子（价格、溢价率、市盈率等）的权重和排序方向优化
+- 数据筛选条件优化（上市天数、赎回状态、剩余期限、价格区间等）
+- 复合年增长率(CAGR)作为主要性能指标
+- 分布式计算支持（Redis + SQLite双存储）
 
 ## 开发环境设置
 
@@ -93,6 +97,12 @@ flake8 src/
 
 # 类型检查
 mypy src/
+
+# 运行单个测试文件
+pytest tests/test_cagr_calculator.py -v
+
+# 运行特定测试方法
+pytest tests/test_cagr_calculator.py::test_specific_method -v
 ```
 
 ## 关键命令
@@ -238,10 +248,14 @@ source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test
 
 ## 重要文件
 
-- `pyproject.toml`: 项目配置及依赖
+- `pyproject.toml`: 项目配置及依赖（最低Python 3.11要求）
 - `requirements.txt`: 生产环境特定包版本
 - `factor_mapping.json`: 英中文因子名映射
+- `factor_mapping_filter.json`: 过滤因子映射
 - `optimization_results/best_record.json`: 最佳优化结果记录
+- `src/lude/config/optimization_config.yaml`: 优化参数和钉钉通知配置
+- `set_env.sh`: 项目环境变量设置脚本
+- `install_dev.sh`: 开发环境安装脚本
 
 ## 开发注意事项
 

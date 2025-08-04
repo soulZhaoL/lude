@@ -297,7 +297,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 检查是否有符合条件的债券
     if df.empty:
-        logger.warning("排除条件过严，无符合条件的债券数据，抛出异常以跳过该试验")
+        logger.debug("排除条件过严，无符合条件的债券数据，抛出异常以跳过该试验")
         raise ValueError("排除条件过严，无符合条件的债券数据")
     
     df.sort_values(by='trade_date', inplace=True)
@@ -310,7 +310,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 检查时间回报序列是否为空
     if time_return_series.empty:
-        logger.warning(f"时间回报序列为空，返回CAGR为0")
+        logger.debug(f"时间回报序列为空，返回CAGR为0")
         if return_details:
             return {
                 'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
@@ -326,7 +326,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
 
     # 检查pos_df是否为空
     if pos_df.empty:
-        logger.warning(f"持仓数据为空，返回CAGR为0")
+        logger.debug(f"持仓数据为空，返回CAGR为0")
         if return_details:
             return {
                 'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
@@ -353,7 +353,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     # 🎯 早期CAGR质量检查（优化性能）
     if cagr <= 0.0:
         penalty_score = cagr - 0.1  # 负收益额外惩罚
-        logger.warning(f"CAGR为负({cagr:.6f})，返回惩罚分数: {penalty_score:.6f}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
+        logger.debug(f"CAGR为负({cagr:.6f})，返回惩罚分数: {penalty_score:.6f}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
         if return_details:
             return {
                 'cagr': penalty_score, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
@@ -390,7 +390,7 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
                 penalty = 0.05 * overfitting_severity  # 根据严重程度调整惩罚
                 penalty_score = max(cagr - penalty, -0.05)  # 保证不会过度惩罚
                 
-                logger.warning(f"过拟合惩罚: CAGR {cagr:.4f} → {penalty_score:.4f}, 原因: {reason_summary}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
+                logger.debug(f"过拟合惩罚: CAGR {cagr:.4f} → {penalty_score:.4f}, 原因: {reason_summary}, 打分因子: {rank_factors}, 排除因子: {filter_conditions}")
                 final_cagr = penalty_score
             else:
                 if verbose_overfitting:
