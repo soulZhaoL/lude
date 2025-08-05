@@ -48,7 +48,7 @@ class RedisStorageManager:
         self.study_base_name = study_base_name
         self.n_jobs = n_jobs
         self.seed = seed
-        self.storage_strategy = "redis" if n_jobs > 10 else "sqlite"
+        self.storage_strategy = "redis" if n_jobs > 3 else "sqlite"
         self.redis_config = self._load_redis_config()
 
         logger.info(f"存储策略: {self.storage_strategy}, 进程数: {n_jobs}")
