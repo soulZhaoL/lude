@@ -342,9 +342,18 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                 logger.info(important_results)
                     
             else:
-                logger.error(f"命令执行失败, 耗时1122: {elapsed:.2f} 秒")
-                logger.error("\n错误输出221122::::")
+                logger.error(f"命令执行失败, 耗时: {elapsed:.2f} 秒")
+                logger.error(f"返回码: {result.returncode}")
+                logger.error("\n错误输出:")
                 logger.error(output.strip())
+                
+                # 🚨 关键修复：将subprocess的失败传播为异常
+                error_msg = f"优化子进程失败，返回码: {result.returncode}"
+                if output.strip():
+                    error_msg += f"\n子进程输出:\n{output.strip()}"
+                
+                # 抛出异常，让上层的unified_optimizer.py捕获
+                raise RuntimeError(error_msg)
                 
         except subprocess.TimeoutExpired as e:
             # 停止计时器
@@ -359,6 +368,9 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
             logger.error(f"\n命令执行超时, 耗时: {elapsed:.2f} 秒 (超过 {timeout_seconds} 秒限制)")
             logger.error(f"超时命令: {' '.join(cmd)}")
             logger.error("建议: 1) 减少trials数量 2) 减少jobs并发数 3) 检查数据量是否过大")
+            
+            # 🚨 关键修复：重新抛出超时异常
+            raise RuntimeError(f"优化子进程超时，耗时: {elapsed:.2f} 秒 (超过 {timeout_seconds} 秒限制)")
             
         except Exception as e:
             # 停止计时器
@@ -388,6 +400,9 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                 logger.error("可能是模块导入问题，建议: 1) 检查conda环境 2) 检查包安装 3) 检查PYTHONPATH")
             elif "connection" in str(e).lower() or "redis" in str(e).lower():
                 logger.error("可能是Redis连接问题，建议: 1) 检查Redis服务状态 2) 检查网络连接 3) 尝试重启Redis服务")
+            
+            # 🚨 关键修复：重新抛出异常，让上层捕获
+            raise
 
     total_elapsed = time.time() - total_start_time
     logger.info("\n============== 优化完成 ==============")

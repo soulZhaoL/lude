@@ -8,7 +8,7 @@
 import logging
 import os
 from logging.handlers import RotatingFileHandler
-from lude.config.paths import PROJECT_ROOT, LOGS_DIR
+from lude.config.paths import LOGS_DIR
 
 # 确保日志目录存在
 os.makedirs(LOGS_DIR, exist_ok=True)
