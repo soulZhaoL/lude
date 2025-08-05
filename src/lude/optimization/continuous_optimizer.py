@@ -343,7 +343,7 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                     
             else:
                 logger.error(f"命令执行失败, 耗时1122: {elapsed:.2f} 秒")
-                logger.error("\n错误输出221122:")
+                logger.error("\n错误输出221122::::")
                 logger.error(output.strip())
                 
         except subprocess.TimeoutExpired as e:
