@@ -57,11 +57,14 @@ done
 echo ""
 
 if [ "$DRY_RUN" = false ]; then
-    read -p "确认清理? (y/N): " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    read -p "确认清理? (Y/n): " confirm
+    # 默认为 y，只有输入 n 或 N 才取消
+    if [[ "$confirm" =~ ^[Nn]$ ]]; then
         echo "已取消"
         exit 0
     fi
+    # 空输入或其他输入都默认为确认
+    echo "确认清理..."
 fi
 
 echo "开始清理..."
