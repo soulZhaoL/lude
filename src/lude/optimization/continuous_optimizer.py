@@ -342,7 +342,7 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                 logger.info(important_results)
                     
             else:
-                logger.error(f"命令执行失败, 耗时: {elapsed:.2f} 秒")
+                logger.error(f"命令执行失败, 耗时11: {elapsed:.2f} 秒")
                 logger.error("\n错误输出:")
                 logger.error(output.strip())
                 
