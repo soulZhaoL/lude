@@ -33,6 +33,10 @@ import optuna
 from lude.core.cagr_calculator import calculate_bonds_cagr
 from lude.utils.common_utils import RESULTS_DIR  # 导入结果目录常量
 from lude.utils.logger import optimization_logger as logger
+from lude.utils.memory_monitor import check_memory_warning, log_memory_stats
+
+
+# 已移除分批运行策略，不再需要试验清理函数
 
 
 class RedisStorageManager:
@@ -48,44 +52,50 @@ class RedisStorageManager:
         self.study_base_name = study_base_name
         self.n_jobs = n_jobs
         self.seed = seed
-        self.storage_strategy = "redis" if n_jobs > 3 else "sqlite"
+        # 🚨 稳定性优化：优先使用SQLite，只有高并发才用Redis
+        self.storage_strategy = "redis" if n_jobs > 5 else "sqlite"
         self.redis_config = self._load_redis_config()
 
         logger.info(f"存储策略: {self.storage_strategy}, 进程数: {n_jobs}")
 
-        # 验证Redis连接
+        # 🚨 严格验证Redis连接 - 不使用fallback策略
         if self.storage_strategy == "redis":
             if not self._test_redis_connection():
-                logger.warning("Redis连接失败，回退到SQLite存储")
-                self.storage_strategy = "sqlite"
+                raise ConnectionError(f"Redis连接失败: {self.redis_config['host']}:{self.redis_config['port']}. "
+                                    f"请检查Redis服务状态或修复连接问题，不允许降级处理")
 
     def _load_redis_config(self) -> Dict:
-        """加载Redis配置"""
+        """加载Redis配置 - 严格按照配置文件执行，不允许使用默认配置"""
         # Redis配置文件在项目根目录下的redis文件夹中
         # 从RESULTS_DIR向上找到项目根目录（RESULTS_DIR通常是 project_root/optimization_results）
         project_root = os.path.dirname(RESULTS_DIR)
         config_file = os.path.join(project_root, "redis", "redis_config.json")
-        default_config = {
-            "host": "localhost",
-            "port": 6379,
-            "db": 0,
-            "password": None,
-            "socket_connect_timeout": 30,
-            "socket_timeout": 30,
-            "retry_on_timeout": True,
-            "health_check_interval": 30
-        }
-
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, 'r') as f:
-                    user_config = json.load(f)
-                    default_config.update(user_config)
-                    logger.info(f"加载Redis配置: {config_file}")
-            except Exception as e:
-                logger.warning(f"加载Redis配置失败，使用默认配置: {e}")
-
-        return default_config
+        
+        # 🚨 严格配置文件驱动：配置文件必须存在且可读取
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(
+                f"Redis配置文件不存在: {config_file}\n"
+                f"请检查配置文件路径是否正确，或者从版本控制中恢复该文件\n"
+                f"注意: 不允许使用默认配置，必须显式配置所有参数"
+            )
+        
+        try:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                logger.info(f"成功加载Redis配置: {config_file}")
+                
+                # 验证必要的配置项
+                required_keys = ['host', 'port', 'db']
+                missing_keys = [key for key in required_keys if key not in config]
+                if missing_keys:
+                    raise ValueError(f"Redis配置文件缺少必要配置项: {missing_keys}")
+                
+                return config
+                
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Redis配置文件格式错误: {e}") from e
+        except Exception as e:
+            raise RuntimeError(f"加载Redis配置失败: {e}. 请检查配置文件内容和权限") from e
 
     def _test_redis_connection(self) -> bool:
         """测试Redis连接"""
@@ -134,18 +144,53 @@ class RedisStorageManager:
 
         if self.storage_strategy == "redis":
             try:
-                # 使用Optuna的Redis存储 (Optuna 3.x需要用JournalStorage包装JournalRedisStorage)
+                # 🔑 严格按照配置文件创建Redis连接池
+                import redis
+                
+                # 构建连接池参数，只使用配置文件中存在的参数
+                pool_kwargs = {
+                    'host': self.redis_config["host"],
+                    'port': self.redis_config["port"],
+                    'db': self.redis_config["db"],
+                }
+                
+                # 可选参数：只有在配置文件中存在时才添加
+                optional_params = [
+                    'password', 'socket_connect_timeout', 'socket_timeout',
+                    'socket_keepalive', 'socket_keepalive_options', 
+                    'retry_on_timeout', 'health_check_interval', 'max_connections'
+                ]
+                
+                for param in optional_params:
+                    if param in self.redis_config:
+                        pool_kwargs[param] = self.redis_config[param]
+                
+                logger.info(f"使用配置文件参数创建Redis连接池: {list(pool_kwargs.keys())}")
+                connection_pool = redis.ConnectionPool(**pool_kwargs)
+                
+                # 使用连接池创建Optuna存储
                 journal_redis_storage = optuna.storages.JournalRedisStorage(
-                    url=storage_url
+                    url=storage_url,
+                    connection_pool=connection_pool
                 )
                 storage = optuna.storages.JournalStorage(journal_redis_storage)
-                logger.info("创建Redis存储成功")
+                
+                logger.info("创建Redis存储成功，使用配置文件中的连接参数")
+                
+                # 仅记录配置文件中实际存在的参数
+                config_summary = []
+                key_params = ['socket_keepalive', 'socket_timeout', 'max_connections']
+                for param in key_params:
+                    if param in self.redis_config:
+                        config_summary.append(f"{param}={self.redis_config[param]}")
+                
+                if config_summary:
+                    logger.info(f"关键连接配置: {', '.join(config_summary)}")
                 return storage
+                
             except Exception as e:
-                logger.error(f"创建Redis存储失败: {e}")
-                # 回退到SQLite
-                self.storage_strategy = "sqlite"
-                storage_url = self.get_storage_url()
+                # 🚨 不允许fallback，直接抛出异常暴露真实问题
+                raise RuntimeError(f"创建Redis存储失败: {e}. 请修复Redis连接问题，不允许降级处理")
 
         # SQLite存储（默认或回退）
         logger.info("使用SQLite存储")
@@ -377,7 +422,14 @@ def _create_study(study_name, args, sampler_type="random"):
         if sampler_type == "random":
             sampler = optuna.samplers.RandomSampler(seed=args.seed)
         else:
-            sampler = optuna.samplers.TPESampler(seed=args.seed)
+            # 🚨 内存优化：TPESampler配置
+            sampler = optuna.samplers.TPESampler(
+                seed=args.seed,
+                n_startup_trials=10,      # 从默认10减少到10（已经是最小）
+                n_ei_candidates=12,       # 从默认24减少到12（节省50%内存）
+                # multivariate=False,       # 禁用多变量采样（显著节省内存）
+                # constant_liar=False,      # 禁用并行优化谎言策略（节省内存）
+            )
 
         study = optuna.create_study(
             study_name=final_study_name, storage=storage, direction="maximize", sampler=sampler, load_if_exists=True
@@ -429,13 +481,37 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
 
     try:
+        # 🚨 内存优化：直接运行，仅在必要时清理（保持优化质量）
         first_stage_study.optimize(
             objective_func, n_trials=n_trials_first_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
         )
+        
+        # 运行完成后检查内存并清理（不打断优化过程）
+        memory_status = check_memory_warning(warning_threshold=80.0, critical_threshold=90.0)
+        if memory_status in ['warning', 'critical']:
+            logger.info("优化完成后清理内存...")
+            import gc
+            gc.collect()
+            logger.info(f"第一阶段优化完成，共 {len(first_stage_study.trials)} 个试验")
+            
     except KeyboardInterrupt:
         logger.warning("用户中断了第一阶段优化")
     except Exception as e:
+        error_msg = str(e)
         logger.error(f"第一阶段优化出错: {e}")
+        
+        # 🚨 严格处理Redis连接错误 - 不允许fallback
+        if "Connection reset by peer" in error_msg or "redis" in error_msg.lower() or "socket" in error_msg.lower():
+            logger.error("检测到Redis连接问题，这是需要修复的根本问题")
+            logger.error("可能的解决方案:")
+            logger.error("1. 检查Redis服务状态: redis-cli ping")
+            logger.error("2. 检查Redis配置: 超时设置、连接数限制")
+            logger.error("3. 检查网络连接: netstat -an | grep 6379")
+            logger.error("4. 检查系统资源: Redis内存使用、文件描述符限制")
+            logger.error("5. 查看Redis日志: tail -f /var/log/redis/redis-server.log")
+            
+            # 重新抛出原始异常，不进行任何降级处理
+            raise
 
     return first_stage_study, first_stage_combinations
 
@@ -698,9 +774,19 @@ def _run_second_stage_optimization(
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
 
     try:
+        # 🚨 内存优化：直接运行第二阶段，保持优化质量
         second_stage_study.optimize(
             objective_func, n_trials=n_trials_second_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
         )
+        
+        # 第二阶段完成后清理内存
+        memory_status = check_memory_warning(warning_threshold=80.0, critical_threshold=90.0)
+        if memory_status in ['warning', 'critical']:
+            logger.info("第二阶段优化完成后清理内存...")
+            import gc
+            gc.collect()
+            logger.info(f"第二阶段优化完成，共 {len(second_stage_study.trials)} 个试验")
+                
     except KeyboardInterrupt:
         logger.warning("用户中断了第二阶段优化")
     except Exception as e:
@@ -917,6 +1003,10 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         final_study: 最终的优化研究
     """
     logger.info(f"执行优化后的多阶段优化策略...")
+    
+    # 🚨 内存监控：记录优化开始时的内存状态
+    logger.info("开始多阶段优化，记录初始内存状态:")
+    log_memory_stats()
 
     # 预处理阶段：生成所有可能的排除因子条件
     logger.info("\n===== 预处理阶段：生成所有可能的排除因子条件 =====")
