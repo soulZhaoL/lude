@@ -237,9 +237,19 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
             # 打印完整命令用于调试
             logger.info(f"执行命令: {' '.join(cmd)}")
             
+            # 设置合理的超时时间，根据试验次数和并发数动态调整
+            # 基础超时时间：2小时，对于大量试验增加时间
+            base_timeout = 7200  # 2小时
+            trials_factor = min(current_params.get('n_trials', 1000) / 1000, 3)  # 最多3倍
+            jobs_factor = min(current_params.get('n_jobs', 15) / 15, 2)  # 并发越高，单个任务可能越慢
+            
+            timeout_seconds = int(base_timeout * trials_factor * jobs_factor)
+            logger.info(f"设置超时时间: {timeout_seconds} 秒 ({timeout_seconds/3600:.1f} 小时)")
+            
             result = subprocess.run(cmd, 
                                    capture_output=True, 
                                    text=True, 
+                                   timeout=timeout_seconds,
                                    cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             
             output = result.stdout + result.stderr
@@ -336,13 +346,48 @@ def run_continuous_optimization(iterations=10, strategy="multistage", method="tp
                 logger.error("\n错误输出:")
                 logger.error(output.strip())
                 
+        except subprocess.TimeoutExpired as e:
+            # 停止计时器
+            stop_timer = True
+            if timer_thread.is_alive():
+                timer_thread.join(1)
+                
+            # 计算执行时间
+            end_time = time.time()
+            elapsed = end_time - start_time
+            
+            logger.error(f"\n命令执行超时, 耗时: {elapsed:.2f} 秒 (超过 {timeout_seconds} 秒限制)")
+            logger.error(f"超时命令: {' '.join(cmd)}")
+            logger.error("建议: 1) 减少trials数量 2) 减少jobs并发数 3) 检查数据量是否过大")
+            
         except Exception as e:
             # 停止计时器
             stop_timer = True
             if timer_thread.is_alive():
                 timer_thread.join(1)
                 
-            logger.error(f"\n执行过程中发生错误: {e}")
+            # 计算执行时间
+            end_time = time.time()
+            elapsed = end_time - start_time
+            
+            # 打印详细的异常信息
+            import traceback
+            logger.error(f"\n执行过程中发生错误, 耗时: {elapsed:.2f} 秒")
+            logger.error(f"错误类型: {type(e).__name__}")
+            logger.error(f"错误信息: {str(e)}")
+            logger.error(f"执行命令: {' '.join(cmd)}")
+            logger.error("详细错误堆栈:")
+            logger.error(traceback.format_exc())
+            
+            # 如果是特定的内存错误，给出建议
+            if "memory" in str(e).lower() or "killed" in str(e).lower():
+                logger.error("可能是内存不足导致的错误，建议: 1) 减少jobs并发数 2) 减少数据量 3) 检查系统内存")
+            elif "permission" in str(e).lower():
+                logger.error("可能是权限问题，建议: 1) 检查文件权限 2) 检查conda环境激活 3) 检查工作目录权限")
+            elif "module" in str(e).lower() or "import" in str(e).lower():
+                logger.error("可能是模块导入问题，建议: 1) 检查conda环境 2) 检查包安装 3) 检查PYTHONPATH")
+            elif "connection" in str(e).lower() or "redis" in str(e).lower():
+                logger.error("可能是Redis连接问题，建议: 1) 检查Redis服务状态 2) 检查网络连接 3) 尝试重启Redis服务")
 
     total_elapsed = time.time() - total_start_time
     logger.info("\n============== 优化完成 ==============")
