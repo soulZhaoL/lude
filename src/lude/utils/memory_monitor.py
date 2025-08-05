@@ -5,13 +5,28 @@
 提供内存使用情况监控和预警功能
 """
 
-import psutil
 import os
 from lude.utils.logger import optimization_logger as logger
+
+# 可选依赖：psutil用于内存监控
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logger.warning("psutil模块未安装，内存监控功能将被禁用")
 
 
 def get_memory_info():
     """获取当前内存使用信息"""
+    if not PSUTIL_AVAILABLE:
+        return {
+            'process_memory_mb': 0,
+            'system_memory_percent': 0,
+            'system_available_gb': 0,
+            'system_total_gb': 0
+        }
+    
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
     system_memory = psutil.virtual_memory()
@@ -34,6 +49,10 @@ def check_memory_warning(warning_threshold=80.0, critical_threshold=90.0):
     Returns:
         str: 内存状态 ('normal', 'warning', 'critical')
     """
+    if not PSUTIL_AVAILABLE:
+        logger.debug("psutil不可用，跳过内存检查")
+        return 'normal'
+    
     memory_info = get_memory_info()
     
     if memory_info['system_memory_percent'] >= critical_threshold:
@@ -57,6 +76,13 @@ def check_memory_warning(warning_threshold=80.0, critical_threshold=90.0):
 
 def log_memory_stats():
     """记录详细的内存统计信息"""
+    if not PSUTIL_AVAILABLE:
+        logger.info("=" * 50)
+        logger.info("内存监控: psutil模块不可用，无法获取内存统计信息")
+        logger.info("如需内存监控功能，请安装: pip install psutil")
+        logger.info("=" * 50)
+        return
+        
     memory_info = get_memory_info()
     logger.info("=" * 50)
     logger.info("内存使用统计:")

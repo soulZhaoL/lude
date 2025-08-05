@@ -24,3 +24,6 @@ dev = [
     "flake8",
     "mypy",
 ]
+monitoring = [
+    "psutil",  # 内存监控功能（可选）
+]

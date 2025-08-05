@@ -32,3 +32,6 @@ IPython==9.1.0
 
 # 代码格式化
 black==25.1.0
+
+# tool
+psutil==7.0.0
