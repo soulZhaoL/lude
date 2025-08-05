@@ -82,13 +82,13 @@ fi
 # 清理 high_performance_factors.json
 echo "🗑️  清理 high_performance_factors.json..."
 if [ "$DRY_RUN" = true ]; then
-    find "$BASE_DIR" -path "*/lude_*/lude/high_performance_factors.json" -type f | head -10 | while read file; do
+    find "$BASE_DIR" -path "*/lude_*/lude/src/lude/data/high_performance_factors.json" -type f | head -10 | while read file; do
         echo "  [预览] 将删除: $file"
     done
-    total_json=$(find "$BASE_DIR" -path "*/lude_*/lude/high_performance_factors.json" -type f | wc -l)
+    total_json=$(find "$BASE_DIR" -path "*/lude_*/lude/src/lude/data/high_performance_factors.json" -type f | wc -l)
     echo "  [预览] 总共找到 $total_json 个 json 文件"
 else
-    find "$BASE_DIR" -path "*/lude_*/lude/high_performance_factors.json" -type f -delete 2>/dev/null
+    find "$BASE_DIR" -path "*/lude_*/lude/src/lude/data/high_performance_factors.json" -type f -delete 2>/dev/null
     echo "  ✅ high_performance_factors.json 清理完成"
 fi
 
