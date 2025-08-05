@@ -7,7 +7,6 @@
 """
 
 import argparse
-import os
 
 from lude.utils.common_utils import load_data
 from lude.optimization.engine import run_optimization
@@ -60,61 +59,82 @@ def parse_args():
 
 def main():
     """主函数"""
-    # 解析命令行参数
-    args = parse_args()
-    
-    # 设置进程标题，包含工作区ID
     try:
-        import setproctitle
-        if args.workspace_id:
-            process_title = f"lude_unified_optimizer_{args.workspace_id}"
-            setproctitle.setproctitle(process_title)
-            logger.info(f"进程标题已设置为: {process_title}")
-    except ImportError:
-        logger.warning("setproctitle模块未安装，无法设置进程标题")
-    
-    logger.info(f"启动统一优化器 - 模式: {args.mode}")
-    logger.info(f"过滤优化参数: {getattr(args, 'enable_filter_opt', False)}")
-    
-    if args.mode == 'single':
-        # 单次优化模式
-        logger.info("执行单次优化")
+        # 解析命令行参数
+        args = parse_args()
         
-        # 加载数据
-        df = load_data()
+        # 设置进程标题，包含工作区ID
+        try:
+            import setproctitle
+            if args.workspace_id:
+                process_title = f"lude_unified_optimizer_{args.workspace_id}"
+                setproctitle.setproctitle(process_title)
+                logger.info(f"进程标题已设置为: {process_title}")
+        except ImportError:
+            logger.warning("setproctitle模块未安装，无法设置进程标题")
         
-        # 运行优化
-        model_path = run_optimization(df, args)
+        logger.info(f"启动统一优化器 - 模式: {args.mode}")
+        logger.info(f"过滤优化参数: {getattr(args, 'enable_filter_opt', False)}")
         
-        if model_path:
-            logger.info(f"优化完成，最佳模型已保存至: {model_path}")
-        else:
-            logger.warning("优化未完成或出错")
+        if args.mode == 'single':
+            # 单次优化模式
+            logger.info("执行单次优化")
             
-    elif args.mode == 'continuous':
-        # 持续优化模式
-        logger.info("执行持续优化")
+            # 加载数据
+            df = load_data()
+            
+            # 运行优化
+            model_path = run_optimization(df, args)
+            
+            if model_path:
+                logger.info(f"优化完成，最佳模型已保存至: {model_path}")
+            else:
+                logger.warning("优化未完成或出错")
+                
+        elif args.mode == 'continuous':
+            # 持续优化模式
+            logger.info("执行持续优化")
+            
+            # 运行持续优化
+            run_continuous_optimization(
+                iterations=args.iterations,
+                strategy=args.strategy,
+                method=args.method,
+                n_trials=args.n_trials,
+                n_factors=args.n_factors,
+                start_date=args.start_date,
+                end_date=args.end_date,
+                price_min=args.price_min,
+                price_max=args.price_max,
+                hold_num=args.hold_num,
+                n_jobs=args.n_jobs,
+                seed_start=args.seed_start,
+                seed_step=args.seed_step,
+                workspace_id=args.workspace_id,
+                enable_filter_opt=getattr(args, 'enable_filter_opt', False)
+            )
         
-        # 运行持续优化
-        run_continuous_optimization(
-            iterations=args.iterations,
-            strategy=args.strategy,
-            method=args.method,
-            n_trials=args.n_trials,
-            n_factors=args.n_factors,
-            start_date=args.start_date,
-            end_date=args.end_date,
-            price_min=args.price_min,
-            price_max=args.price_max,
-            hold_num=args.hold_num,
-            n_jobs=args.n_jobs,
-            seed_start=args.seed_start,
-            seed_step=args.seed_step,
-            workspace_id=args.workspace_id,
-            enable_filter_opt=getattr(args, 'enable_filter_opt', False)
-        )
-    
-    logger.info("优化程序完成!")
+        logger.info("优化程序完成!")
+        
+    except Exception as e:
+        # 🚨 关键修复：捕获所有异常并同时输出到logger和stderr
+        import traceback
+        import sys
+        
+        error_msg = f"优化器执行异常: {str(e)}"
+        full_traceback = traceback.format_exc()
+        
+        # 输出到logger
+        logger.error(error_msg)
+        logger.error(f"完整错误堆栈:\n{full_traceback}")
+        
+        # 🚨 关键：同时输出到stderr，确保shell脚本能捕获
+        print(f"ERROR: {error_msg}", file=sys.stderr)
+        print(f"完整错误堆栈:\n{full_traceback}", file=sys.stderr)
+        sys.stderr.flush()
+        
+        # 🚨 重要：以非零退出码退出，让shell脚本知道失败了
+        sys.exit(1)
 
 
 if __name__ == "__main__":

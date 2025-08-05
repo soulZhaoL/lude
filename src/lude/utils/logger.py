@@ -55,8 +55,9 @@ def setup_logger(name, log_file=None, level="info"):
     log_level = LOG_LEVELS.get(level.lower(), logging.INFO)
     logger.setLevel(log_level)
     
-    # 重要：禁用传播到父级logger，避免重复日志
-    logger.propagate = False
+    # 🚨 修复：允许传播到父级logger，确保异常能到达stderr
+    # 注意：这可能导致重复日志，但异常处理更重要
+    logger.propagate = True
     
     # 移除所有已有的处理器，确保不会重复添加
     if logger.handlers:
