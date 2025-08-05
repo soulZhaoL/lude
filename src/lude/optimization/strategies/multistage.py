@@ -60,9 +60,13 @@ class RedisStorageManager:
 
         # 🚨 严格验证Redis连接 - 不使用fallback策略
         if self.storage_strategy == "redis":
-            if not self._test_redis_connection():
+            try:
+                enhanced_redis_url = self._create_enhanced_redis_url()
+                self._test_redis_connection(enhanced_redis_url)
+                logger.info("✅ Redis连接预验证成功")
+            except Exception as e:
                 raise ConnectionError(f"Redis连接失败: {self.redis_config['host']}:{self.redis_config['port']}. "
-                                    f"请检查Redis服务状态或修复连接问题，不允许降级处理")
+                                    f"错误: {e}. 请检查Redis服务状态或修复连接问题，不允许降级处理") from e
 
     def _load_redis_config(self) -> Dict:
         """加载Redis配置 - 严格按照配置文件执行，不允许使用默认配置"""
@@ -140,40 +144,121 @@ class RedisStorageManager:
 
     def create_storage(self):
         """创建存储实例"""
-        storage_url = self.get_storage_url()
-
         if self.storage_strategy == "redis":
             try:
-                # 🔑 Optuna Redis存储的正确创建方式
-                # JournalRedisStorage只接受URL参数，连接优化需要通过其他方式实现
+                # 🔑 创建增强连接稳定性的Redis URL来解决Connection reset by peer
+                enhanced_redis_url = self._create_enhanced_redis_url()
                 
-                logger.info(f"使用配置文件创建Redis存储: {storage_url}")
+                logger.info("创建增强稳定性的Redis存储")
+                logger.info(f"增强URL: {enhanced_redis_url}")
                 
-                # 记录关键配置参数（用于调试）
-                config_summary = []
-                key_params = ['socket_keepalive', 'socket_timeout', 'max_connections']
-                for param in key_params:
-                    if param in self.redis_config:
-                        config_summary.append(f"{param}={self.redis_config[param]}")
+                # 记录服务器端配置建议
+                logger.warning("🚨 重要：为避免Connection reset by peer，请确保Redis服务器配置：")
+                logger.warning("   timeout 0")
+                logger.warning("   tcp-keepalive 60") 
+                logger.warning("   maxclients 10000")
+                logger.warning("   maxmemory-policy allkeys-lru")
                 
-                if config_summary:
-                    logger.info(f"Redis配置参数（注意：这些参数需要在Redis服务器端配置）: {', '.join(config_summary)}")
-                    logger.warning("⚠️  Optuna不支持客户端连接池参数，建议在Redis服务器端配置超时和连接参数")
+                # 先测试Redis连接可用性
+                self._test_redis_connection(enhanced_redis_url)
                 
-                # 创建Optuna Redis存储
-                journal_redis_storage = optuna.storages.JournalRedisStorage(url=storage_url)
+                # 创建Optuna Redis存储 - 使用增强的连接稳定性URL
+                journal_redis_storage = optuna.storages.JournalRedisStorage(url=enhanced_redis_url)
                 storage = optuna.storages.JournalStorage(journal_redis_storage)
                 
-                logger.info("创建Redis存储成功")
+                logger.info("✅ Redis存储创建成功，已应用连接稳定性配置")
                 return storage
                 
             except Exception as e:
                 # 🚨 不允许fallback，直接抛出异常暴露真实问题
-                raise RuntimeError(f"创建Redis存储失败: {e}. 请修复Redis连接问题，不允许降级处理") from e
+                error_msg = f"创建Redis存储失败: {e}"
+                if "Connection reset by peer" in str(e):
+                    error_msg += "\n🔥 Connection reset by peer解决方案："
+                    error_msg += "\n1. 检查Redis服务器配置：timeout=0, tcp-keepalive=60"
+                    error_msg += "\n2. 确保Redis服务正常运行且端口可访问"
+                    error_msg += "\n3. 检查网络连接稳定性和防火墙设置"
+                    error_msg += "\n4. 考虑增加Redis maxclients和内存限制"
+                    error_msg += "\n5. 尝试重启Redis服务或增加服务器资源"
+                raise RuntimeError(error_msg) from e
+        else:
+            # SQLite存储（默认）
+            storage_url = self.get_storage_url()
+            logger.info("使用SQLite存储")
+            return storage_url  # Optuna会自动处理SQLite URL
 
-        # SQLite存储（默认或回退）
-        logger.info("使用SQLite存储")
-        return storage_url  # Optuna会自动处理SQLite URL
+    def _create_enhanced_redis_url(self) -> str:
+        """创建增强连接稳定性的Redis URL
+        
+        Returns:
+            str: 包含连接稳定性参数的Redis URL
+        """
+        host = self.redis_config['host']
+        port = self.redis_config['port']  
+        db = self.redis_config['db']
+        password = self.redis_config.get('password')
+        
+        # 构建基础URL
+        if password:
+            base_url = f"redis://:{password}@{host}:{port}/{db}"
+        else:
+            base_url = f"redis://{host}:{port}/{db}"
+        
+        # 添加连接稳定性参数（redis-py支持的URL参数）
+        stability_params = [
+            "socket_keepalive=true",        # 启用TCP keepalive
+            "socket_connect_timeout=30",    # 连接超时30秒
+            "socket_timeout=60",            # socket操作超时60秒
+            "retry_on_timeout=true",        # 超时重试
+            "max_connections=50"            # 最大连接数
+        ]
+        
+        # 组合URL
+        enhanced_url = f"{base_url}?{'&'.join(stability_params)}"
+        
+        logger.debug(f"基础Redis URL: {base_url}")
+        logger.debug(f"增强Redis URL: {enhanced_url}")
+        
+        return enhanced_url
+
+    def _test_redis_connection(self, redis_url: str):
+        """测试Redis连接可用性
+        
+        Args:
+            redis_url: Redis连接URL
+            
+        Raises:
+            RuntimeError: 连接测试失败
+        """
+        import redis
+        
+        try:
+            # 从URL创建Redis客户端进行测试 - 使用decode_responses=True确保返回字符串
+            redis_client = redis.from_url(redis_url, socket_keepalive=True, socket_timeout=10, decode_responses=True)
+            
+            # 执行ping测试
+            redis_client.ping()
+            logger.info("✅ Redis连接测试成功")
+            
+            # 测试基本操作
+            test_key = f"lude_test_{int(time.time())}"
+            test_value = "test_value"
+            redis_client.set(test_key, test_value, ex=60)  # 设置60秒过期
+            retrieved_value = redis_client.get(test_key)
+            redis_client.delete(test_key)
+            
+            # 字符串比较 - 现在都应该是字符串类型
+            if retrieved_value == test_value:
+                logger.info("✅ Redis读写操作测试成功")
+            else:
+                raise RuntimeError(f"Redis读写测试失败: 期望'{test_value}'(类型:{type(test_value)})，实际'{retrieved_value}'(类型:{type(retrieved_value)})")
+                
+        except Exception as e:
+            error_msg = f"Redis连接测试失败: {e}"
+            if "Connection refused" in str(e):
+                error_msg += "\n🔥 Redis服务未启动，请执行: ./redis/start_redis.sh dev"
+            elif "Connection reset by peer" in str(e):
+                error_msg += "\n🔥 Redis连接被重置，请检查服务器配置和网络状态"
+            raise RuntimeError(error_msg) from e
 
     def get_study_name(self) -> str:
         """获取研究名称"""
