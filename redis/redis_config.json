@@ -3,18 +3,14 @@
   "port": 6379,
   "db": 0,
   "password": null,
-  "socket_connect_timeout": 30,
-  "socket_timeout": null,
-  "socket_keepalive": true,
-  "socket_keepalive_options": {
-    "1": 1,
-    "2": 3,
-    "3": 5
+  "description": "Redis配置文件，用于Optuna高并发贝叶斯优化存储",
+  "_server_side_config_note": "解决Connection reset by peer需要在Redis服务器配置文件中设置以下参数",
+  "_recommended_redis_server_config": {
+    "timeout": 0,
+    "tcp-keepalive": 60,
+    "maxclients": 10000,
+    "maxmemory": "3gb",
+    "maxmemory-policy": "allkeys-lru"
   },
-  "retry_on_timeout": true,
-  "health_check_interval": 30,
-  "max_connections": 50,
-  "maxmemory": "3gb",
-  "maxmemory_policy": "allkeys-lru",
-  "description": "Redis配置文件，用于Optuna高并发贝叶斯优化存储 - 已优化解决Connection reset by peer问题"
+  "_config_instructions": "请在Redis服务器的redis.conf中添加上述_recommended_redis_server_config参数"
 }

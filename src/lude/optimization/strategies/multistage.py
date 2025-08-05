@@ -144,40 +144,12 @@ class RedisStorageManager:
 
         if self.storage_strategy == "redis":
             try:
-                # 🔑 严格按照配置文件创建Redis连接池
-                import redis
+                # 🔑 Optuna Redis存储的正确创建方式
+                # JournalRedisStorage只接受URL参数，连接优化需要通过其他方式实现
                 
-                # 构建连接池参数，只使用配置文件中存在的参数
-                pool_kwargs = {
-                    'host': self.redis_config["host"],
-                    'port': self.redis_config["port"],
-                    'db': self.redis_config["db"],
-                }
+                logger.info(f"使用配置文件创建Redis存储: {storage_url}")
                 
-                # 可选参数：只有在配置文件中存在时才添加
-                optional_params = [
-                    'password', 'socket_connect_timeout', 'socket_timeout',
-                    'socket_keepalive', 'socket_keepalive_options', 
-                    'retry_on_timeout', 'health_check_interval', 'max_connections'
-                ]
-                
-                for param in optional_params:
-                    if param in self.redis_config:
-                        pool_kwargs[param] = self.redis_config[param]
-                
-                logger.info(f"使用配置文件参数创建Redis连接池: {list(pool_kwargs.keys())}")
-                connection_pool = redis.ConnectionPool(**pool_kwargs)
-                
-                # 使用连接池创建Optuna存储
-                journal_redis_storage = optuna.storages.JournalRedisStorage(
-                    url=storage_url,
-                    connection_pool=connection_pool
-                )
-                storage = optuna.storages.JournalStorage(journal_redis_storage)
-                
-                logger.info("创建Redis存储成功，使用配置文件中的连接参数")
-                
-                # 仅记录配置文件中实际存在的参数
+                # 记录关键配置参数（用于调试）
                 config_summary = []
                 key_params = ['socket_keepalive', 'socket_timeout', 'max_connections']
                 for param in key_params:
@@ -185,12 +157,19 @@ class RedisStorageManager:
                         config_summary.append(f"{param}={self.redis_config[param]}")
                 
                 if config_summary:
-                    logger.info(f"关键连接配置: {', '.join(config_summary)}")
+                    logger.info(f"Redis配置参数（注意：这些参数需要在Redis服务器端配置）: {', '.join(config_summary)}")
+                    logger.warning("⚠️  Optuna不支持客户端连接池参数，建议在Redis服务器端配置超时和连接参数")
+                
+                # 创建Optuna Redis存储
+                journal_redis_storage = optuna.storages.JournalRedisStorage(url=storage_url)
+                storage = optuna.storages.JournalStorage(journal_redis_storage)
+                
+                logger.info("创建Redis存储成功")
                 return storage
                 
             except Exception as e:
                 # 🚨 不允许fallback，直接抛出异常暴露真实问题
-                raise RuntimeError(f"创建Redis存储失败: {e}. 请修复Redis连接问题，不允许降级处理")
+                raise RuntimeError(f"创建Redis存储失败: {e}. 请修复Redis连接问题，不允许降级处理") from e
 
         # SQLite存储（默认或回退）
         logger.info("使用SQLite存储")
