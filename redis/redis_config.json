@@ -3,14 +3,82 @@
   "port": 6379,
   "db": 0,
   "password": null,
-  "description": "Redis配置文件，用于Optuna高并发贝叶斯优化存储",
-  "_server_side_config_note": "解决Connection reset by peer需要在Redis服务器配置文件中设置以下参数",
-  "_recommended_redis_server_config": {
+  "socket_timeout": 30.0,
+  "socket_connect_timeout": 30.0,
+  "retry_on_timeout": true,
+  "health_check_interval": 30,
+  "max_connections": 50,
+  "description": "增强型Redis配置 - 针对AutoDL环境和高并发场景优化",
+  
+  "_enhanced_features": {
+    "connection_pooling": "连接池管理，避免频繁建立/断开连接",
+    "automatic_retry": "自动重试机制，处理临时连接失败",
+    "health_monitoring": "连接健康检查，及时发现问题",
+    "fallback_storage": "故障转移到SQLite，确保优化不中断",
+    "keepalive_optimization": "TCP keepalive优化，保持连接活跃"
+  },
+  
+  "_server_side_config_note": "🚨 AutoDL环境Redis服务器必需配置",
+  "_optimized_redis_server_config": {
     "timeout": 0,
     "tcp-keepalive": 60,
-    "maxclients": 10000,
+    "tcp-backlog": 2048,
+    "maxclients": 20000,
     "maxmemory": "3gb",
-    "maxmemory-policy": "allkeys-lru"
+    "maxmemory-policy": "allkeys-lru",
+    "databases": 16,
+    
+    "_persistence_settings": {
+      "save": "1800 1 300 100 60 10000",
+      "appendonly": "yes",
+      "appendfilename": "optuna-appendonly.aof",
+      "appendfsync": "everysec",
+      "stop-writes-on-bgsave-error": "no"
+    },
+    
+    "_performance_optimization": {
+      "lazyfree-lazy-eviction": "yes",
+      "lazyfree-lazy-expire": "yes",
+      "hash-max-ziplist-entries": 512,
+      "hash-max-ziplist-value": 64,
+      "list-max-ziplist-size": -2,
+      "set-max-intset-entries": 512
+    },
+    
+    "_network_optimization": {
+      "bind": "0.0.0.0",
+      "protected-mode": "no",
+      "tcp-keepalive": 60,
+      "tcp-backlog": 2048
+    },
+    
+    "_logging": {
+      "loglevel": "notice",
+      "logfile": "/var/log/redis/redis-server.log"
+    }
   },
-  "_config_instructions": "请在Redis服务器的redis.conf中添加上述_recommended_redis_server_config参数"
+  
+  "_autodl_specific_notes": {
+    "container_environment": "AutoDL容器无systemd，使用直接启动方式",
+    "recommended_startup": "sudo redis-server /etc/redis/redis.conf --daemonize yes",
+    "memory_limit": "根据实例规格调整maxmemory，推荐3gb",
+    "concurrent_jobs": "30个并发任务需要maxclients至少20000",
+    "connection_stability": "tcp-keepalive设为60秒，平衡性能和稳定性"
+  },
+  
+  "_troubleshooting_guide": {
+    "connection_refused": "检查Redis进程: ps aux | grep redis-server",
+    "timeout_errors": "增加socket_timeout和socket_connect_timeout",
+    "memory_errors": "监控内存使用: redis-cli info memory",
+    "high_concurrency": "调整maxclients和连接池大小",
+    "autodl_specific": "使用方案B直接启动: sudo redis-server /etc/redis/redis.conf --daemonize yes"
+  },
+  
+  "_upgrade_instructions": {
+    "step1": "更新requirements.txt中的optuna版本到3.6+",
+    "step2": "使用新的EnhancedRedisStorage替换原有存储",
+    "step3": "应用优化的Redis服务器配置",
+    "step4": "重启Redis服务并验证连接",
+    "step5": "测试高并发场景下的稳定性"
+  }
 }

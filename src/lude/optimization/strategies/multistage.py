@@ -152,19 +152,22 @@ class RedisStorageManager:
                 logger.info("创建增强稳定性的Redis存储")
                 logger.info(f"增强URL: {enhanced_redis_url}")
                 
-                # 记录服务器端配置建议
-                logger.warning("🚨 重要：为避免Connection reset by peer，请确保Redis服务器配置：")
-                logger.warning("   timeout 0")
-                logger.warning("   tcp-keepalive 60") 
-                logger.warning("   maxclients 10000")
-                logger.warning("   maxmemory-policy allkeys-lru")
+                # 记录服务器端配置建议 - 针对Broken pipe问题的强化配置
+                logger.warning("🚨 重要：为避免Broken pipe和Connection reset by peer，请确保Redis服务器配置：")
+                logger.warning("   tcp-keepalive 30      # 增加keepalive频率")
+                logger.warning("   timeout 0             # 永不超时") 
+                logger.warning("   maxclients 10000      # 最大客户端数")
+                logger.warning("   maxmemory 4gb         # 增加内存限制")
+                logger.warning("   save ''               # 禁用RDB持久化，减少IO阻塞")
+                logger.warning("   stop-writes-on-bgsave-error no  # 避免后台保存错误")
                 
                 # 先测试Redis连接可用性
                 self._test_redis_connection(enhanced_redis_url)
                 
-                # 创建Optuna Redis存储 - 使用增强的连接稳定性URL
-                journal_redis_storage = optuna.storages.JournalRedisStorage(url=enhanced_redis_url)
-                storage = optuna.storages.JournalStorage(journal_redis_storage)
+                # 创建Optuna Redis存储 - 使用Optuna 4.4.0兼容的JournalRedisBackend
+                from optuna.storages.journal import JournalRedisBackend
+                journal_redis_backend = JournalRedisBackend(enhanced_redis_url)
+                storage = optuna.storages.JournalStorage(journal_redis_backend)
                 
                 logger.info("✅ Redis存储创建成功，已应用连接稳定性配置")
                 return storage
@@ -172,9 +175,18 @@ class RedisStorageManager:
             except Exception as e:
                 # 🚨 不允许fallback，直接抛出异常暴露真实问题
                 error_msg = f"创建Redis存储失败: {e}"
-                if "Connection reset by peer" in str(e):
+                if "Broken pipe" in str(e) or "BrokenPipeError" in str(e):
+                    error_msg += "\n🔥 Broken pipe错误解决方案（紧急）："
+                    error_msg += "\n1. 立即更新Redis服务器配置文件redis.conf："
+                    error_msg += "\n   tcp-keepalive 30"
+                    error_msg += "\n   timeout 0"
+                    error_msg += "\n   save ''"
+                    error_msg += "\n   stop-writes-on-bgsave-error no"
+                    error_msg += "\n2. 重启Redis服务: ./redis/start_redis.sh dev"
+                    error_msg += "\n3. 减少并发数（当前可能过高导致连接池耗尽）"
+                elif "Connection reset by peer" in str(e):
                     error_msg += "\n🔥 Connection reset by peer解决方案："
-                    error_msg += "\n1. 检查Redis服务器配置：timeout=0, tcp-keepalive=60"
+                    error_msg += "\n1. 检查Redis服务器配置：timeout=0, tcp-keepalive=30"
                     error_msg += "\n2. 确保Redis服务正常运行且端口可访问"
                     error_msg += "\n3. 检查网络连接稳定性和防火墙设置"
                     error_msg += "\n4. 考虑增加Redis maxclients和内存限制"
@@ -203,13 +215,16 @@ class RedisStorageManager:
         else:
             base_url = f"redis://{host}:{port}/{db}"
         
-        # 添加连接稳定性参数（redis-py支持的URL参数）
+        # 添加强化的连接稳定性参数 - 解决Broken pipe问题
         stability_params = [
-            "socket_keepalive=true",        # 启用TCP keepalive
-            "socket_connect_timeout=30",    # 连接超时30秒
-            "socket_timeout=60",            # socket操作超时60秒
-            "retry_on_timeout=true",        # 超时重试
-            "max_connections=50"            # 最大连接数
+            "socket_keepalive=true",         # 启用TCP keepalive
+            "socket_keepalive_options=1,3,3", # keepalive选项: idle=1s, interval=3s, count=3
+            "socket_connect_timeout=60",     # 连接超时60秒（增加）
+            "socket_timeout=120",            # socket操作超时120秒（增加）
+            "retry_on_timeout=true",         # 超时重试
+            "retry_on_error=true",           # 错误重试
+            "max_connections=20",            # 减少最大连接数避免资源竞争
+            "health_check_interval=10"       # 健康检查间隔10秒（增加频率）
         ]
         
         # 组合URL
@@ -256,6 +271,10 @@ class RedisStorageManager:
             error_msg = f"Redis连接测试失败: {e}"
             if "Connection refused" in str(e):
                 error_msg += "\n🔥 Redis服务未启动，请执行: ./redis/start_redis.sh dev"
+            elif "Broken pipe" in str(e) or "BrokenPipeError" in str(e):
+                error_msg += "\n🔥 Broken pipe错误 - Redis连接不稳定："
+                error_msg += "\n   立即检查Redis服务器配置，确保tcp-keepalive=30，timeout=0"
+                error_msg += "\n   重启Redis服务并减少并发连接数"
             elif "Connection reset by peer" in str(e):
                 error_msg += "\n🔥 Redis连接被重置，请检查服务器配置和网络状态"
             raise RuntimeError(error_msg) from e
@@ -462,7 +481,10 @@ def _prepare_first_stage_combinations(factors, num_factors, args, max_combinatio
 
 
 def _create_study(study_name, args, sampler_type="random"):
-    """创建optuna研究
+    """创建optuna研究 - 使用增强型Redis存储
+    
+    🚨 严格原则：完全使用增强型存储，不允许降级处理
+    增强型存储内部自带故障转移机制，无需额外fallback
 
     Args:
         study_name: 研究名称
@@ -472,33 +494,33 @@ def _create_study(study_name, args, sampler_type="random"):
     Returns:
         study: optuna研究对象
     """
-    # 获取存储管理器
-    storage_manager = get_storage_manager(study_name, args.n_jobs, args.seed)
-    storage = storage_manager.create_storage()
-    final_study_name = storage_manager.get_study_name()
-
-    try:
-        # 尝试加载已有的研究
-        study = optuna.load_study(study_name=final_study_name, storage=storage)
-        logger.info(f"加载已有的研究 {final_study_name}，已完成 {len(study.trials)} 次试验")
-    except:
-        # 创建新的研究
-        if sampler_type == "random":
-            sampler = optuna.samplers.RandomSampler(seed=args.seed)
-        else:
-            # 🚨 内存优化：TPESampler配置
-            sampler = optuna.samplers.TPESampler(
-                seed=args.seed,
-                n_startup_trials=10,      # 从默认10减少到10（已经是最小）
-                n_ei_candidates=12,       # 从默认24减少到12（节省50%内存）
-                # multivariate=False,       # 禁用多变量采样（显著节省内存）
-                # constant_liar=False,      # 禁用并行优化谎言策略（节省内存）
-            )
-
-        study = optuna.create_study(
-            study_name=final_study_name, storage=storage, direction="maximize", sampler=sampler, load_if_exists=True
+    from lude.storage.enhanced_redis_storage import create_enhanced_study, load_enhanced_study
+    
+    # 配置采样器
+    if sampler_type == "random":
+        sampler = optuna.samplers.RandomSampler(seed=args.seed)
+    else:
+        # 🚨 内存优化：TPESampler配置
+        sampler = optuna.samplers.TPESampler(
+            seed=args.seed,
+            n_startup_trials=10,      # 从默认10减少到10（已经是最小）
+            n_ei_candidates=12,       # 从默认24减少到12（节省50%内存）
+            # multivariate=False,       # 禁用多变量采样（显著节省内存）
+            # constant_liar=False,      # 禁用并行优化谎言策略（节省内存）
         )
-        logger.info(f"创建新的研究 {final_study_name} (存储策略: {storage_manager.storage_strategy})")
+
+    # 尝试加载已有的研究
+    try:
+        study = load_enhanced_study(study_name)
+        logger.info(f"✅ 加载已有的研究 {study_name}，已完成 {len(study.trials)} 次试验")
+    except:
+        # 创建新的研究 - 使用增强型存储
+        study = create_enhanced_study(
+            study_name=study_name,
+            direction="maximize",
+            sampler=sampler
+        )
+        logger.info(f"✅ 创建新的研究 {study_name} (使用增强型Redis存储)")
 
     return study
 

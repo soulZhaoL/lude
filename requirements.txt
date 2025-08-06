@@ -2,7 +2,7 @@
 # 核心数据处理
 pandas==2.0.2
 numpy==1.26.4
-redis==6.2.0
+redis>=6.2.0  # 支持连接池和健康检查的稳定版本
 # Parquet 支持
 pyarrow==14.0.1
 # fastparquet==0.10.2
@@ -10,7 +10,7 @@ fastparquet>=2023.10.1,<2025.0.0    # 兼容 Python 3.11 的版本范围
 
 # 机器学习与优化
 scikit-learn==1.2.2
-optuna==3.2.0
+optuna>=4.4.0  # 最新稳定版本，使用JournalRedisBackend替代废弃的JournalRedisStorage
 joblib==1.2.0
 # 可视化
 matplotlib==3.7.4

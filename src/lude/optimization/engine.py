@@ -156,7 +156,7 @@ def run_optimization(df, args):
         model_path = save_optimization_result(study, factors, factor_combinations, args, best_rank_factors, best_filter_conditions)
 
         # 获取配置的CAGR阈值
-        cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold', 0.55)
+        cagr_threshold = get_optimization_config('notification.dingtalk.cagr_threshold')
 
         # 如果有最佳因子组合，初始化因子数据（factor_mapping已在前面加载）
         factor_data = []
@@ -189,7 +189,7 @@ def run_optimization(df, args):
                 logger.info(f"已保存高绩效因子组合 (CAGR: {study.best_value:.6f}) 到文件")
 
                 # 发送优化结果到钉钉
-                dingtalk_enabled = get_optimization_config('notification.dingtalk.enabled', True)
+                dingtalk_enabled = get_optimization_config('notification.dingtalk.enabled')
                 if dingtalk_enabled:
                     send_optimization_result_to_dingtalk(
                         cagr=study.best_value,

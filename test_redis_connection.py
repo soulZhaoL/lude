@@ -42,14 +42,14 @@ def test_redis_performance(client):
 
     # 写入测试
     start_time = time.time()
-    for i in range(1000):
+    for i in range(5000):
         client.set(f"test_key_{i}", f"test_value_{i}")
     write_time = time.time() - start_time
     print(f"  写入1000个key: {write_time:.3f}s ({1000 / write_time:.0f} ops/s)")
 
     # 读取测试
     start_time = time.time()
-    for i in range(1000):
+    for i in range(5000):
         client.get(f"test_key_{i}")
     read_time = time.time() - start_time
     print(f"  读取1000个key: {read_time:.3f}s ({1000 / read_time:.0f} ops/s)")
@@ -64,9 +64,13 @@ def test_optuna_storage(port):
     print(f"\n🎯 测试Optuna Redis存储 (端口{port})...")
 
     try:
-        # 创建Redis存储
+        # 创建Redis存储 - 使用Optuna 4.4.0兼容的JournalRedisBackend
+        from optuna.storages.journal import JournalRedisBackend
+        from optuna.storages import JournalStorage
+        
         storage_url = f"redis://localhost:{port}/0"
-        storage = optuna.storages.RedisStorage(storage_url)
+        redis_backend = JournalRedisBackend(storage_url)
+        storage = JournalStorage(redis_backend)
         print(f"✅ Redis存储创建成功: {storage_url}")
 
         # 创建研究
