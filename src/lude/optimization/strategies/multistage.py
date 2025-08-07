@@ -374,18 +374,48 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         objective: 目标函数
     """
     
-    # ========== 🎯 预生成无重复条件索引组合，避免重复选择 ==========
+    # ========== 🎯 预生成无逻辑冲突的条件索引组合，避免同因子重复选择 ==========
     filter_index_combinations = []
     if all_filter_conditions and len(all_filter_conditions) > 0:
         max_cond = min(max_filter_factors, len(all_filter_conditions))
         min_cond = max(1, max_cond - 1)  # 确保至少选择1个条件
         
-        # 预生成所有可能的无重复索引组合
-        for num_conditions in range(min_cond, max_cond + 1):
-            for combo_indices in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
-                filter_index_combinations.append(list(combo_indices))
+        # 按因子分组，避免同一因子被多次选择
+        factor_groups = {}
+        for i, condition in enumerate(all_filter_conditions):
+            factor_name = condition['factor']
+            if factor_name not in factor_groups:
+                factor_groups[factor_name] = []
+            factor_groups[factor_name].append(i)
         
-        logger.info(f"预生成 {len(filter_index_combinations)} 个无重复索引组合 (避免重复条件)")
+        logger.info(f"排除因子按因子分组: {len(factor_groups)} 个不同因子")
+        
+        # 生成无逻辑冲突的索引组合（每个因子最多选择一个条件）
+        def generate_valid_combinations(num_conditions):
+            """生成指定数量的有效条件组合，确保每个因子最多选择一个条件"""
+            valid_combinations = []
+            factor_names = list(factor_groups.keys())
+            
+            # 使用itertools.combinations选择因子，然后从每个因子中选择一个条件
+            for selected_factors in itertools.combinations(factor_names, min(num_conditions, len(factor_names))):
+                if len(selected_factors) == num_conditions:
+                    # 从每个选中的因子中选择所有可能的条件组合
+                    factor_indices = [factor_groups[factor] for factor in selected_factors]
+                    for indices_combo in itertools.product(*factor_indices):
+                        valid_combinations.append(list(indices_combo))
+                elif len(selected_factors) < num_conditions:
+                    # 如果选中的因子数少于需要的条件数，需要从某些因子中选择多个条件
+                    # 为了保持逻辑简洁，暂时跳过这种情况
+                    continue
+            
+            return valid_combinations
+        
+        # 预生成所有有效的无冲突索引组合
+        for num_conditions in range(min_cond, max_cond + 1):
+            valid_combos = generate_valid_combinations(num_conditions)
+            filter_index_combinations.extend(valid_combos)
+        
+        logger.info(f"预生成 {len(filter_index_combinations)} 个无逻辑冲突索引组合 (每个因子最多一个条件)")
 
     def objective(trial):
         # ========== 选择打分因子组合 ==========
@@ -782,22 +812,8 @@ def _add_first_stage_best_to_second_stage(
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
             elif param_name == "filter_combo_idx":
-                # 🎯 为filter_combo_idx创建正确的分布范围
-                param_value = new_params[param_name]
-                # 重新计算filter_index_combinations的数量
-                import itertools
-                filter_index_combinations_count = 0
-                max_cond = min(max_filter_factors, len(all_filter_conditions))
-                min_cond = max(1, max_cond - 1)
-                
-                for num_conditions in range(min_cond, max_cond + 1):
-                    for _ in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
-                        filter_index_combinations_count += 1
-                
-                # 确保分布范围包含当前参数值
-                max_range = max(filter_index_combinations_count - 1, param_value)
-                logger.info(f"第二阶段为filter_combo_idx创建分布: 参数值={param_value}, 预计组合数={filter_index_combinations_count}, 分布范围=[0, {max_range}]")
-                distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
+                # 简洁处理：filter_combo_idx在objective函数中动态建议，无需预设复杂分布
+                distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
 
         # 获取第一阶段最佳trial的user_attrs，确保filter_conditions被正确传递
         first_stage_user_attrs = first_stage_study.best_trial.user_attrs
@@ -1032,30 +1048,8 @@ def _create_final_study_and_merge_results(
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
             elif param_name == "filter_combo_idx":
-                # 🚨 关键修复：动态设置filter_combo_idx的分布范围
-                # 重新生成filter_index_combinations来获取正确的范围
-                if all_filter_conditions:
-                    from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
-                    generator = OptimizedFilterFactorGenerator()
-                    max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 6)
-                    
-                    # 重新计算filter_index_combinations的数量
-                    import itertools
-                    filter_index_combinations_count = 0
-                    max_cond = min(max_filter_factors, len(all_filter_conditions))
-                    min_cond = max(1, max_cond - 1)
-                    
-                    for num_conditions in range(min_cond, max_cond + 1):
-                        for _ in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
-                            filter_index_combinations_count += 1
-                    
-                    # 确保分布范围包含当前参数值
-                    max_range = max(filter_index_combinations_count - 1, param_value)
-                    logger.info(f"为filter_combo_idx创建分布: 参数值={param_value}, 预计组合数={filter_index_combinations_count}, 分布范围=[0, {max_range}]")
-                    distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
-                else:
-                    # 没有过滤条件时，使用参数值作为范围
-                    distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
+                # 简洁处理：filter_combo_idx在objective函数中动态建议，无需预设复杂分布
+                distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
             else:
                 # 其他参数类型处理
                 if isinstance(param_value, int):
