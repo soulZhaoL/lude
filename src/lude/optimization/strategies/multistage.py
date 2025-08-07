@@ -373,6 +373,19 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
     Returns:
         objective: 目标函数
     """
+    
+    # ========== 🎯 预生成无重复条件索引组合，避免重复选择 ==========
+    filter_index_combinations = []
+    if all_filter_conditions and len(all_filter_conditions) > 0:
+        max_cond = min(max_filter_factors, len(all_filter_conditions))
+        min_cond = max(1, max_cond - 1)  # 确保至少选择1个条件
+        
+        # 预生成所有可能的无重复索引组合
+        for num_conditions in range(min_cond, max_cond + 1):
+            for combo_indices in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
+                filter_index_combinations.append(list(combo_indices))
+        
+        logger.info(f"预生成 {len(filter_index_combinations)} 个无重复索引组合 (避免重复条件)")
 
     def objective(trial):
         # ========== 选择打分因子组合 ==========
@@ -387,20 +400,15 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
 
             rank_factors.append({"name": factor, "weight": weight, "ascending": ascending})
 
-        # ========== 选择排除因子组合 ==========
+        # ========== 🎯 选择无重复排除因子条件（使用预生成索引） ==========
         selected_filter_conditions = []
-        if all_filter_conditions and len(all_filter_conditions) > 0:
-            # 🎯 使用配置文件中的max_factors设置，在1-max_factors之间选择
-            # 避免大量空排除因子试验，确保充分利用排除因子优化能力
-
-            max_cond =  min(max_filter_factors, len(all_filter_conditions))
-            min_cond = max_cond - 1
-            num_filter_conditions = trial.suggest_int("num_filter_conditions", min_cond, max_cond)
-
-            # 选择具体的排除因子条件
-            for i in range(num_filter_conditions):
-                condition_idx = trial.suggest_int(f"filter_condition_{i}_idx", 0, len(all_filter_conditions) - 1)
-                selected_filter_conditions.append(all_filter_conditions[condition_idx])
+        if filter_index_combinations and all_filter_conditions:
+            # 选择一个无重复的索引组合
+            combo_idx = trial.suggest_int("filter_combo_idx", 0, len(filter_index_combinations) - 1)
+            selected_indices = filter_index_combinations[combo_idx]
+            
+            # 根据索引选择实际条件，确保无重复
+            selected_filter_conditions = [all_filter_conditions[idx] for idx in selected_indices]
 
         # 计算CAGR
         try:
