@@ -743,7 +743,7 @@ def _add_first_stage_best_to_second_stage(
 
         # 🎯 复制排除因子相关参数
         for param_name, param_value in first_stage_best_params.items():
-            if param_name.startswith("num_filter_conditions") or param_name.startswith("filter_condition_"):
+            if param_name.startswith("num_filter_conditions") or param_name.startswith("filter_condition_") or param_name == "filter_combo_idx":
                 new_params[param_name] = param_value
 
         # 创建分布字典
@@ -781,6 +781,23 @@ def _add_first_stage_best_to_second_stage(
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
+            elif param_name == "filter_combo_idx":
+                # 🎯 为filter_combo_idx创建正确的分布范围
+                param_value = new_params[param_name]
+                # 重新计算filter_index_combinations的数量
+                import itertools
+                filter_index_combinations_count = 0
+                max_cond = min(max_filter_factors, len(all_filter_conditions))
+                min_cond = max(1, max_cond - 1)
+                
+                for num_conditions in range(min_cond, max_cond + 1):
+                    for _ in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
+                        filter_index_combinations_count += 1
+                
+                # 确保分布范围包含当前参数值
+                max_range = max(filter_index_combinations_count - 1, param_value)
+                logger.info(f"第二阶段为filter_combo_idx创建分布: 参数值={param_value}, 预计组合数={filter_index_combinations_count}, 分布范围=[0, {max_range}]")
+                distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
 
         # 获取第一阶段最佳trial的user_attrs，确保filter_conditions被正确传递
         first_stage_user_attrs = first_stage_study.best_trial.user_attrs
@@ -1014,10 +1031,37 @@ def _create_final_study_and_merge_results(
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
+            elif param_name == "filter_combo_idx":
+                # 🚨 关键修复：动态设置filter_combo_idx的分布范围
+                # 重新生成filter_index_combinations来获取正确的范围
+                if all_filter_conditions:
+                    from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
+                    generator = OptimizedFilterFactorGenerator()
+                    max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 6)
+                    
+                    # 重新计算filter_index_combinations的数量
+                    import itertools
+                    filter_index_combinations_count = 0
+                    max_cond = min(max_filter_factors, len(all_filter_conditions))
+                    min_cond = max(1, max_cond - 1)
+                    
+                    for num_conditions in range(min_cond, max_cond + 1):
+                        for _ in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
+                            filter_index_combinations_count += 1
+                    
+                    # 确保分布范围包含当前参数值
+                    max_range = max(filter_index_combinations_count - 1, param_value)
+                    logger.info(f"为filter_combo_idx创建分布: 参数值={param_value}, 预计组合数={filter_index_combinations_count}, 分布范围=[0, {max_range}]")
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
+                else:
+                    # 没有过滤条件时，使用参数值作为范围
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
             else:
                 # 其他参数类型处理
                 if isinstance(param_value, int):
-                    distributions[param_name] = optuna.distributions.IntDistribution(0, 100)
+                    # 🚨 安全修复：确保范围包含当前参数值
+                    max_range = max(100, param_value)
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
                 elif isinstance(param_value, bool):
                     distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
                 else:
