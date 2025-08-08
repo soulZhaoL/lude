@@ -374,48 +374,47 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
         objective: 目标函数
     """
     
-    # ========== 🎯 预生成无逻辑冲突的条件索引组合，避免同因子重复选择 ==========
+    # ========== 🎯 预生成无操作符冲突的条件索引组合 ==========
     filter_index_combinations = []
     if all_filter_conditions and len(all_filter_conditions) > 0:
         max_cond = min(max_filter_factors, len(all_filter_conditions))
         min_cond = max(1, max_cond - 1)  # 确保至少选择1个条件
+        logger.info(f"过滤因子条件, max_cond: {max_cond}, min_cond: {min_cond}")
         
-        # 按因子分组，避免同一因子被多次选择
-        factor_groups = {}
-        for i, condition in enumerate(all_filter_conditions):
-            factor_name = condition['factor']
-            if factor_name not in factor_groups:
-                factor_groups[factor_name] = []
-            factor_groups[factor_name].append(i)
-        
-        logger.info(f"排除因子按因子分组: {len(factor_groups)} 个不同因子")
-        
-        # 生成无逻辑冲突的索引组合（每个因子最多选择一个条件）
-        def generate_valid_combinations(num_conditions):
-            """生成指定数量的有效条件组合，确保每个因子最多选择一个条件"""
-            valid_combinations = []
-            factor_names = list(factor_groups.keys())
+        # 🚨 关键设计：预构建无操作符冲突的有效索引组合
+        # 允许同名因子，但禁止相同操作符重复（如两个"pct_chg >="）
+        def is_valid_combination(indices):
+            """检查索引组合是否有效：禁止相同因子的相同操作符重复，但允许不同阈值"""
+            selected_conditions = [all_filter_conditions[i] for i in indices]
             
-            # 使用itertools.combinations选择因子，然后从每个因子中选择一个条件
-            for selected_factors in itertools.combinations(factor_names, min(num_conditions, len(factor_names))):
-                if len(selected_factors) == num_conditions:
-                    # 从每个选中的因子中选择所有可能的条件组合
-                    factor_indices = [factor_groups[factor] for factor in selected_factors]
-                    for indices_combo in itertools.product(*factor_indices):
-                        valid_combinations.append(list(indices_combo))
-                elif len(selected_factors) < num_conditions:
-                    # 如果选中的因子数少于需要的条件数，需要从某些因子中选择多个条件
-                    # 为了保持逻辑简洁，暂时跳过这种情况
-                    continue
+            # 🚨 关键修复：按 (factor, operator) 分组，但允许不同的value值
+            # 统计每个 (因子,操作符) 组合的出现次数
+            factor_operator_combinations = []
+            for condition in selected_conditions:
+                combo_key = (condition['factor'], condition['operator'])
+                factor_operator_combinations.append(combo_key)
             
-            return valid_combinations
+            # 检查是否有重复的 (因子,操作符) 组合
+            from collections import Counter
+            combo_counts = Counter(factor_operator_combinations)
+            
+            # 如果任何 (因子,操作符) 组合出现次数>1，则无效
+            for count in combo_counts.values():
+                if count > 1:
+                    return False
+            return True
         
-        # 预生成所有有效的无冲突索引组合
+        # 预生成所有有效的索引组合
+        valid_count = 0
+        total_count = 0
         for num_conditions in range(min_cond, max_cond + 1):
-            valid_combos = generate_valid_combinations(num_conditions)
-            filter_index_combinations.extend(valid_combos)
+            for combo_indices in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
+                total_count += 1
+                if is_valid_combination(combo_indices):
+                    filter_index_combinations.append(list(combo_indices))
+                    valid_count += 1
         
-        logger.info(f"预生成 {len(filter_index_combinations)} 个无逻辑冲突索引组合 (每个因子最多一个条件)")
+        logger.info(f"预生成 {valid_count} 个无操作符冲突的有效索引组合 (总计{total_count}个，过滤率{(total_count-valid_count)/total_count*100:.1f}%)")
 
     def objective(trial):
         # ========== 选择打分因子组合 ==========
@@ -430,14 +429,14 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
 
             rank_factors.append({"name": factor, "weight": weight, "ascending": ascending})
 
-        # ========== 🎯 选择无重复排除因子条件（使用预生成索引） ==========
+        # ========== 🎯 选择无操作符冲突的排除因子条件 ==========
         selected_filter_conditions = []
         if filter_index_combinations and all_filter_conditions:
-            # 选择一个无重复的索引组合
+            # 直接从预构建的有效组合中选择，无需后处理
             combo_idx = trial.suggest_int("filter_combo_idx", 0, len(filter_index_combinations) - 1)
             selected_indices = filter_index_combinations[combo_idx]
             
-            # 根据索引选择实际条件，确保无重复
+            # 根据索引获取条件，已确保无操作符冲突
             selected_filter_conditions = [all_filter_conditions[idx] for idx in selected_indices]
 
         # 计算CAGR
