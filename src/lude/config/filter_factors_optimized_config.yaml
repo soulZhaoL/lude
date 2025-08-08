@@ -173,7 +173,7 @@ filter_factors:
 
 # 排除因子组合规则
 combination_rules:
-  max_factors: 3  # 保持简洁
+  max_factors: 2  # 保持简洁
   max_combinations: 6000
   # 🚨 注意: 同一因子的lower和upper约束不能同时选择
 
