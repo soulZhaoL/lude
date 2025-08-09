@@ -319,6 +319,55 @@ def get_storage_manager(study_base_name: str, n_jobs: int, seed: int) -> RedisSt
     return _storage_manager
 
 
+def _validate_filter_conditions(selected_filter_conditions):
+    """验证排除因子条件的有效性
+    
+    Args:
+        selected_filter_conditions: 选择的排除因子条件列表
+    
+    Returns:
+        tuple: (is_valid, error_msg)
+    """
+    if not selected_filter_conditions:
+        return True, "无排除因子条件"
+    
+    # 检查重复因子 + 操作符组合
+    factor_operator_combinations = set()
+    factor_conditions = {}  # {factor_name: [conditions]}
+    
+    for cond in selected_filter_conditions:
+        factor_name = cond['factor']
+        operator = cond['operator']
+        value = cond['value']
+        
+        # 检查重复的因子+操作符
+        factor_op = (factor_name, operator)
+        if factor_op in factor_operator_combinations:
+            return False, f"存在重复的因子+操作符组合: {factor_name} {operator}"
+        factor_operator_combinations.add(factor_op)
+        
+        # 按因子分组收集条件
+        if factor_name not in factor_conditions:
+            factor_conditions[factor_name] = []
+        factor_conditions[factor_name].append({'operator': operator, 'value': value})
+    
+    # 检查同因子的范围条件是否合理
+    for factor_name, conditions in factor_conditions.items():
+        if len(conditions) >= 2:
+            # 有多个条件时，检查是否能形成合理范围
+            ge_values = [c['value'] for c in conditions if c['operator'] == '>=']
+            le_values = [c['value'] for c in conditions if c['operator'] == '<=']
+            
+            # 如果有>=和<=条件，检查范围合理性
+            if ge_values and le_values:
+                min_ge = min(ge_values)
+                max_le = max(le_values)
+                if min_ge > max_le:
+                    return False, f"因子 {factor_name} 的范围条件不合理: >= {min_ge} 且 <= {max_le}"
+    
+    return True, "条件有效"
+
+
 def _prepare_all_filter_conditions(df, enable_filter_opt):
     """预处理生成所有可能的排除因子条件（类似打分因子的组合生成）
 
@@ -393,14 +442,19 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
             # 🎯 使用配置文件中的max_factors设置，在1-max_factors之间选择
             # 避免大量空排除因子试验，确保充分利用排除因子优化能力
 
-            max_cond =  min(max_filter_factors, len(all_filter_conditions))
-            min_cond = max_cond - 1
-            num_filter_conditions = trial.suggest_int("num_filter_conditions", min_cond, max_cond)
+            # 🎯 修复方案：使用固定的max_filter_factors数量，避免多层suggest
+            num_filter_conditions = min(max_filter_factors, len(all_filter_conditions))
 
-            # 选择具体的排除因子条件
+            # 选择具体的排除因子条件（保持原有suggest逻辑）
             for i in range(num_filter_conditions):
                 condition_idx = trial.suggest_int(f"filter_condition_{i}_idx", 0, len(all_filter_conditions) - 1)
                 selected_filter_conditions.append(all_filter_conditions[condition_idx])
+
+            # 🎯 新增：验证排除因子条件的有效性，使用剪枝机制处理无效组合
+            is_valid, error_msg = _validate_filter_conditions(selected_filter_conditions)
+            if not is_valid:
+                logger.debug(f"检测到无效的排除因子组合: {error_msg}")
+                raise optuna.exceptions.TrialPruned()
 
         # 计算CAGR
         try:
@@ -747,20 +801,11 @@ def _add_first_stage_best_to_second_stage(
             distributions[weight_param] = optuna.distributions.IntDistribution(1, 5)
             distributions[asc_param] = optuna.distributions.CategoricalDistribution([True, False])
 
-        # 🎯 为排除因子参数创建分布 - 使用配置文件中的max_factors
+        # 🎯 修复方案：为排除因子参数创建固定的分布 - 避免动态调整破坏参数空间一致性
         from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
         generator = OptimizedFilterFactorGenerator()
-        max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
-        
         for param_name in new_params:
-            if param_name.startswith("num_filter_conditions"):
-                param_value = new_params[param_name]
-                # 🎯 动态调整分布范围以兼容历史数据
-                min_value = min(1, param_value)  
-                max_value = max(max_filter_factors, param_value)
-                logger.info(f"第二阶段为{param_name}创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
-                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
-            elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
+            if param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
                 # 需要获取all_filter_conditions的长度，但这个函数没有传入该参数
                 # 重新生成来获取正确的范围
                 config_factors = generator.get_available_factors()
@@ -988,21 +1033,10 @@ def _create_final_study_and_merge_results(
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
             elif param_name == "use_filter":
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
-            elif param_name == "num_filter_conditions":
-                # 使用配置文件中的max_factors设置
-                from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
-                generator = OptimizedFilterFactorGenerator()
-                max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
-                
-                # 🎯 关键修复：根据实际参数值动态调整分布范围
-                min_value = min(1, param_value)  # 如果参数值为0，则最小值设为0；否则为1
-                max_value = max(max_filter_factors, param_value)  # 确保包含当前参数值
-                
-                logger.info(f"为num_filter_conditions创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
-                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
             elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
-                # 为filter_condition_*_idx参数设置正确的分布范围
+                # 🎯 关键修复：使用固定的分布范围，不根据参数值动态调整
                 if all_filter_conditions:
+                    # 使用固定的分布范围，保持参数空间一致性
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
