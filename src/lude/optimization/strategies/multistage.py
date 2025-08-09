@@ -453,7 +453,7 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
             # 🎯 新增：验证排除因子条件的有效性，使用剪枝机制处理无效组合
             is_valid, error_msg = _validate_filter_conditions(selected_filter_conditions)
             if not is_valid:
-                logger.debug(f"检测到无效的排除因子组合: {error_msg}")
+                logger.warning(f"检测到无效的排除因子组合: {error_msg}")
                 raise optuna.exceptions.TrialPruned()
 
         # 计算CAGR
