@@ -10,7 +10,7 @@ import os
 
 import optuna
 
-from lude.config.config_loader import get_optimization_config
+from lude.config.config_loader import get_optimization_config, get_filter_factors_config
 from lude.config.paths import RESULTS_DIR, FACTOR_MAPPING_PATH
 # 导入常量和工具函数
 from lude.utils.common_utils import create_sampler
@@ -73,12 +73,22 @@ def run_optimization(df, args):
     enable_filter_opt = getattr(args, 'enable_filter_opt', False)
     logger.info(f"过滤优化状态: {'启用' if enable_filter_opt else '禁用'}")
 
+    # 🎯 优先获取配置文件中的max_combinations，如果为空则使用系统预置的
+    try:
+        # 尝试从配置文件获取max_combinations
+        optimal_max_combinations = get_filter_factors_config('combination_rules.max_combinations')
+        logger.info(f"从配置文件获取max_combinations: {optimal_max_combinations}")
+    except (FileNotFoundError, KeyError) as e:
+        # 配置文件不存在或配置项不存在时，使用系统预置的动态计算方式
+        optimal_max_combinations = get_max_combinations_for_trials(args.n_trials)
+        logger.warning(f"配置文件中未找到max_combinations，使用动态计算值: {optimal_max_combinations}")
+    
     # 统一调用策略运行器
     from lude.optimization.strategies.strategy_runner import run_strategy
     
     factors, factor_combinations, study = run_strategy(
         args.strategy, df, factors, args.n_factors, args, 
-        max_combinations=50000, enable_filter_opt=enable_filter_opt
+        max_combinations=optimal_max_combinations, enable_filter_opt=enable_filter_opt
     )
 
     # 打印最佳结果
@@ -217,3 +227,26 @@ def run_optimization(df, args):
     else:
         logger.warning("没有完成任何试验，无法获取结果")
         return None
+
+def get_max_combinations_for_trials(n_trials: int) -> int:
+    """根据训练次数获取对应的最大组合数
+    
+    Args:
+        n_trials: 训练次数
+        
+    Returns:
+        int: 对应的max_combinations值
+    """
+    # 简单直接的映射关系
+    if n_trials <= 100:
+        return 1000
+    elif n_trials <= 500:
+        return 5000
+    elif n_trials <= 1000:
+        return 10000
+    elif n_trials <= 3000:
+        return 30000
+    elif n_trials <= 5000:
+        return 50000
+    else:
+        return 100000

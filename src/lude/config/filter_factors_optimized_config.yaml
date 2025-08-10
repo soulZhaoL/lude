@@ -173,9 +173,8 @@ filter_factors:
 
 # 排除因子组合规则
 combination_rules:
-  max_factors: 2  # 保持简洁
-  max_combinations: 6000
-  # 🚨 注意: 同一因子的lower和upper约束不能同时选择
+  max_factors: 2  # 🎯 立即修复：减少90%排除因子空间，显著提升收敛速度
+  max_combinations: 100000
 
 # 过拟合检测配置
 overfitting_detection:

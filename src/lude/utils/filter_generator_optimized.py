@@ -8,13 +8,11 @@
 移除normal概念，统一使用lower/upper，语义更清晰
 """
 
-import yaml
 import itertools
-import os
 from typing import List, Dict, Any, Optional, Set
 
 from lude.utils.logger import optimization_logger as logger
-from lude.config.paths import CONFIG_DIR
+from lude.config.config_loader import load_filter_factors_config
 
 
 class OptimizedFilterFactorGenerator:
@@ -25,24 +23,21 @@ class OptimizedFilterFactorGenerator:
         初始化过滤因子生成器
         
         Args:
-            config_path: 配置文件路径，默认使用filter_factors_optimized_config.yaml
+            config_path: 配置文件路径（已弃用，现使用统一的config_loader）
         """
-        if config_path is None:
-            config_path = os.path.join(CONFIG_DIR, 'filter_factors_optimized_config.yaml')
         
-        self.config_path = config_path
         self.config = self._load_config()
         
     def _load_config(self) -> Dict[str, Any]:
-        """加载过滤因子配置文件"""
+        """使用统一的config_loader加载过滤因子配置文件"""
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            logger.info(f"成功加载统一格式过滤因子配置: {self.config_path}")
+            config = load_filter_factors_config()
+            logger.info("成功通过config_loader加载过滤因子配置")
             return config
         except Exception as e:
-            logger.error(f"加载过滤因子配置文件失败: {e}")
-            return {'filter_factors': {}, 'combination_rules': {}}
+            logger.error(f"通过config_loader加载过滤因子配置文件失败: {e}")
+            # 🚨 严格原则：配置文件加载失败时直接抛出异常，禁止使用默认配置
+            raise RuntimeError(f"过滤因子配置文件加载失败，系统无法继续运行: {e}") from e
     
     def get_available_factors(self) -> List[str]:
         """获取所有可用的配置因子名称（展开约束结构）"""
