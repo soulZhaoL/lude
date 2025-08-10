@@ -10,7 +10,13 @@
       "Bash(./run_optimizer.sh:*)",
       "Bash(git stash push:*)",
       "WebFetch(domain:tech.preferred.jp)",
-      "Bash(rm test_enhanced_second_stage.py)"
+      "Bash(rm test_enhanced_second_stage.py)",
+      "Bash(mkdir -p /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage)",
+      "Bash(git checkout -- /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py)",
+      "Bash(cp /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py.backup)",
+      "Bash(sed -i '' '42,320d' /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py)",
+      "Bash(mv /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage/coordinator.py)",
+      "Bash(rm /Users/zhaolei/My/python/lude/src/lude/optimization/strategies/multistage.py)"
     ],
     "deny": []
   }
