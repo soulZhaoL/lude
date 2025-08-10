@@ -337,6 +337,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
 
     try:
+        logger.info(f"第一阶段优化开始，共 {n_trials_first_stage} 个试验，使用 {adjusted_n_jobs} 个进程")
         # 🚨 内存优化：直接运行，仅在必要时清理（保持优化质量）
         first_stage_study.optimize(
             objective_func, n_trials=n_trials_first_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
@@ -373,7 +374,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
 
 
 def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_factors):
-    """获取第一阶段结果
+    """获取第一阶段结果，包括TOP 10组合
 
     Args:
         first_stage_study: 第一阶段研究
@@ -384,17 +385,56 @@ def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_f
         best_params: 最佳参数
         best_value: 最佳值
         best_combination: 最佳因子组合
+        top_combinations_with_params: TOP 10组合及其参数列表
     """
     # 检查第一阶段是否有结果
     if len(first_stage_study.trials) == 0:
         logger.error("第一阶段没有完成任何试验，无法继续")
-        return None, None, None
+        return None, None, None, []
 
     # 获取第一阶段最佳结果
     best_params = first_stage_study.best_params
     best_value = first_stage_study.best_value
 
     logger.info(f"\n第一阶段最佳CAGR: {best_value:.6f}")
+
+    # 获取TOP 10组合及其参数
+    top_combinations_with_params = []
+    if len(first_stage_study.trials) > 0:
+        # 按CAGR值排序获取TOP 10
+        valid_trials = [t for t in first_stage_study.trials if t.value is not None]
+        sorted_trials = sorted(valid_trials, key=lambda t: t.value, reverse=True)
+        top_trials = sorted_trials[:min(10, len(sorted_trials))]
+        
+        logger.info(f"\n第一阶段TOP {len(top_trials)} 组合:")
+        for idx, trial in enumerate(top_trials):
+            if "combination_idx" in trial.params:
+                combo_idx = trial.params["combination_idx"]
+                combination = first_stage_combinations[combo_idx]
+                
+                # 收集组合及其参数信息
+                combination_info = {
+                    'combination': combination,
+                    'params': trial.params,
+                    'value': trial.value,
+                    'user_attrs': trial.user_attrs
+                }
+                top_combinations_with_params.append(combination_info)
+                
+                # 打印基本信息
+                logger.info(f"  {idx + 1}. CAGR: {trial.value:.6f}, 组合: {combination}")
+                
+                # 打印详细的因子权重和排序方向信息
+                logger.info(f"     详细配置:")
+                for i, factor in enumerate(combination):
+                    weight_param = f"factor{i}_weight"
+                    asc_param = f"factor{i}_ascending"
+                    
+                    weight = trial.params.get(weight_param, 1)
+                    ascending = trial.params.get(asc_param, True)
+                    direction = "升序" if ascending else "降序"
+                    
+                    logger.info(f"       - {factor}: 权重={weight}, 方向={direction}")
 
     # 提取最佳因子组合
     if "combination_idx" in best_params:
@@ -414,65 +454,198 @@ def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_f
             logger.info(f"     - 权重: {weight}")
             logger.info(f"     - 排序方向: {direction}")
 
-        return best_params, best_value, best_combination
+        return best_params, best_value, best_combination, top_combinations_with_params
     else:
         logger.warning("无法获取第一阶段最佳因子组合")
-        return None, None, None
+        return None, None, None, top_combinations_with_params
 
 
-def _prepare_second_stage_combinations(factors, num_factors, best_combination, max_combinations, args):
-    """准备第二阶段的因子组合
+def _prepare_second_stage_combinations_enhanced(factors, num_factors, top_combinations_with_params, max_combinations, args):
+    """增强的第二阶段因子组合准备
+    
+    基于TOP 10组合的多策略生成：
+    1. 添加TOP 10原始组合
+    2. 对TOP 10进行替换1个因子
+    3. 对TOP 10进行权重调整 (±1)
+    4. 控制总数不超过max_combinations/2
 
     Args:
         factors: 因子列表
-        num_factors: 因子数量
-        best_combination: 第一阶段最佳组合
+        num_factors: 因子数量  
+        top_combinations_with_params: TOP 10组合及其参数信息
         max_combinations: 最大组合数量
         args: 参数
 
     Returns:
         second_stage_combinations: 第二阶段因子组合列表
+        second_stage_combination_details: 组合详细信息（包含权重等）
     """
-    logger.info("准备第二阶段因子组合...")
-
-    # 生成第二阶段的因子组合
-    # 策略：从最佳组合开始，替换1-2个因子生成新组合
+    logger.info("准备增强的第二阶段因子组合...")
+    
     second_stage_combinations = []
+    second_stage_combination_details = []
+    combination_set = set()  # 用于去重
+    
+    # 配置限制
+    max_second_stage = max_combinations // 2  # 50,000
+    available_factors = [f for f in factors]  # 所有可用因子
+    
+    logger.info(f"目标组合数量上限: {max_second_stage}")
+    logger.info(f"可用因子总数: {len(available_factors)}")
+    logger.info(f"TOP组合数量: {len(top_combinations_with_params)}")
 
-    # 添加第一阶段最佳组合
-    second_stage_combinations.append(best_combination)
+    # ========== 策略1: 添加TOP 10原始组合 ==========
+    logger.info("策略1: 添加TOP组合...")
+    for combo_info in top_combinations_with_params:
+        combination = combo_info['combination']
+        combination_key = tuple(sorted(combination))
+        
+        if combination_key not in combination_set:
+            second_stage_combinations.append(combination)
+            second_stage_combination_details.append({
+                'combination': combination,
+                'source': 'top_original',
+                'base_params': combo_info['params']
+            })
+            combination_set.add(combination_key)
+    
+    logger.info(f"策略1完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 替换1个因子生成新组合
-    for i in range(num_factors):
-        for factor in factors:
-            if factor not in best_combination:
-                new_combination = list(best_combination)
-                new_combination[i] = factor
-                new_combination = tuple(sorted(new_combination))
-                if new_combination not in second_stage_combinations:
-                    second_stage_combinations.append(new_combination)
+    # ========== 策略2: 对TOP 10进行替换1个因子 ==========
+    logger.info("策略2: 替换1个因子...")
+    for combo_info in top_combinations_with_params:
+        if len(second_stage_combinations) >= max_second_stage:
+            break
+            
+        base_combination = combo_info['combination']
+        base_params = combo_info['params']
+        
+        # 对每个位置尝试替换
+        for i in range(num_factors):
+            if len(second_stage_combinations) >= max_second_stage:
+                break
+                
+            for factor in available_factors:
+                if factor not in base_combination:  # 避免替换成相同因子
+                    new_combination = list(base_combination)
+                    new_combination[i] = factor
+                    new_combination = tuple(new_combination)
+                    combination_key = tuple(sorted(new_combination))
+                    
+                    if combination_key not in combination_set:
+                        second_stage_combinations.append(new_combination)
+                        second_stage_combination_details.append({
+                            'combination': new_combination,
+                            'source': 'factor_replacement',
+                            'base_params': base_params,
+                            'replaced_position': i,
+                            'original_factor': base_combination[i],
+                            'new_factor': factor
+                        })
+                        combination_set.add(combination_key)
+    
+    logger.info(f"策略2完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 如果组合数量较少，替换2个因子生成更多组合
-    if len(second_stage_combinations) < 100:
-        for i, j in itertools.combinations(range(num_factors), 2):
-            for factor1, factor2 in itertools.combinations([f for f in factors if f not in best_combination], 2):
-                new_combination = list(best_combination)
-                new_combination[i] = factor1
-                new_combination[j] = factor2
-                new_combination = tuple(sorted(new_combination))
-                if new_combination not in second_stage_combinations:
-                    second_stage_combinations.append(new_combination)
+    # ========== 策略3: 权重调整变体 ==========  
+    logger.info("策略3: 权重调整变体...")
+    weight_variants = []
+    
+    for combo_info in top_combinations_with_params:
+        if len(weight_variants) >= max_second_stage // 4:  # 限制权重变体数量
+            break
+            
+        base_combination = combo_info['combination'] 
+        base_params = combo_info['params']
+        
+        # 策略3A: 系统性权重调整 - 对每个因子都尝试±1
+        for i in range(num_factors):
+            weight_param = f"factor{i}_weight"
+            original_weight = base_params.get(weight_param, 1)
+            
+            # +1 变体
+            if original_weight < 5:
+                new_params = base_params.copy()
+                new_params[weight_param] = original_weight + 1
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_systematic',
+                    'base_params': new_params,
+                    'adjustment': f"factor{i}_weight: {original_weight} -> {original_weight + 1}"
+                })
+            
+            # -1 变体  
+            if original_weight > 1:
+                new_params = base_params.copy()
+                new_params[weight_param] = original_weight - 1
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_systematic', 
+                    'base_params': new_params,
+                    'adjustment': f"factor{i}_weight: {original_weight} -> {original_weight - 1}"
+                })
+        
+        # 策略3B: 随机权重调整 - 随机选择1个因子进行±1调整
+        # 确保可重复性，使用安全的种子值
+        combo_hash = abs(hash(str(base_combination))) % (2**32 - 1)
+        np.random.seed((args.seed + combo_hash) % (2**32 - 1))
+        
+        # 生成多个随机权重变体（每个TOP组合生成3-5个随机变体）
+        num_random_variants = np.random.randint(3, 6)  # 随机3-5个变体
+        
+        for _ in range(num_random_variants):
+            if len(weight_variants) >= max_second_stage // 4:
+                break
+                
+            # 随机选择一个因子位置
+            random_factor_idx = np.random.randint(0, num_factors)
+            weight_param = f"factor{random_factor_idx}_weight"
+            original_weight = base_params.get(weight_param, 1)
+            
+            # 随机选择+1或-1
+            adjustment = np.random.choice([+1, -1])
+            new_weight = original_weight + adjustment
+            
+            # 检查权重范围合法性
+            if 1 <= new_weight <= 5:
+                new_params = base_params.copy()
+                new_params[weight_param] = new_weight
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_random',
+                    'base_params': new_params,
+                    'adjustment': f"factor{random_factor_idx}_weight: {original_weight} -> {new_weight} (random)"
+                })
+    
+    # 添加权重变体到最终列表
+    for variant in weight_variants:
+        if len(second_stage_combinations) >= max_second_stage:
+            break
+        second_stage_combinations.append(variant['combination'])
+        second_stage_combination_details.append(variant)
+    
+    logger.info(f"策略3完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 限制第二阶段组合数量
-    max_second_stage = min(500, max_combinations // 10)
+    # ========== 最终控制：确保不超过上限 ==========
     if len(second_stage_combinations) > max_second_stage:
+        logger.info(f"组合数量({len(second_stage_combinations)})超过上限({max_second_stage})，进行随机采样...")
         np.random.seed(args.seed)
         indices = np.random.choice(len(second_stage_combinations), max_second_stage, replace=False)
         second_stage_combinations = [second_stage_combinations[i] for i in indices]
+        second_stage_combination_details = [second_stage_combination_details[i] for i in indices]
 
-    logger.info(f"第二阶段将探索 {len(second_stage_combinations)} 个因子组合")
+    logger.info(f"第二阶段最终将探索 {len(second_stage_combinations)} 个因子组合")
+    
+    # 统计各策略贡献
+    strategy_counts = {}
+    for detail in second_stage_combination_details:
+        source = detail['source']
+        strategy_counts[source] = strategy_counts.get(source, 0) + 1
+    
+    logger.info("各策略贡献统计:")
+    for strategy, count in strategy_counts.items():
+        logger.info(f"  {strategy}: {count} 个组合")
 
-    return second_stage_combinations
+    return second_stage_combinations, second_stage_combination_details
 
 
 def _add_first_stage_best_to_second_stage(
@@ -562,6 +735,7 @@ def _run_second_stage_optimization(
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
+        top_combinations_with_params,
         max_combinations,
         all_filter_conditions=None,
 ):
@@ -584,13 +758,9 @@ def _run_second_stage_optimization(
     """
     logger.info("\n===== 第二阶段：优化权重和排序方向 =====")
 
-    # 获取第一阶段最佳组合
-    best_combination_idx = first_stage_best_params["combination_idx"]
-    best_combination = first_stage_combinations[best_combination_idx]
-
-    # 准备第二阶段因子组合（基于第一阶段最佳组合的变化）
-    second_stage_combinations = _prepare_second_stage_combinations(
-        factors, num_factors, best_combination, max_combinations, args
+    # 使用增强的第二阶段组合准备（基于TOP 10组合）
+    second_stage_combinations, second_stage_combination_details = _prepare_second_stage_combinations_enhanced(
+        factors, num_factors, top_combinations_with_params, max_combinations, args
     )
 
     # 创建第二阶段研究  
@@ -619,8 +789,9 @@ def _run_second_stage_optimization(
     n_trials_first_stage = min(args.n_trials // 2, 2000)
     n_trials_second_stage = args.n_trials - n_trials_first_stage
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
-
+    
     try:
+        logger.info(f"第二阶段优化开始，共 {n_trials_second_stage} 个试验，使用 {adjusted_n_jobs} 个进程")
         # 🚨 内存优化：直接运行第二阶段，保持优化质量
         second_stage_study.optimize(
             objective_func, n_trials=n_trials_second_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
@@ -853,8 +1024,8 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         df, factors, num_factors, args, max_combinations, all_filter_conditions
     )
 
-    # 获取第一阶段结果
-    first_stage_best_params, first_stage_best_value, _ = _get_first_stage_results(
+    # 获取第一阶段结果，包括TOP 10组合
+    first_stage_best_params, first_stage_best_value, _, top_combinations_with_params = _get_first_stage_results(
         first_stage_study, first_stage_combinations, num_factors
     )
 
@@ -872,6 +1043,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
+        top_combinations_with_params,
         max_combinations,
         all_filter_conditions,
     )
