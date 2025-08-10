@@ -9,7 +9,8 @@
       "Bash(timeout:*)",
       "Bash(./run_optimizer.sh:*)",
       "Bash(git stash push:*)",
-      "WebFetch(domain:tech.preferred.jp)"
+      "WebFetch(domain:tech.preferred.jp)",
+      "Bash(rm test_enhanced_second_stage.py)"
     ],
     "deny": []
   }
