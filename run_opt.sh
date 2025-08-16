@@ -32,6 +32,8 @@ MODE="continuous"
 ITERATIONS="10"
 TRIALS="3000"
 CLEAR_RESULTS="false"
+PRICE_MIN="100"    # 价格下限（可配置）
+PRICE_MAX="200"    # 价格上限（可配置）
 
 # 如果没有参数，显示使用方法
 if [ $# -eq 0 ]; then
@@ -101,7 +103,7 @@ done
 
 # 根目录，请根据你的实际路径调整
 BASE_DIR="/root/autodl-tmp"
-TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}/lude/"
+TARGET_DIR="${BASE_DIR}/lude_${PRICE_MIN}_${PRICE_MAX}_hold${HOLD}_fac${FAC}_num${NUM}/lude/"
 
 # 检查目录是否存在
 if [ ! -d "${TARGET_DIR}" ]; then
