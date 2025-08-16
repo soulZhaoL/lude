@@ -21,7 +21,8 @@
       "mcp__promptx__promptx_init",
       "mcp__promptx__promptx_welcome",
       "mcp__promptx__promptx_action",
-      "mcp__cunzhi__zhi"
+      "mcp__cunzhi__zhi",
+      "Bash(pip show:*)"
     ],
     "deny": []
   },

@@ -20,9 +20,12 @@ git config --global http.postBuffer 524288000
 # —— 配置区 —— #
 BASE_DIR="/root/autodl-tmp"                                # 所有项目目录的根目录
 REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
+REPO_BRANCH="master"                            # 要克隆/切换的分支
 PQ_SOURCE="/autodl-fs/data/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
-CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
+PRICE_MIN="100"                                            # 价格下限
+PRICE_MAX="150"                                            # 价格上限
+CONDA_PREFIX="lude_${PRICE_MIN}_${PRICE_MAX}"              # conda 环境名前缀
 PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"   # pip 镜像地址
 # PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"   # pip 镜像地址
 # ================ #
@@ -31,17 +34,20 @@ usage() {
   cat <<EOF
 Usage:
   $0 [--skip-conda|-n] hold fac num
-  $0 [--skip-conda|-n] lude_100_150_hold<hold>_fac<fac>_num<num>
+  $0 [--skip-conda|-n] lude_<min>_<max>_hold<hold>_fac<fac>_num<num>
 
 Options:
   --skip-conda, -n   跳过 Conda 环境激活
+
+Configuration:
+  价格范围通过配置区域的 PRICE_MIN 和 PRICE_MAX 变量设置 (当前: ${PRICE_MIN}-${PRICE_MAX})
 
 Examples:
   # 激活环境（默认行为）
   $0 5 3 1
   # 跳过激活
   $0 --skip-conda 5 3 1
-  $0 -n lude_100_150_hold5_fac3_num1
+  $0 -n lude_${PRICE_MIN}_${PRICE_MAX}_hold5_fac3_num1
 EOF
   exit 1
 }
@@ -56,7 +62,20 @@ fi
 # ——— 参数解析 ——— #
 if [ $# -eq 3 ]; then
   HOLD="$1"; FAC="$2"; NUM="$3"
+elif [ $# -eq 1 ] && [[ "$1" =~ lude_([0-9]+)_([0-9]+)_hold([0-9]+)_fac([0-9]+)_num([0-9]+) ]]; then
+  # 从完整名称中提取所有参数
+  EXTRACTED_MIN="${BASH_REMATCH[1]}"
+  EXTRACTED_MAX="${BASH_REMATCH[2]}"
+  HOLD="${BASH_REMATCH[3]}"
+  FAC="${BASH_REMATCH[4]}"
+  NUM="${BASH_REMATCH[5]}"
+  # 更新价格变量以匹配输入
+  PRICE_MIN="${EXTRACTED_MIN}"
+  PRICE_MAX="${EXTRACTED_MAX}"
+  # 重新构建CONDA_PREFIX以反映新的价格
+  CONDA_PREFIX="lude_${PRICE_MIN}_${PRICE_MAX}"
 elif [ $# -eq 1 ] && [[ "$1" =~ hold([0-9]+)_fac([0-9]+)_num([0-9]+) ]]; then
+  # 兼容旧格式（只有hold、fac、num，使用配置区域的默认价格）
   HOLD="${BASH_REMATCH[1]}"
   FAC="${BASH_REMATCH[2]}"
   NUM="${BASH_REMATCH[3]}"
@@ -65,7 +84,7 @@ else
 fi
 
 # ——— 路径设置 ——— #
-DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FAC}_num${NUM}"
+DIR="${BASE_DIR}/lude_${PRICE_MIN}_${PRICE_MAX}_hold${HOLD}_fac${FAC}_num${NUM}"
 REPO_DIR="${DIR}/lude"    # 仓库克隆到子目录
 WORKDIR="${REPO_DIR}/src/lude/data"
 
@@ -77,11 +96,18 @@ mkdir -p "${DIR}"
 if [ ! -d "${REPO_DIR}/.git" ]; then
   echo "→ 克隆仓库到：${REPO_DIR}"
   rm -rf "${REPO_DIR}"
-  git clone "${REPO_URL}" "${REPO_DIR}"
+  git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
 else
   echo "→ 更新仓库：${REPO_DIR}"
   cd "${REPO_DIR}"
-  git pull
+  # 检查当前分支
+  CURRENT_BRANCH=$(git branch --show-current)
+  if [ "${CURRENT_BRANCH}" != "${REPO_BRANCH}" ]; then
+    echo "→ 当前分支: ${CURRENT_BRANCH}，切换到 ${REPO_BRANCH} 分支"
+    git fetch origin "${REPO_BRANCH}"
+    git checkout "${REPO_BRANCH}"
+  fi
+  git pull origin "${REPO_BRANCH}"
 fi
 
 # ——— 复制 .pq 文件 —— #
