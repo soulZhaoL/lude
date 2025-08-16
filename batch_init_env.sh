@@ -20,6 +20,7 @@ git config --global http.postBuffer 524288000
 # —— 配置区 —— #
 BASE_DIR="/root/autodl-tmp"                                # 所有项目目录的根目录
 REPO_URL="https://github.com/soulZhaoL/lude.git"                  # 仓库地址
+REPO_BRANCH="only_score_factor"
 PQ_SOURCE="/root/*.pq"                                     # .pq 文件来源
 CONDA_BASE="$(conda info --base)"                          # conda 安装根目录
 CONDA_PREFIX="lude_100_150"                                # conda 环境名前缀
@@ -77,11 +78,18 @@ mkdir -p "${DIR}"
 if [ ! -d "${REPO_DIR}/.git" ]; then
   echo "→ 克隆仓库到：${REPO_DIR}"
   rm -rf "${REPO_DIR}"
-  git clone "${REPO_URL}" "${REPO_DIR}"
+  git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
 else
   echo "→ 更新仓库：${REPO_DIR}"
   cd "${REPO_DIR}"
-  git pull
+    # 检查当前分支
+  CURRENT_BRANCH=$(git branch --show-current)
+  if [ "${CURRENT_BRANCH}" != "${REPO_BRANCH}" ]; then
+    echo "→ 当前分支: ${CURRENT_BRANCH}，切换到 ${REPO_BRANCH} 分支"
+    git fetch origin "${REPO_BRANCH}"
+    git checkout "${REPO_BRANCH}"
+  fi
+  git pull origin "${REPO_BRANCH}"
 fi
 
 # ——— 复制 .pq 文件 —— #
