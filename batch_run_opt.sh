@@ -9,16 +9,18 @@
 # /root/batch_run_opt.sh
 
 # 使用示例:
-# 默认运行
+# 默认运行（使用100-150价格范围）
 # /root/batch_run_opt.sh
 # 明确指定清空结果目录
 # /root/batch_run_opt.sh --clear
+# 指定自定义价格范围
+# /root/batch_run_opt.sh --min 80 --max 200
 # 可以与其他参数一起使用
-# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5 --jobs 8
+# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5 --jobs 8 --min 90 --max 180
 # 启用过滤优化
 # /root/batch_run_opt.sh --clear --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 5 --enable_filter_opt --jobs 10
 # 完整参数示例
-# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 4 --jobs 15 --enable_filter_opt --clear
+# /root/batch_run_opt.sh --mode continuous --trials 5000 --iterations 30 --hold 5 --factors 4 --jobs 15 --enable_filter_opt --clear --min 70 --max 160
 
 # 设置优化参数
 MODE="continuous"
@@ -78,9 +80,17 @@ while [ $# -gt 0 ]; do
       ENABLE_FILTER_OPT=true
       shift
       ;;
+    --min)
+      PRICE_MIN="$2"
+      shift 2
+      ;;
+    --max)
+      PRICE_MAX="$2"
+      shift 2
+      ;;
     *)
       echo "错误: 未知参数 $1"
-      echo "用法: $0 [--clear] [--mode MODE] [--trials NUM] [--iterations NUM] [--hold NUM] [--factors NUM] [--jobs NUM] [--enable_filter_opt]"
+      echo "用法: $0 [--clear] [--mode MODE] [--trials NUM] [--iterations NUM] [--hold NUM] [--factors NUM] [--jobs NUM] [--enable_filter_opt] [--min PRICE_MIN] [--max PRICE_MAX]"
       exit 1
       ;;
   esac
@@ -120,7 +130,7 @@ for num in $(seq 1 15); do
   echo "▶️ 执行序号：${num} (共15个)"
   
   # 构建目标目录（来自原 run_opt.sh 的逻辑）
-  TARGET_DIR="${BASE_DIR}/lude_100_150_hold${HOLD}_fac${FACTORS}_num${num}/lude/"
+  TARGET_DIR="${BASE_DIR}/lude_${PRICE_MIN}_${PRICE_MAX}_hold${HOLD}_fac${FACTORS}_num${num}/lude/"
   
   # 检查目录是否存在
   if [ ! -d "${TARGET_DIR}" ]; then

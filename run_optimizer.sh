@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 本地测试
+# ./run_optimizer.sh -m continuous --method tpe --strategy multistage  --start 20220729 --end 20250328 --min 100 --max 150 --jobs 15 --trials 1000 --hold 5 --seed-start 42 --seed-step 1000 --iterations 1 --factors 4 --enable_filter_opt
+
 # 进入脚本所在目录（修改为使用绝对路径）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"

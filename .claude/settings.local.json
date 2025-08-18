@@ -7,5 +7,12 @@
       "Bash(python test:*)"
     ],
     "deny": []
+  },
+  "claudeMd": [
+    "./CLAUDE.md"
+  ],
+  "global_rules": {
+    "enforce_globally": true,
+    "priority": "highest"
   }
 }

@@ -35,288 +35,53 @@ from lude.utils.common_utils import RESULTS_DIR  # 导入结果目录常量
 from lude.utils.logger import optimization_logger as logger
 from lude.utils.memory_monitor import check_memory_warning, log_memory_stats
 
-
-# 已移除分批运行策略，不再需要试验清理函数
-
-
-class RedisStorageManager:
-    """Redis存储管理器
+def _validate_filter_conditions(selected_filter_conditions):
+    """验证排除因子条件的有效性
     
-    核心策略：
-    - 高并发 (>10 jobs): 使用Redis分布式存储
-    - 低并发 (<=10 jobs): 使用传统SQLite存储
-    - 自动连接检测和回退机制
+    Args:
+        selected_filter_conditions: 选择的排除因子条件列表
+    
+    Returns:
+        tuple: (is_valid, error_msg)
     """
-
-    def __init__(self, study_base_name: str, n_jobs: int, seed: int):
-        self.study_base_name = study_base_name
-        self.n_jobs = n_jobs
-        self.seed = seed
-        # 🚨 稳定性优化：优先使用SQLite，只有高并发才用Redis
-        self.storage_strategy = "redis" if n_jobs > 5 else "sqlite"
-        self.redis_config = self._load_redis_config()
-
-        logger.info(f"存储策略: {self.storage_strategy}, 进程数: {n_jobs}")
-
-        # 🚨 严格验证Redis连接 - 不使用fallback策略
-        if self.storage_strategy == "redis":
-            try:
-                enhanced_redis_url = self._create_enhanced_redis_url()
-                self._test_redis_connection(enhanced_redis_url)
-                logger.info("✅ Redis连接预验证成功")
-            except Exception as e:
-                raise ConnectionError(f"Redis连接失败: {self.redis_config['host']}:{self.redis_config['port']}. "
-                                    f"错误: {e}. 请检查Redis服务状态或修复连接问题，不允许降级处理") from e
-
-    def _load_redis_config(self) -> Dict:
-        """加载Redis配置 - 严格按照配置文件执行，不允许使用默认配置"""
-        # Redis配置文件在项目根目录下的redis文件夹中
-        # 从RESULTS_DIR向上找到项目根目录（RESULTS_DIR通常是 project_root/optimization_results）
-        project_root = os.path.dirname(RESULTS_DIR)
-        config_file = os.path.join(project_root, "redis", "redis_config.json")
+    if not selected_filter_conditions:
+        return True, "无排除因子条件"
+    
+    # 检查重复因子 + 操作符组合
+    factor_operator_combinations = set()
+    factor_conditions = {}  # {factor_name: [conditions]}
+    
+    for cond in selected_filter_conditions:
+        factor_name = cond['factor']
+        operator = cond['operator']
+        value = cond['value']
         
-        # 🚨 严格配置文件驱动：配置文件必须存在且可读取
-        if not os.path.exists(config_file):
-            raise FileNotFoundError(
-                f"Redis配置文件不存在: {config_file}\n"
-                f"请检查配置文件路径是否正确，或者从版本控制中恢复该文件\n"
-                f"注意: 不允许使用默认配置，必须显式配置所有参数"
-            )
+        # 检查重复的因子+操作符
+        factor_op = (factor_name, operator)
+        if factor_op in factor_operator_combinations:
+            return False, f"存在重复的因子+操作符组合: {factor_name} {operator}"
+        factor_operator_combinations.add(factor_op)
         
-        try:
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-                logger.info(f"成功加载Redis配置: {config_file}")
-                
-                # 验证必要的配置项
-                required_keys = ['host', 'port', 'db']
-                missing_keys = [key for key in required_keys if key not in config]
-                if missing_keys:
-                    raise ValueError(f"Redis配置文件缺少必要配置项: {missing_keys}")
-                
-                return config
-                
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Redis配置文件格式错误: {e}") from e
-        except Exception as e:
-            raise RuntimeError(f"加载Redis配置失败: {e}. 请检查配置文件内容和权限") from e
-
-    def _test_redis_connection(self) -> bool:
-        """测试Redis连接"""
-        try:
-            import redis
-
-            client = redis.Redis(
-                host=self.redis_config["host"],
-                port=self.redis_config["port"],
-                db=self.redis_config["db"],
-                password=self.redis_config["password"],
-                socket_connect_timeout=5,  # 快速测试
-                socket_timeout=5
-            )
-
-            # 执行ping测试
-            client.ping()
-            logger.info(f"Redis连接成功: {self.redis_config['host']}:{self.redis_config['port']}")
-            return True
-
-        except ImportError:
-            logger.error("redis-py模块未安装，请运行: pip install redis")
-            return False
-        except Exception as e:
-            logger.warning(f"Redis连接测试失败: {e}")
-            return False
-
-    def get_storage_url(self) -> str:
-        """获取存储URL"""
-        if self.storage_strategy == "redis":
-            # 构建Redis URL
-            auth_part = ""
-            if self.redis_config["password"]:
-                auth_part = f":{self.redis_config['password']}@"
-
-            return (f"redis://{auth_part}{self.redis_config['host']}:"
-                    f"{self.redis_config['port']}/{self.redis_config['db']}")
-        else:
-            # SQLite存储（回退方案）
-            db_path = os.path.join(RESULTS_DIR, f"{self.study_base_name}.db")
-            return f"sqlite:///{db_path}"
-
-    def create_storage(self):
-        """创建存储实例"""
-        if self.storage_strategy == "redis":
-            try:
-                # 🔑 创建增强连接稳定性的Redis URL来解决Connection reset by peer
-                enhanced_redis_url = self._create_enhanced_redis_url()
-                
-                logger.info("创建增强稳定性的Redis存储")
-                logger.info(f"增强URL: {enhanced_redis_url}")
-                
-                # 记录服务器端配置建议 - 针对Broken pipe问题的强化配置
-                logger.warning("🚨 重要：为避免Broken pipe和Connection reset by peer，请确保Redis服务器配置：")
-                logger.warning("   tcp-keepalive 30      # 增加keepalive频率")
-                logger.warning("   timeout 0             # 永不超时") 
-                logger.warning("   maxclients 10000      # 最大客户端数")
-                logger.warning("   maxmemory 4gb         # 增加内存限制")
-                logger.warning("   save ''               # 禁用RDB持久化，减少IO阻塞")
-                logger.warning("   stop-writes-on-bgsave-error no  # 避免后台保存错误")
-                
-                # 先测试Redis连接可用性
-                self._test_redis_connection(enhanced_redis_url)
-                
-                # 创建Optuna Redis存储 - 使用Optuna 4.4.0兼容的JournalRedisBackend
-                from optuna.storages.journal import JournalRedisBackend
-                journal_redis_backend = JournalRedisBackend(enhanced_redis_url)
-                storage = optuna.storages.JournalStorage(journal_redis_backend)
-                
-                logger.info("✅ Redis存储创建成功，已应用连接稳定性配置")
-                return storage
-                
-            except Exception as e:
-                # 🚨 不允许fallback，直接抛出异常暴露真实问题
-                error_msg = f"创建Redis存储失败: {e}"
-                if "Broken pipe" in str(e) or "BrokenPipeError" in str(e):
-                    error_msg += "\n🔥 Broken pipe错误解决方案（紧急）："
-                    error_msg += "\n1. 立即更新Redis服务器配置文件redis.conf："
-                    error_msg += "\n   tcp-keepalive 30"
-                    error_msg += "\n   timeout 0"
-                    error_msg += "\n   save ''"
-                    error_msg += "\n   stop-writes-on-bgsave-error no"
-                    error_msg += "\n2. 重启Redis服务: ./redis/start_redis.sh dev"
-                    error_msg += "\n3. 减少并发数（当前可能过高导致连接池耗尽）"
-                elif "Connection reset by peer" in str(e):
-                    error_msg += "\n🔥 Connection reset by peer解决方案："
-                    error_msg += "\n1. 检查Redis服务器配置：timeout=0, tcp-keepalive=30"
-                    error_msg += "\n2. 确保Redis服务正常运行且端口可访问"
-                    error_msg += "\n3. 检查网络连接稳定性和防火墙设置"
-                    error_msg += "\n4. 考虑增加Redis maxclients和内存限制"
-                    error_msg += "\n5. 尝试重启Redis服务或增加服务器资源"
-                raise RuntimeError(error_msg) from e
-        else:
-            # SQLite存储（默认）
-            storage_url = self.get_storage_url()
-            logger.info("使用SQLite存储")
-            return storage_url  # Optuna会自动处理SQLite URL
-
-    def _create_enhanced_redis_url(self) -> str:
-        """创建增强连接稳定性的Redis URL
-        
-        Returns:
-            str: 包含连接稳定性参数的Redis URL
-        """
-        host = self.redis_config['host']
-        port = self.redis_config['port']  
-        db = self.redis_config['db']
-        password = self.redis_config.get('password')
-        
-        # 构建基础URL
-        if password:
-            base_url = f"redis://:{password}@{host}:{port}/{db}"
-        else:
-            base_url = f"redis://{host}:{port}/{db}"
-        
-        # 添加强化的连接稳定性参数 - 解决Broken pipe问题
-        stability_params = [
-            "socket_keepalive=true",         # 启用TCP keepalive
-            "socket_keepalive_options=1,3,3", # keepalive选项: idle=1s, interval=3s, count=3
-            "socket_connect_timeout=60",     # 连接超时60秒（增加）
-            "socket_timeout=120",            # socket操作超时120秒（增加）
-            "retry_on_timeout=true",         # 超时重试
-            "retry_on_error=true",           # 错误重试
-            "max_connections=20",            # 减少最大连接数避免资源竞争
-            "health_check_interval=10"       # 健康检查间隔10秒（增加频率）
-        ]
-        
-        # 组合URL
-        enhanced_url = f"{base_url}?{'&'.join(stability_params)}"
-        
-        logger.debug(f"基础Redis URL: {base_url}")
-        logger.debug(f"增强Redis URL: {enhanced_url}")
-        
-        return enhanced_url
-
-    def _test_redis_connection(self, redis_url: str):
-        """测试Redis连接可用性
-        
-        Args:
-            redis_url: Redis连接URL
+        # 按因子分组收集条件
+        if factor_name not in factor_conditions:
+            factor_conditions[factor_name] = []
+        factor_conditions[factor_name].append({'operator': operator, 'value': value})
+    
+    # 检查同因子的范围条件是否合理
+    for factor_name, conditions in factor_conditions.items():
+        if len(conditions) >= 2:
+            # 有多个条件时，检查是否能形成合理范围
+            ge_values = [c['value'] for c in conditions if c['operator'] == '>=']
+            le_values = [c['value'] for c in conditions if c['operator'] == '<=']
             
-        Raises:
-            RuntimeError: 连接测试失败
-        """
-        import redis
-        
-        try:
-            # 从URL创建Redis客户端进行测试 - 使用decode_responses=True确保返回字符串
-            redis_client = redis.from_url(redis_url, socket_keepalive=True, socket_timeout=10, decode_responses=True)
-            
-            # 执行ping测试
-            redis_client.ping()
-            logger.info("✅ Redis连接测试成功")
-            
-            # 测试基本操作
-            test_key = f"lude_test_{int(time.time())}"
-            test_value = "test_value"
-            redis_client.set(test_key, test_value, ex=60)  # 设置60秒过期
-            retrieved_value = redis_client.get(test_key)
-            redis_client.delete(test_key)
-            
-            # 字符串比较 - 现在都应该是字符串类型
-            if retrieved_value == test_value:
-                logger.info("✅ Redis读写操作测试成功")
-            else:
-                raise RuntimeError(f"Redis读写测试失败: 期望'{test_value}'(类型:{type(test_value)})，实际'{retrieved_value}'(类型:{type(retrieved_value)})")
-                
-        except Exception as e:
-            error_msg = f"Redis连接测试失败: {e}"
-            if "Connection refused" in str(e):
-                error_msg += "\n🔥 Redis服务未启动，请执行: ./redis/start_redis.sh dev"
-            elif "Broken pipe" in str(e) or "BrokenPipeError" in str(e):
-                error_msg += "\n🔥 Broken pipe错误 - Redis连接不稳定："
-                error_msg += "\n   立即检查Redis服务器配置，确保tcp-keepalive=30，timeout=0"
-                error_msg += "\n   重启Redis服务并减少并发连接数"
-            elif "Connection reset by peer" in str(e):
-                error_msg += "\n🔥 Redis连接被重置，请检查服务器配置和网络状态"
-            raise RuntimeError(error_msg) from e
-
-    def get_study_name(self) -> str:
-        """获取研究名称"""
-        return self.study_base_name
-
-    def save_performance_metrics(self, study):
-        """保存性能指标"""
-        if not study or len(study.trials) == 0:
-            return
-
-        metrics = {
-            'study_name': study.study_name,
-            'total_trials': len(study.trials),
-            'best_value': study.best_value,
-            'best_params': study.best_params,
-            'storage_strategy': self.storage_strategy,
-            'n_jobs': self.n_jobs,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-        }
-
-        # 保存到文件
-        metrics_file = os.path.join(RESULTS_DIR, f"{self.study_base_name}_metrics.json")
-        with open(metrics_file, 'w') as f:
-            json.dump(metrics, f, indent=2)
-
-        logger.info(f"性能指标已保存: {metrics_file}")
-        logger.info(f"最佳CAGR: {study.best_value:.6f}, 总试验: {len(study.trials)}")
-
-
-# 全局存储管理器实例
-_storage_manager: Optional[RedisStorageManager] = None
-
-
-def get_storage_manager(study_base_name: str, n_jobs: int, seed: int) -> RedisStorageManager:
-    """获取存储管理器实例（单例模式）"""
-    global _storage_manager
-    if _storage_manager is None or _storage_manager.study_base_name != study_base_name:
-        _storage_manager = RedisStorageManager(study_base_name, n_jobs, seed)
-    return _storage_manager
+            # 如果有>=和<=条件，检查范围合理性
+            if ge_values and le_values:
+                min_ge = min(ge_values)
+                max_le = max(le_values)
+                if min_ge > max_le:
+                    return False, f"因子 {factor_name} 的范围条件不合理: >= {min_ge} 且 <= {max_le}"
+    
+    return True, "条件有效"
 
 
 def _prepare_all_filter_conditions(df, enable_filter_opt):
@@ -438,6 +203,12 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
             
             # 根据索引获取条件，已确保无操作符冲突
             selected_filter_conditions = [all_filter_conditions[idx] for idx in selected_indices]
+
+            # 🎯 新增：验证排除因子条件的有效性，使用剪枝机制处理无效组合
+            # is_valid, error_msg = _validate_filter_conditions(selected_filter_conditions)
+            # if not is_valid:
+            #     logger.warning(f"检测到无效的排除因子组合: {error_msg}")
+            #     raise optuna.exceptions.TrialPruned()
 
         # 计算CAGR
         try:
@@ -604,6 +375,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
 
     try:
+        logger.info(f"第一阶段优化开始，共 {n_trials_first_stage} 个试验，使用 {adjusted_n_jobs} 个进程")
         # 🚨 内存优化：直接运行，仅在必要时清理（保持优化质量）
         first_stage_study.optimize(
             objective_func, n_trials=n_trials_first_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
@@ -640,7 +412,7 @@ def _run_first_stage_optimization(df, factors, num_factors, args, max_combinatio
 
 
 def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_factors):
-    """获取第一阶段结果
+    """获取第一阶段结果，包括TOP 10组合
 
     Args:
         first_stage_study: 第一阶段研究
@@ -651,17 +423,56 @@ def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_f
         best_params: 最佳参数
         best_value: 最佳值
         best_combination: 最佳因子组合
+        top_combinations_with_params: TOP 10组合及其参数列表
     """
     # 检查第一阶段是否有结果
     if len(first_stage_study.trials) == 0:
         logger.error("第一阶段没有完成任何试验，无法继续")
-        return None, None, None
+        return None, None, None, []
 
     # 获取第一阶段最佳结果
     best_params = first_stage_study.best_params
     best_value = first_stage_study.best_value
 
     logger.info(f"\n第一阶段最佳CAGR: {best_value:.6f}")
+
+    # 获取TOP 10组合及其参数
+    top_combinations_with_params = []
+    if len(first_stage_study.trials) > 0:
+        # 按CAGR值排序获取TOP 10
+        valid_trials = [t for t in first_stage_study.trials if t.value is not None]
+        sorted_trials = sorted(valid_trials, key=lambda t: t.value, reverse=True)
+        top_trials = sorted_trials[:min(10, len(sorted_trials))]
+        
+        logger.info(f"\n第一阶段TOP {len(top_trials)} 组合:")
+        for idx, trial in enumerate(top_trials):
+            if "combination_idx" in trial.params:
+                combo_idx = trial.params["combination_idx"]
+                combination = first_stage_combinations[combo_idx]
+                
+                # 收集组合及其参数信息
+                combination_info = {
+                    'combination': combination,
+                    'params': trial.params,
+                    'value': trial.value,
+                    'user_attrs': trial.user_attrs
+                }
+                top_combinations_with_params.append(combination_info)
+                
+                # 打印基本信息
+                logger.info(f"  {idx + 1}. CAGR: {trial.value:.6f}, 组合: {combination}")
+                
+                # 打印详细的因子权重和排序方向信息
+                logger.info(f"     详细配置:")
+                for i, factor in enumerate(combination):
+                    weight_param = f"factor{i}_weight"
+                    asc_param = f"factor{i}_ascending"
+                    
+                    weight = trial.params.get(weight_param, 1)
+                    ascending = trial.params.get(asc_param, True)
+                    direction = "升序" if ascending else "降序"
+                    
+                    logger.info(f"       - {factor}: 权重={weight}, 方向={direction}")
 
     # 提取最佳因子组合
     if "combination_idx" in best_params:
@@ -681,65 +492,198 @@ def _get_first_stage_results(first_stage_study, first_stage_combinations, _num_f
             logger.info(f"     - 权重: {weight}")
             logger.info(f"     - 排序方向: {direction}")
 
-        return best_params, best_value, best_combination
+        return best_params, best_value, best_combination, top_combinations_with_params
     else:
         logger.warning("无法获取第一阶段最佳因子组合")
-        return None, None, None
+        return None, None, None, top_combinations_with_params
 
 
-def _prepare_second_stage_combinations(factors, num_factors, best_combination, max_combinations, args):
-    """准备第二阶段的因子组合
+def _prepare_second_stage_combinations_enhanced(factors, num_factors, top_combinations_with_params, max_combinations, args):
+    """增强的第二阶段因子组合准备
+    
+    基于TOP 10组合的多策略生成：
+    1. 添加TOP 10原始组合
+    2. 对TOP 10进行替换1个因子
+    3. 对TOP 10进行权重调整 (±1)
+    4. 控制总数不超过max_combinations/2
 
     Args:
         factors: 因子列表
-        num_factors: 因子数量
-        best_combination: 第一阶段最佳组合
+        num_factors: 因子数量  
+        top_combinations_with_params: TOP 10组合及其参数信息
         max_combinations: 最大组合数量
         args: 参数
 
     Returns:
         second_stage_combinations: 第二阶段因子组合列表
+        second_stage_combination_details: 组合详细信息（包含权重等）
     """
-    logger.info("准备第二阶段因子组合...")
-
-    # 生成第二阶段的因子组合
-    # 策略：从最佳组合开始，替换1-2个因子生成新组合
+    logger.info("准备增强的第二阶段因子组合...")
+    
     second_stage_combinations = []
+    second_stage_combination_details = []
+    combination_set = set()  # 用于去重
+    
+    # 配置限制
+    max_second_stage = max_combinations // 2  # 50,000
+    available_factors = [f for f in factors]  # 所有可用因子
+    
+    logger.info(f"目标组合数量上限: {max_second_stage}")
+    logger.info(f"可用因子总数: {len(available_factors)}")
+    logger.info(f"TOP组合数量: {len(top_combinations_with_params)}")
 
-    # 添加第一阶段最佳组合
-    second_stage_combinations.append(best_combination)
+    # ========== 策略1: 添加TOP 10原始组合 ==========
+    logger.info("策略1: 添加TOP组合...")
+    for combo_info in top_combinations_with_params:
+        combination = combo_info['combination']
+        combination_key = tuple(sorted(combination))
+        
+        if combination_key not in combination_set:
+            second_stage_combinations.append(combination)
+            second_stage_combination_details.append({
+                'combination': combination,
+                'source': 'top_original',
+                'base_params': combo_info['params']
+            })
+            combination_set.add(combination_key)
+    
+    logger.info(f"策略1完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 替换1个因子生成新组合
-    for i in range(num_factors):
-        for factor in factors:
-            if factor not in best_combination:
-                new_combination = list(best_combination)
-                new_combination[i] = factor
-                new_combination = tuple(sorted(new_combination))
-                if new_combination not in second_stage_combinations:
-                    second_stage_combinations.append(new_combination)
+    # ========== 策略2: 对TOP 10进行替换1个因子 ==========
+    logger.info("策略2: 替换1个因子...")
+    for combo_info in top_combinations_with_params:
+        if len(second_stage_combinations) >= max_second_stage:
+            break
+            
+        base_combination = combo_info['combination']
+        base_params = combo_info['params']
+        
+        # 对每个位置尝试替换
+        for i in range(num_factors):
+            if len(second_stage_combinations) >= max_second_stage:
+                break
+                
+            for factor in available_factors:
+                if factor not in base_combination:  # 避免替换成相同因子
+                    new_combination = list(base_combination)
+                    new_combination[i] = factor
+                    new_combination = tuple(new_combination)
+                    combination_key = tuple(sorted(new_combination))
+                    
+                    if combination_key not in combination_set:
+                        second_stage_combinations.append(new_combination)
+                        second_stage_combination_details.append({
+                            'combination': new_combination,
+                            'source': 'factor_replacement',
+                            'base_params': base_params,
+                            'replaced_position': i,
+                            'original_factor': base_combination[i],
+                            'new_factor': factor
+                        })
+                        combination_set.add(combination_key)
+    
+    logger.info(f"策略2完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 如果组合数量较少，替换2个因子生成更多组合
-    if len(second_stage_combinations) < 100:
-        for i, j in itertools.combinations(range(num_factors), 2):
-            for factor1, factor2 in itertools.combinations([f for f in factors if f not in best_combination], 2):
-                new_combination = list(best_combination)
-                new_combination[i] = factor1
-                new_combination[j] = factor2
-                new_combination = tuple(sorted(new_combination))
-                if new_combination not in second_stage_combinations:
-                    second_stage_combinations.append(new_combination)
+    # ========== 策略3: 权重调整变体 ==========  
+    logger.info("策略3: 权重调整变体...")
+    weight_variants = []
+    
+    for combo_info in top_combinations_with_params:
+        if len(weight_variants) >= max_second_stage // 4:  # 限制权重变体数量
+            break
+            
+        base_combination = combo_info['combination'] 
+        base_params = combo_info['params']
+        
+        # 策略3A: 系统性权重调整 - 对每个因子都尝试±1
+        for i in range(num_factors):
+            weight_param = f"factor{i}_weight"
+            original_weight = base_params.get(weight_param, 1)
+            
+            # +1 变体
+            if original_weight < 5:
+                new_params = base_params.copy()
+                new_params[weight_param] = original_weight + 1
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_systematic',
+                    'base_params': new_params,
+                    'adjustment': f"factor{i}_weight: {original_weight} -> {original_weight + 1}"
+                })
+            
+            # -1 变体  
+            if original_weight > 1:
+                new_params = base_params.copy()
+                new_params[weight_param] = original_weight - 1
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_systematic', 
+                    'base_params': new_params,
+                    'adjustment': f"factor{i}_weight: {original_weight} -> {original_weight - 1}"
+                })
+        
+        # 策略3B: 随机权重调整 - 随机选择1个因子进行±1调整
+        # 确保可重复性，使用安全的种子值
+        combo_hash = abs(hash(str(base_combination))) % (2**32 - 1)
+        np.random.seed((args.seed + combo_hash) % (2**32 - 1))
+        
+        # 生成多个随机权重变体（每个TOP组合生成3-5个随机变体）
+        num_random_variants = np.random.randint(3, 6)  # 随机3-5个变体
+        
+        for _ in range(num_random_variants):
+            if len(weight_variants) >= max_second_stage // 4:
+                break
+                
+            # 随机选择一个因子位置
+            random_factor_idx = np.random.randint(0, num_factors)
+            weight_param = f"factor{random_factor_idx}_weight"
+            original_weight = base_params.get(weight_param, 1)
+            
+            # 随机选择+1或-1
+            adjustment = np.random.choice([+1, -1])
+            new_weight = original_weight + adjustment
+            
+            # 检查权重范围合法性
+            if 1 <= new_weight <= 5:
+                new_params = base_params.copy()
+                new_params[weight_param] = new_weight
+                weight_variants.append({
+                    'combination': base_combination,
+                    'source': 'weight_random',
+                    'base_params': new_params,
+                    'adjustment': f"factor{random_factor_idx}_weight: {original_weight} -> {new_weight} (random)"
+                })
+    
+    # 添加权重变体到最终列表
+    for variant in weight_variants:
+        if len(second_stage_combinations) >= max_second_stage:
+            break
+        second_stage_combinations.append(variant['combination'])
+        second_stage_combination_details.append(variant)
+    
+    logger.info(f"策略3完成，当前组合数: {len(second_stage_combinations)}")
 
-    # 限制第二阶段组合数量
-    max_second_stage = min(500, max_combinations // 10)
+    # ========== 最终控制：确保不超过上限 ==========
     if len(second_stage_combinations) > max_second_stage:
+        logger.info(f"组合数量({len(second_stage_combinations)})超过上限({max_second_stage})，进行随机采样...")
         np.random.seed(args.seed)
         indices = np.random.choice(len(second_stage_combinations), max_second_stage, replace=False)
         second_stage_combinations = [second_stage_combinations[i] for i in indices]
+        second_stage_combination_details = [second_stage_combination_details[i] for i in indices]
 
-    logger.info(f"第二阶段将探索 {len(second_stage_combinations)} 个因子组合")
+    logger.info(f"第二阶段最终将探索 {len(second_stage_combinations)} 个因子组合")
+    
+    # 统计各策略贡献
+    strategy_counts = {}
+    for detail in second_stage_combination_details:
+        source = detail['source']
+        strategy_counts[source] = strategy_counts.get(source, 0) + 1
+    
+    logger.info("各策略贡献统计:")
+    for strategy, count in strategy_counts.items():
+        logger.info(f"  {strategy}: {count} 个组合")
 
-    return second_stage_combinations
+    return second_stage_combinations, second_stage_combination_details
 
 
 def _add_first_stage_best_to_second_stage(
@@ -784,20 +728,11 @@ def _add_first_stage_best_to_second_stage(
             distributions[weight_param] = optuna.distributions.IntDistribution(1, 5)
             distributions[asc_param] = optuna.distributions.CategoricalDistribution([True, False])
 
-        # 🎯 为排除因子参数创建分布 - 使用配置文件中的max_factors
+        # 🎯 修复方案：为排除因子参数创建固定的分布 - 避免动态调整破坏参数空间一致性
         from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
         generator = OptimizedFilterFactorGenerator()
-        max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
-        
         for param_name in new_params:
-            if param_name.startswith("num_filter_conditions"):
-                param_value = new_params[param_name]
-                # 🎯 动态调整分布范围以兼容历史数据
-                min_value = min(1, param_value)  
-                max_value = max(max_filter_factors, param_value)
-                logger.info(f"第二阶段为{param_name}创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
-                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
-            elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
+            if param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
                 # 需要获取all_filter_conditions的长度，但这个函数没有传入该参数
                 # 重新生成来获取正确的范围
                 config_factors = generator.get_available_factors()
@@ -841,6 +776,7 @@ def _run_second_stage_optimization(
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
+        top_combinations_with_params,
         max_combinations,
         all_filter_conditions=None,
 ):
@@ -863,13 +799,9 @@ def _run_second_stage_optimization(
     """
     logger.info("\n===== 第二阶段：优化权重和排序方向 =====")
 
-    # 获取第一阶段最佳组合
-    best_combination_idx = first_stage_best_params["combination_idx"]
-    best_combination = first_stage_combinations[best_combination_idx]
-
-    # 准备第二阶段因子组合（基于第一阶段最佳组合的变化）
-    second_stage_combinations = _prepare_second_stage_combinations(
-        factors, num_factors, best_combination, max_combinations, args
+    # 使用增强的第二阶段组合准备（基于TOP 10组合）
+    second_stage_combinations, second_stage_combination_details = _prepare_second_stage_combinations_enhanced(
+        factors, num_factors, top_combinations_with_params, max_combinations, args
     )
 
     # 创建第二阶段研究  
@@ -898,8 +830,9 @@ def _run_second_stage_optimization(
     n_trials_first_stage = min(args.n_trials // 2, 2000)
     n_trials_second_stage = args.n_trials - n_trials_first_stage
     adjusted_n_jobs = max(1, min(args.n_jobs // 2, 10))
-
+    
     try:
+        logger.info(f"第二阶段优化开始，共 {n_trials_second_stage} 个试验，使用 {adjusted_n_jobs} 个进程")
         # 🚨 内存优化：直接运行第二阶段，保持优化质量
         second_stage_study.optimize(
             objective_func, n_trials=n_trials_second_stage, n_jobs=adjusted_n_jobs, gc_after_trial=True
@@ -1028,21 +961,10 @@ def _create_final_study_and_merge_results(
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
             elif param_name == "use_filter":
                 distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
-            elif param_name == "num_filter_conditions":
-                # 使用配置文件中的max_factors设置
-                from lude.utils.filter_generator_optimized import OptimizedFilterFactorGenerator
-                generator = OptimizedFilterFactorGenerator()
-                max_filter_factors = generator.config.get('combination_rules', {}).get('max_factors', 2)
-                
-                # 🎯 关键修复：根据实际参数值动态调整分布范围
-                min_value = min(1, param_value)  # 如果参数值为0，则最小值设为0；否则为1
-                max_value = max(max_filter_factors, param_value)  # 确保包含当前参数值
-                
-                logger.info(f"为num_filter_conditions创建分布: 参数值={param_value}, 分布范围=[{min_value}, {max_value}]")
-                distributions[param_name] = optuna.distributions.IntDistribution(min_value, max_value)
             elif param_name.startswith("filter_condition_") and param_name.endswith("_idx"):
-                # 为filter_condition_*_idx参数设置正确的分布范围
+                # 🎯 关键修复：使用固定的分布范围，不根据参数值动态调整
                 if all_filter_conditions:
+                    # 使用固定的分布范围，保持参数空间一致性
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
@@ -1148,8 +1070,8 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         df, factors, num_factors, args, max_combinations, all_filter_conditions
     )
 
-    # 获取第一阶段结果
-    first_stage_best_params, first_stage_best_value, _ = _get_first_stage_results(
+    # 获取第一阶段结果，包括TOP 10组合
+    first_stage_best_params, first_stage_best_value, _, top_combinations_with_params = _get_first_stage_results(
         first_stage_study, first_stage_combinations, num_factors
     )
 
@@ -1167,6 +1089,7 @@ def multistage_optimization(df, factors, num_factors, args, max_combinations=500
         first_stage_best_params,
         first_stage_best_value,
         first_stage_combinations,
+        top_combinations_with_params,
         max_combinations,
         all_filter_conditions,
     )

@@ -9,7 +9,7 @@ import os
 import yaml
 from typing import Dict, Any, Optional
 
-from lude.config.paths import OPTIMIZATION_CONFIG_PATH
+from lude.config.paths import OPTIMIZATION_CONFIG_PATH, FILTER_FACTORS_OPTIMIZED_CONFIG_PATH
 from lude.utils.logger import logging
 
 logger = logging.getLogger(__name__)
@@ -119,3 +119,31 @@ def get_optimization_config(key_path: str) -> Any:
         FileNotFoundError: 配置文件不存在
     """
     return ConfigLoader.get_config_value(OPTIMIZATION_CONFIG_PATH, key_path)
+
+# 便捷函数，从过滤因子优化配置文件获取配置 - 严格模式
+def get_filter_factors_config(key_path: str) -> Any:
+    """从过滤因子优化配置文件获取配置 - 严格模式：配置项必须存在
+    
+    Args:
+        key_path: 配置键路径，使用点号分隔
+        
+    Returns:
+        配置值
+        
+    Raises:
+        KeyError: 配置项不存在
+        FileNotFoundError: 配置文件不存在
+    """
+    return ConfigLoader.get_config_value(FILTER_FACTORS_OPTIMIZED_CONFIG_PATH, key_path)
+
+# 便捷函数，加载完整的过滤因子优化配置
+def load_filter_factors_config() -> Dict[str, Any]:
+    """加载完整的过滤因子优化配置文件 - 严格模式
+    
+    Returns:
+        完整配置字典
+        
+    Raises:
+        FileNotFoundError: 配置文件不存在
+    """
+    return ConfigLoader.load_config(FILTER_FACTORS_OPTIMIZED_CONFIG_PATH)
