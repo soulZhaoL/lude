@@ -127,9 +127,21 @@ def calculate_risk_metrics(returns: pd.Series, cagr: float) -> Dict[str, float]:
     }
 
 
-def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_price,
-                         rank_factors, threshold_num=None, filter_conditions=None,
-                         check_overfitting=True, verbose_overfitting=False, return_details=False):
+def calculate_bonds_cagr(
+    df,
+    start_date,
+    end_date,
+    hold_num,
+    min_price,
+    max_price,
+    rank_factors,
+    threshold_num=None,
+    filter_conditions=None,
+    check_overfitting=True,
+    verbose_overfitting=False,
+    return_details=False,
+    sp=0.06,
+):
     """
     计算可转债组合的CAGR
     
@@ -146,12 +158,13 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         check_overfitting: 是否进行过拟合检测，默认为True
         verbose_overfitting: 是否打印过拟合检测详细信息，默认为False
         return_details: 是否返回详细信息（包含风险指标、选中债券等），默认为False
-    
+        sp: 止盈阈值，默认为0.06(6%)，设置为None或0则关闭止盈
+
     返回：
         如果 return_details=False: 返回 CAGR 值（float）
         如果 return_details=True: 返回详细结果字典，包含：
             - cagr: 年化收益率
-            - max_drawdown: 最大回撤率  
+            - max_drawdown: 最大回撤率
             - sharpe_ratio: 夏普比率
             - sortino_ratio: 索提诺比率
             - calmar_ratio: 卡玛比率
@@ -161,8 +174,9 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     """
     # logger.info(f"rank_factors:{rank_factors}, filter_conditions:{filter_conditions}")
     # 数据筛选 - 按日期范围
-    df = df[(df.index.get_level_values('trade_date') >= start_date) &
-            (df.index.get_level_values('trade_date') <= end_date)]
+    df = df[
+        (df.index.get_level_values("trade_date") >= start_date) & (df.index.get_level_values("trade_date") <= end_date)
+    ]
 
     # 初始化过滤器
     df['filter'] = False
@@ -171,14 +185,15 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     df['close_pct'] = df.groupby('trade_date')['close'].rank(pct=True)
 
     # 基础排除条件设置
-    df.loc[df.is_call.isin(['已公告强赎', '公告到期赎回', '公告实施强赎',
-                            '公告提示强赎', '已满足强赎条件']), 'filter'] = True  # 排除赎回状态
-    df.loc[df.list_days <= 3, 'filter'] = True  # 排除新债
-    df.loc[df.left_years < 0.5, 'filter'] = True  # 排除到期日小于0.5年的标的
-    df.loc[df.amount < 1000, 'filter'] = True  # 排除成交额小于1000万
-    df.loc[df.close > max_price, 'filter'] = True  # 排除价格过高
-    df.loc[df.close < min_price, 'filter'] = True  # 排除价格过低
-    
+    df.loc[
+        df.is_call.isin(["已公告强赎", "公告到期赎回", "公告实施强赎", "公告提示强赎", "已满足强赎条件"]), "filter"
+    ] = True  # 排除赎回状态
+    df.loc[df.list_days <= 3, "filter"] = True  # 排除新债
+    df.loc[df.left_years < 0.5, "filter"] = True  # 排除到期日小于0.5年的标的
+    df.loc[df.amount < 1000, "filter"] = True  # 排除成交额小于1000万
+    df.loc[df.close > max_price, "filter"] = True  # 排除价格过高
+    df.loc[df.close < min_price, "filter"] = True  # 排除价格过低
+
     # 应用排除因子组合过滤条件
     # if filter_conditions is None:
     #     # 如果没有提供排除因子，使用默认排除因子
@@ -273,17 +288,17 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
     df['SFZY'] = '未满足止盈'  # 先记录默认情况
 
     # 根据参数控制是否应用止盈逻辑
-    if SP:
+    if sp:
         # 应用止盈逻辑
         # 要确保执行顺序的正确性：先处理最高价，后处理开盘价
 
         # 如果次日最高价达到止盈条件，则按止盈价计算收益
-        df.loc[df['aft_high'] >= df['close'] * (1 + SP), 'time_return'] = SP
-        df.loc[df['aft_high'] >= df['close'] * (1 + SP), 'SFZY'] = '满足止盈'
+        df.loc[df["aft_high"] >= df["close"] * (1 + sp), "time_return"] = sp
+        df.loc[df["aft_high"] >= df["close"] * (1 + sp), "SFZY"] = "满足止盈"
 
         # 对于开盘价已满足止盈条件的记录，使用实际开盘价计算收益
         # 这一步会覆盖部分最高价已设置的收益率
-        df.loc[df['aft_open'] >= df['close'] * (1 + SP), 'time_return'] = (df['aft_open'] - df['close']) / df['close']
+        df.loc[df["aft_open"] >= df["close"] * (1 + sp), "time_return"] = (df["aft_open"] - df["close"]) / df["close"]
 
     # 标记选中的可转债（排名前N的）
     df.loc[(df['rank'] <= hold_num), 'signal'] = 1
@@ -313,8 +328,14 @@ def calculate_bonds_cagr(df, start_date, end_date, hold_num, min_price, max_pric
         logger.debug(f"时间回报序列为空，返回CAGR为0")
         if return_details:
             return {
-                'cagr': 0.0, 'max_drawdown': 0.0, 'sharpe_ratio': 0.0, 'sortino_ratio': 0.0, 'calmar_ratio': 0.0,
-                'daily_selected_bonds': daily_selected_bonds, 'daily_returns': pd.DataFrame(), 'processed_df': df
+                "cagr": 0.0,
+                "max_drawdown": 0.0,
+                "sharpe_ratio": 0.0,
+                "sortino_ratio": 0.0,
+                "calmar_ratio": 0.0,
+                "daily_selected_bonds": daily_selected_bonds,
+                "daily_returns": pd.DataFrame(),
+                "processed_df": df,
             }
         return 0.0
 
@@ -447,22 +468,33 @@ if __name__ == '__main__':
         logger.warning(f"警告：找不到指数数据文件: {index_data_path}")
         index = None
 
-    start_date = '20220729'
-    end_date = '20250328'
+    start_date = "20220729"
+    end_date = "20250824"
     hold_num = 5
     min_price = 100
-    max_price = 150
+    max_price = 200
 
     factors = [
-        {'name': 'dv_ratio', 'weight': 2, 'ascending': False},
-        {'name': 'amount_5', 'weight': 2, 'ascending': True},
-        {'name': 'amount_stk', 'weight': 2, 'ascending': True}
+        {"name": "dblow", "description": "双低", "weight": 2, "ascending": False},
+        {"name": "debt_to_assets", "description": "资产负债率", "weight": 1, "ascending": True},
+        {"name": "remain_size", "description": "剩余规模(亿)", "weight": 3, "ascending": False},
+        {"name": "volatility_stk", "description": "正股年化波动率", "weight": 2, "ascending": True},
     ]
 
     # 计算启用止盈情况的CAGR
     cagr = calculate_bonds_cagr(
-        df, start_date, end_date, hold_num, min_price, max_price, factors, None,
-        check_overfitting=True, verbose_overfitting=True
+        df,
+        start_date,
+        end_date,
+        hold_num,
+        min_price,
+        max_price,
+        factors,
+        None,
+        sp=0.06,
+        check_overfitting=False,
+        verbose_overfitting=False,
+
     )
 
     # 打印CAGR结果

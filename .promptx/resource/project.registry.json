@@ -4,8 +4,8 @@
   "metadata": {
     "version": "2.0.0",
     "description": "project 级资源注册表",
-    "createdAt": "2025-08-24T05:28:48.675Z",
-    "updatedAt": "2025-08-24T05:28:48.679Z",
+    "createdAt": "2025-08-24T14:20:20.431Z",
+    "updatedAt": "2025-08-24T14:20:20.435Z",
     "resourceCount": 12
   },
   "resources": [
@@ -17,9 +17,9 @@
       "description": "执行模式，定义具体的行为模式",
       "reference": "@project://.promptx/resource/role/lude-data-analyst/execution/lude-data-workflow.execution.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.676Z",
-        "updatedAt": "2025-08-24T05:28:48.676Z",
-        "scannedAt": "2025-08-24T05:28:48.676Z",
+        "createdAt": "2025-08-24T14:20:20.432Z",
+        "updatedAt": "2025-08-24T14:20:20.432Z",
+        "scannedAt": "2025-08-24T14:20:20.432Z",
         "path": "role/lude-data-analyst/execution/lude-data-workflow.execution.md"
       }
     },
@@ -31,9 +31,9 @@
       "description": "专业角色，提供特定领域的专业能力",
       "reference": "@project://.promptx/resource/role/lude-data-analyst/lude-data-analyst.role.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.676Z",
-        "updatedAt": "2025-08-24T05:28:48.676Z",
-        "scannedAt": "2025-08-24T05:28:48.676Z",
+        "createdAt": "2025-08-24T14:20:20.432Z",
+        "updatedAt": "2025-08-24T14:20:20.432Z",
+        "scannedAt": "2025-08-24T14:20:20.432Z",
         "path": "role/lude-data-analyst/lude-data-analyst.role.md"
       }
     },
@@ -45,9 +45,9 @@
       "description": "思维模式，指导AI的思考方式",
       "reference": "@project://.promptx/resource/role/lude-data-analyst/thought/data-analytical-thinking.thought.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.677Z",
-        "updatedAt": "2025-08-24T05:28:48.677Z",
-        "scannedAt": "2025-08-24T05:28:48.677Z",
+        "createdAt": "2025-08-24T14:20:20.433Z",
+        "updatedAt": "2025-08-24T14:20:20.433Z",
+        "scannedAt": "2025-08-24T14:20:20.433Z",
         "path": "role/lude-data-analyst/thought/data-analytical-thinking.thought.md"
       }
     },
@@ -59,9 +59,9 @@
       "description": "执行模式，定义具体的行为模式",
       "reference": "@project://.promptx/resource/role/lude-financial-engineer/execution/financial-modeling-workflow.execution.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.677Z",
-        "updatedAt": "2025-08-24T05:28:48.677Z",
-        "scannedAt": "2025-08-24T05:28:48.677Z",
+        "createdAt": "2025-08-24T14:20:20.433Z",
+        "updatedAt": "2025-08-24T14:20:20.433Z",
+        "scannedAt": "2025-08-24T14:20:20.433Z",
         "path": "role/lude-financial-engineer/execution/financial-modeling-workflow.execution.md"
       }
     },
@@ -73,9 +73,9 @@
       "description": "专业角色，提供特定领域的专业能力",
       "reference": "@project://.promptx/resource/role/lude-financial-engineer/lude-financial-engineer.role.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.677Z",
-        "updatedAt": "2025-08-24T05:28:48.677Z",
-        "scannedAt": "2025-08-24T05:28:48.677Z",
+        "createdAt": "2025-08-24T14:20:20.433Z",
+        "updatedAt": "2025-08-24T14:20:20.433Z",
+        "scannedAt": "2025-08-24T14:20:20.433Z",
         "path": "role/lude-financial-engineer/lude-financial-engineer.role.md"
       }
     },
@@ -87,9 +87,9 @@
       "description": "思维模式，指导AI的思考方式",
       "reference": "@project://.promptx/resource/role/lude-financial-engineer/thought/mathematical-financial-thinking.thought.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.678Z",
-        "updatedAt": "2025-08-24T05:28:48.678Z",
-        "scannedAt": "2025-08-24T05:28:48.678Z",
+        "createdAt": "2025-08-24T14:20:20.434Z",
+        "updatedAt": "2025-08-24T14:20:20.434Z",
+        "scannedAt": "2025-08-24T14:20:20.434Z",
         "path": "role/lude-financial-engineer/thought/mathematical-financial-thinking.thought.md"
       }
     },
@@ -101,9 +101,9 @@
       "description": "执行模式，定义具体的行为模式",
       "reference": "@project://.promptx/resource/role/lude-quant-researcher/execution/quantitative-strategy-workflow.execution.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.678Z",
-        "updatedAt": "2025-08-24T05:28:48.678Z",
-        "scannedAt": "2025-08-24T05:28:48.678Z",
+        "createdAt": "2025-08-24T14:20:20.434Z",
+        "updatedAt": "2025-08-24T14:20:20.434Z",
+        "scannedAt": "2025-08-24T14:20:20.434Z",
         "path": "role/lude-quant-researcher/execution/quantitative-strategy-workflow.execution.md"
       }
     },
@@ -115,9 +115,9 @@
       "description": "专业角色，提供特定领域的专业能力",
       "reference": "@project://.promptx/resource/role/lude-quant-researcher/lude-quant-researcher.role.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.678Z",
-        "updatedAt": "2025-08-24T05:28:48.678Z",
-        "scannedAt": "2025-08-24T05:28:48.678Z",
+        "createdAt": "2025-08-24T14:20:20.434Z",
+        "updatedAt": "2025-08-24T14:20:20.434Z",
+        "scannedAt": "2025-08-24T14:20:20.434Z",
         "path": "role/lude-quant-researcher/lude-quant-researcher.role.md"
       }
     },
@@ -129,9 +129,9 @@
       "description": "思维模式，指导AI的思考方式",
       "reference": "@project://.promptx/resource/role/lude-quant-researcher/thought/quantitative-research-thinking.thought.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.679Z",
-        "updatedAt": "2025-08-24T05:28:48.679Z",
-        "scannedAt": "2025-08-24T05:28:48.679Z",
+        "createdAt": "2025-08-24T14:20:20.435Z",
+        "updatedAt": "2025-08-24T14:20:20.435Z",
+        "scannedAt": "2025-08-24T14:20:20.435Z",
         "path": "role/lude-quant-researcher/thought/quantitative-research-thinking.thought.md"
       }
     },
@@ -143,9 +143,9 @@
       "description": "执行模式，定义具体的行为模式",
       "reference": "@project://.promptx/resource/role/optuna-expert/execution/optuna-workflow.execution.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.679Z",
-        "updatedAt": "2025-08-24T05:28:48.679Z",
-        "scannedAt": "2025-08-24T05:28:48.679Z",
+        "createdAt": "2025-08-24T14:20:20.435Z",
+        "updatedAt": "2025-08-24T14:20:20.435Z",
+        "scannedAt": "2025-08-24T14:20:20.435Z",
         "path": "role/optuna-expert/execution/optuna-workflow.execution.md"
       }
     },
@@ -157,9 +157,9 @@
       "description": "专业角色，提供特定领域的专业能力",
       "reference": "@project://.promptx/resource/role/optuna-expert/optuna-expert.role.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.679Z",
-        "updatedAt": "2025-08-24T05:28:48.679Z",
-        "scannedAt": "2025-08-24T05:28:48.679Z",
+        "createdAt": "2025-08-24T14:20:20.435Z",
+        "updatedAt": "2025-08-24T14:20:20.435Z",
+        "scannedAt": "2025-08-24T14:20:20.435Z",
         "path": "role/optuna-expert/optuna-expert.role.md"
       }
     },
@@ -171,9 +171,9 @@
       "description": "思维模式，指导AI的思考方式",
       "reference": "@project://.promptx/resource/role/optuna-expert/thought/bayesian-optimization.thought.md",
       "metadata": {
-        "createdAt": "2025-08-24T05:28:48.679Z",
-        "updatedAt": "2025-08-24T05:28:48.679Z",
-        "scannedAt": "2025-08-24T05:28:48.679Z",
+        "createdAt": "2025-08-24T14:20:20.435Z",
+        "updatedAt": "2025-08-24T14:20:20.435Z",
+        "scannedAt": "2025-08-24T14:20:20.435Z",
         "path": "role/optuna-expert/thought/bayesian-optimization.thought.md"
       }
     }
