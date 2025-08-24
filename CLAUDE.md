@@ -256,6 +256,124 @@ source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test
 3. **多阶段**: 两阶段优化（广泛探索+精细优化）
 4. **过滤**: 基于业务规则移除冗余因子
 
+## 🚀 语义化多阶段优化策略（最新）
+
+### 概述
+
+系统已升级为语义化多阶段优化策略，将传统的无意义索引选择转换为有业务含义的投资策略选择。这是一个重大架构升级，提升了优化过程的可解释性和业务价值。
+
+### 核心特性
+
+#### 1. 语义化策略配置 (`src/lude/config/strategy_config.yaml`)
+- **6大投资策略**: value（价值）、growth（成长）、momentum（动量）、liquidity（流动性）、contrarian（逆向）、balanced（平衡）
+- **51个因子覆盖**: 所有因子都被合理分配到相应的投资策略中
+- **整数权重范围**: 统一使用[1,5]的整数权重，避免精度问题
+- **策略组合规则**: 定义了允许和不建议的策略组合
+- **因子冲突检测**: 避免相互矛盾的因子组合
+
+#### 2. 语义化目标函数 (`src/lude/optimization/strategies/semantic_objective.py`)
+```python
+# 核心函数
+create_semantic_objective_function()      # 第一阶段：语义化策略探索
+create_refined_objective_function()       # 第二阶段：平衡精调策略
+analyze_best_strategies()                 # 最佳策略分析
+StrategyConfig()                          # 策略配置管理
+```
+
+#### 3. 多阶段优化流程升级 (`src/lude/optimization/strategies/multistage.py`)
+- **第一阶段（70%试验）**: 语义化策略探索，发现最佳投资策略组合
+- **第二阶段（30%试验）**: 平衡精调策略，在探索与指导间保持30%-70%平衡
+- **结果合并**: 语义化策略信息的完整保存和展示
+
+### 关键改进
+
+#### 🎯 贝叶斯优化友好设计
+- **探索保留**: 30%的trial保持完全探索，避免过度约束
+- **软指导机制**: 使用概率权重而非硬性限制
+- **参数空间连续性**: 避免断裂的参数空间，保持TPE学习能力
+- **渐进优化**: 根据第一阶段发现动态调整第二阶段约束强度
+
+#### 📊 投资策略驱动
+- **主策略选择**: 从6个投资策略中选择核心策略
+- **混合策略支持**: 可选择次要策略形成混合投资风格
+- **因子来源追踪**: 每个因子都标记其来源策略
+- **业务逻辑验证**: 确保因子组合符合投资逻辑
+
+#### 🔧 配置文件驱动
+```yaml
+investment_strategies:
+  value:
+    name: "价值投资策略"
+    core_factors: ["conv_prem", "theory_conv_prem", "pure_value", "theory_value"]
+    weight_range: [1, 5]
+    preferred_directions:
+      conv_prem: false        # 转股溢价率越低越好
+      pure_value: true        # 纯债价值越高越好
+```
+
+### 测试验证
+
+#### 可用测试脚本
+```bash
+# 1. 语义化多阶段优化系统基础测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_semantic_multistage.py
+
+# 2. 精调目标函数专项测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_refined_objective.py
+
+# 3. 平衡精调策略验证测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_balanced_refinement.py
+
+# 4. 综合集成测试（推荐）
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_comprehensive_semantic_integration.py
+```
+
+#### 测试覆盖
+- ✅ 语义化策略配置完整性验证
+- ✅ 第一阶段语义化策略探索测试
+- ✅ 第二阶段平衡精调策略验证
+- ✅ 贝叶斯优化友好性确认
+- ✅ 多阶段集成流程端到端测试
+- ✅ 结果分析和展示功能验证
+
+### 使用示例
+
+#### 运行语义化多阶段优化
+```bash
+# 标准语义化多阶段优化
+./run_optimizer.sh -m continuous --method tpe --strategy multistage \
+  --start 20220729 --end 20240607 --min 100 --max 150 \
+  --jobs 5 --trials 3000 --hold 15
+
+# 注意：不再需要指定--factors参数，因子选择由投资策略驱动
+```
+
+#### 结果解读
+```
+最佳语义化策略组合 (CAGR: 0.2845):
+🎢 投资策略:
+  主策略: value
+  次策略: growth
+📊 打分因子:
+  1. conv_prem: 权重=4, 方向=降序, 来源=value
+  2. close: 权重=3, 方向=降序, 来源=value  
+  3. pe_ttm: 权重=2, 方向=降序, 来源=growth
+```
+
+### 兼容性说明
+
+- ✅ **向后兼容**: 保留了所有排除因子相关代码，暂时不使用但不影响系统运行
+- ✅ **参数兼容**: 现有的运行脚本和参数都保持兼容
+- ✅ **存储兼容**: 使用相同的Redis/SQLite存储系统
+- ✅ **结果格式**: 输出格式保持一致，增加了语义化信息
+
+### 技术债务解决
+
+- ✅ **递归调用问题**: 修复了精调函数中的潜在无限递归
+- ✅ **参数不匹配**: 解决了函数调用参数不一致问题
+- ✅ **权重类型**: 统一使用整数权重，避免浮点精度问题
+- ✅ **因子覆盖**: 确保所有51个因子都包含在策略配置中
+
 ## 重要文件
 
 - `pyproject.toml`: 项目配置及依赖（最低Python 3.11要求）

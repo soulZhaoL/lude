@@ -22,7 +22,13 @@
       "mcp__promptx__promptx_welcome",
       "mcp__promptx__promptx_action",
       "mcp__cunzhi__zhi",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "mcp__promptx__promptx_remember"
     ],
     "deny": []
   },
