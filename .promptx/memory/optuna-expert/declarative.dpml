@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<memory>
+  <item id="mem_1755361244768_q4l9w3xxt" time="2025/08/17 00:20">
+    <content>
+      ## 可转债量化系统多阶段优化架构分析
+    
+      ### 系统现状
+      - 已实现语义化策略配置（6大投资策略：value、growth、momentum、liquidity、contrarian、balanced）
+      - v2版本采用固定参数空间（196个参数），解决了Optuna动态参数问题
+      - coordinator.py中multistage_optimization函数已实现，但未被正确导出
+      - 测试脚本期望的run_semantic_multistage_optimization函数不存在
+    
+      ### 核心架构
+      1. **semantic_objective_v2.py**: 固定参数空间的语义化目标函数
+      - create_fixed_semantic_objective_function: 第一阶段探索
+      - create_fixed_refined_objective_function: 第二阶段精调
+      - 196个预定义参数（4个策略参数+48×4个因子参数）
+    
+      2. **coordinator.py**: 多阶段协调器
+      - multistage_optimization: 主协调函数（未导出）
+      - _run_first_stage_optimization: 70%试验用于策略探索
+      - _run_second_stage_optimization: 30%试验用于精调
+    
+      ### 技术亮点
+      - TPE采样器配置优化：multivariate=True, group=True
+      - 内存优化：gc_after_trial=True，分阶段内存清理
+      - 增强型Redis存储：自动故障转移机制
+    
+      ### 待优化点
+      1. 参数空间冗余：为48个因子都定义参数，实际只用6-12个
+      2. 函数导出问题：multistage_optimization未在__init__.py导出
+      3. 测试期望不一致：测试脚本寻找不存在的函数名
+    </content>
+    <tags>#其他</tags>
+  </item>
+</memory>
