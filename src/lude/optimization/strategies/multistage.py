@@ -138,6 +138,48 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
     Returns:
         objective: 目标函数
     """
+    
+    # ========== 🎯 预生成无操作符冲突的条件索引组合 ==========
+    filter_index_combinations = []
+    if all_filter_conditions and len(all_filter_conditions) > 0:
+        max_cond = min(max_filter_factors, len(all_filter_conditions))
+        min_cond = max(1, max_cond - 1)  # 确保至少选择1个条件
+        logger.info(f"过滤因子条件, max_cond: {max_cond}, min_cond: {min_cond}")
+        
+        # 🚨 关键设计：预构建无操作符冲突的有效索引组合
+        # 允许同名因子，但禁止相同操作符重复（如两个"pct_chg >="）
+        def is_valid_combination(indices):
+            """检查索引组合是否有效：禁止相同因子的相同操作符重复，但允许不同阈值"""
+            selected_conditions = [all_filter_conditions[i] for i in indices]
+            
+            # 🚨 关键修复：按 (factor, operator) 分组，但允许不同的value值
+            # 统计每个 (因子,操作符) 组合的出现次数
+            factor_operator_combinations = []
+            for condition in selected_conditions:
+                combo_key = (condition['factor'], condition['operator'])
+                factor_operator_combinations.append(combo_key)
+            
+            # 检查是否有重复的 (因子,操作符) 组合
+            from collections import Counter
+            combo_counts = Counter(factor_operator_combinations)
+            
+            # 如果任何 (因子,操作符) 组合出现次数>1，则无效
+            for count in combo_counts.values():
+                if count > 1:
+                    return False
+            return True
+        
+        # 预生成所有有效的索引组合
+        valid_count = 0
+        total_count = 0
+        for num_conditions in range(min_cond, max_cond + 1):
+            for combo_indices in itertools.combinations(range(len(all_filter_conditions)), num_conditions):
+                total_count += 1
+                if is_valid_combination(combo_indices):
+                    filter_index_combinations.append(list(combo_indices))
+                    valid_count += 1
+        
+        logger.info(f"预生成 {valid_count} 个无操作符冲突的有效索引组合 (总计{total_count}个，过滤率{(total_count-valid_count)/total_count*100:.1f}%)")
 
     def objective(trial):
         # ========== 选择打分因子组合 ==========
@@ -152,19 +194,15 @@ def create_optimized_objective_function(df, combinations, args, all_filter_condi
 
             rank_factors.append({"name": factor, "weight": weight, "ascending": ascending})
 
-        # ========== 选择排除因子组合 ==========
+        # ========== 🎯 选择无操作符冲突的排除因子条件 ==========
         selected_filter_conditions = []
-        if all_filter_conditions and len(all_filter_conditions) > 0:
-            # 🎯 使用配置文件中的max_factors设置，在1-max_factors之间选择
-            # 避免大量空排除因子试验，确保充分利用排除因子优化能力
-
-            # 🎯 修复方案：使用固定的max_filter_factors数量，避免多层suggest
-            num_filter_conditions = min(max_filter_factors, len(all_filter_conditions))
-
-            # 选择具体的排除因子条件（保持原有suggest逻辑）
-            for i in range(num_filter_conditions):
-                condition_idx = trial.suggest_int(f"filter_condition_{i}_idx", 0, len(all_filter_conditions) - 1)
-                selected_filter_conditions.append(all_filter_conditions[condition_idx])
+        if filter_index_combinations and all_filter_conditions:
+            # 直接从预构建的有效组合中选择，无需后处理
+            combo_idx = trial.suggest_int("filter_combo_idx", 0, len(filter_index_combinations) - 1)
+            selected_indices = filter_index_combinations[combo_idx]
+            
+            # 根据索引获取条件，已确保无操作符冲突
+            selected_filter_conditions = [all_filter_conditions[idx] for idx in selected_indices]
 
             # 🎯 新增：验证排除因子条件的有效性，使用剪枝机制处理无效组合
             # is_valid, error_msg = _validate_filter_conditions(selected_filter_conditions)
@@ -678,7 +716,7 @@ def _add_first_stage_best_to_second_stage(
 
         # 🎯 复制排除因子相关参数
         for param_name, param_value in first_stage_best_params.items():
-            if param_name.startswith("num_filter_conditions") or param_name.startswith("filter_condition_"):
+            if param_name.startswith("num_filter_conditions") or param_name.startswith("filter_condition_") or param_name == "filter_combo_idx":
                 new_params[param_name] = param_value
 
         # 创建分布字典
@@ -707,6 +745,9 @@ def _add_first_stage_best_to_second_stage(
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
+            elif param_name == "filter_combo_idx":
+                # 简洁处理：filter_combo_idx在objective函数中动态建议，无需预设复杂分布
+                distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
 
         # 获取第一阶段最佳trial的user_attrs，确保filter_conditions被正确传递
         first_stage_user_attrs = first_stage_study.best_trial.user_attrs
@@ -927,10 +968,15 @@ def _create_final_study_and_merge_results(
                     distributions[param_name] = optuna.distributions.IntDistribution(0, len(all_filter_conditions) - 1)
                 else:
                     distributions[param_name] = optuna.distributions.IntDistribution(0, 0)
+            elif param_name == "filter_combo_idx":
+                # 简洁处理：filter_combo_idx在objective函数中动态建议，无需预设复杂分布
+                distributions[param_name] = optuna.distributions.IntDistribution(0, max(100, param_value))
             else:
                 # 其他参数类型处理
                 if isinstance(param_value, int):
-                    distributions[param_name] = optuna.distributions.IntDistribution(0, 100)
+                    # 🚨 安全修复：确保范围包含当前参数值
+                    max_range = max(100, param_value)
+                    distributions[param_name] = optuna.distributions.IntDistribution(0, max_range)
                 elif isinstance(param_value, bool):
                     distributions[param_name] = optuna.distributions.CategoricalDistribution([True, False])
                 else:

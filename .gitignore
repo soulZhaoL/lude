@@ -17,3 +17,4 @@ __pycache__/
 *.log
 /logs
 high_performance_factors.json
+*.db
