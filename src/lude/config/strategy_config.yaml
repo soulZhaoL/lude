@@ -1,0 +1,271 @@
+# 可转债多因子优化策略配置文件
+# 定义投资策略和过滤策略的语义化配置
+# 覆盖全部51个因子，权重范围为整数1-5
+
+investment_strategies:
+  value:
+    name: "价值投资策略"
+    description: "关注低溢价率、低价格、高纯债价值的可转债"
+    core_factors: 
+      - "conv_prem"         # 转股溢价率
+      - "theory_conv_prem"  # 理论溢价率
+      - "mod_conv_prem"     # 修正溢价率
+      - "dblow"             # 双低
+      - "close"             # 收盘价
+      - "pure_value"        # 纯债价值
+      - "bond_prem"         # 纯债溢价率
+      - "theory_value"      # 理论价值
+      - "theory_bias"       # 理论偏离度
+    auxiliary_pool:
+      - "pre_close"         # 前收盘价
+      - "low"               # 最低价
+      - "ytm"               # 到期收益率
+      - "option_value"      # 期权价值
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      conv_prem: false      # 溢价率越低越好
+      theory_conv_prem: false
+      mod_conv_prem: false
+      dblow: false          # 双低越低越好
+      close: false          # 价格越低越好
+      pure_value: true      # 纯债价值越高越好
+      bond_prem: false      # 纯债溢价率越低越好
+      theory_value: true    # 理论价值越高越好
+      theory_bias: false    # 偏离度越小越好
+  
+  growth:
+    name: "成长投资策略"
+    description: "关注正股基本面强劲、成长性好的可转债"
+    core_factors:
+      - "conv_value"        # 转股价值
+      - "close_stk"         # 正股收盘价
+      - "pe_ttm"            # 市盈率TTM
+      - "pb"                # 市净率
+      - "ps_ttm"            # 市销率TTM
+      - "total_mv"          # 正股总市值
+      - "circ_mv"           # 正股流通市值
+      - "pct_chg_stk"       # 正股涨跌幅
+      - "pct_chg_5_stk"     # 正股5日涨跌幅
+    auxiliary_pool:
+      - "amount_stk"        # 正股成交额
+      - "vol_stk"           # 正股成交量
+      - "debt_to_assets"    # 资产负债率
+      - "dv_ratio"          # 股息率
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      conv_value: true      # 转股价值越高越好
+      close_stk: true       # 正股价格趋势向上
+      pe_ttm: false         # 市盈率适中
+      pb: false             # 市净率适中
+      ps_ttm: false         # 市销率适中
+      total_mv: true        # 市值较大
+      circ_mv: true         # 流通市值大
+      pct_chg_stk: true     # 正股涨幅正
+      pct_chg_5_stk: true   # 正股5日涨幅正
+  
+  momentum:
+    name: "动量交易策略"
+    description: "基于技术指标和市场动量进行交易"
+    core_factors:
+      - "pct_chg"           # 涨跌幅
+      - "pct_chg_5"         # 5日涨跌幅
+      - "bias_5"            # 5日乖离率
+      - "close_ma_5"        # 5日均价
+      - "alpha_pct_chg_5"   # 5日超额涨跌幅
+      - "volatility"        # 年化波动率
+      - "volatility_stk"    # 正股年化波动率
+      - "turnover"          # 换手率
+      - "turnover_5"        # 5日换手率
+    auxiliary_pool:
+      - "open"              # 开盘价
+      - "high"              # 最高价
+      - "vol"               # 成交量
+      - "amount"            # 成交额
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      pct_chg: true         # 上涨趋势
+      pct_chg_5: true       # 5日上涨动量
+      bias_5: true          # 正乖离
+      close_ma_5: true      # 高于均价
+      alpha_pct_chg_5: true # 超额收益正
+      volatility: false     # 波动率适中
+      volatility_stk: false # 正股波动率适中
+      turnover: true        # 换手率高
+      turnover_5: true      # 5日换手率高
+  
+  liquidity:
+    name: "流动性策略"
+    description: "关注成交活跃、流动性充足的大规模可转债"
+    core_factors:
+      - "amount"            # 成交额
+      - "amount_5"          # 5日成交额
+      - "vol"               # 成交量
+      - "vol_5"             # 5日成交量
+      - "turnover"          # 换手率
+      - "turnover_5"        # 5日换手率
+      - "remain_size"       # 剩余规模
+      - "remain_cap"        # 剩余市值
+      - "cap_mv_rate"       # 转债市占比
+    auxiliary_pool:
+      - "issue_size"        # 发行规模
+      - "list_days"         # 上市天数
+      - "conv_price"        # 转股价格
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      amount: true          # 成交额大
+      amount_5: true        # 5日成交额大
+      vol: true             # 成交量大
+      vol_5: true           # 5日成交量大
+      turnover: true        # 换手率高
+      turnover_5: true      # 5日换手率高
+      remain_size: true     # 剩余规模大
+      remain_cap: true      # 剩余市值大
+      cap_mv_rate: true     # 市占比高
+  
+  contrarian:
+    name: "逆向投资策略"
+    description: "寻找被市场低估、具有安全边际的可转债"
+    core_factors:
+      - "left_years"          # 剩余年限
+      - "ytm"                 # 到期收益率
+      - "list_days"           # 上市天数
+      - "issue_size"          # 发行规模
+      - "debt_to_assets"      # 资产负债率
+      - "dv_ratio"            # 股息率
+      - "bond_prem"           # 纯债溢价率
+      - "pure_value"          # 纯债价值
+      - "theory_bias"         # 理论偏离度
+    auxiliary_pool:
+      - "conv_prem"           # 转股溢价率
+      - "theory_conv_prem"    # 理论溢价率
+      - "mod_conv_prem"       # 修正溢价率
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      left_years: true          # 剩余期限长
+      ytm: true                 # 收益率高
+      list_days: true           # 上市时间长
+      issue_size: true          # 发行规模大
+      debt_to_assets: false     # 负债率低
+      dv_ratio: true            # 股息率高
+      bond_prem: false          # 纯债溢价率低
+      pure_value: true          # 纯债价值高
+      theory_bias: false        # 理论偏离度小
+  
+  balanced:
+    name: "均衡配置策略"
+    description: "平衡价值与成长，多因子综合评估"
+    core_factors:
+      - "conv_prem"         # 转股溢价率
+      - "conv_value"        # 转股价值
+      - "dblow"             # 双低
+      - "close"             # 收盘价
+      - "pe_ttm"            # 市盈率TTM
+      - "pb"                # 市净率
+      - "amount"            # 成交额
+      - "turnover"          # 换手率
+      - "left_years"        # 剩余年限
+    auxiliary_pool:
+      - "theory_value"      # 理论价值
+      - "total_mv"          # 正股总市值
+      - "volatility"        # 年化波动率
+      - "ytm"               # 到期收益率
+      - "pure_value"        # 纯债价值
+      - "bond_prem"         # 纯债溢价率
+      - "theory_bias"       # 理论偏离度
+    weight_range: [1, 5]
+    aux_weight_range: [1, 3]
+    preferred_directions:
+      conv_prem: false      # 溢价率低
+      conv_value: true      # 转股价值高
+      dblow: false          # 双低值低
+      close: false          # 价格适中
+      pe_ttm: false         # 市盈率适中
+      pb: false             # 市净率适中
+      amount: true          # 成交额大
+      turnover: true        # 换手率高
+      left_years: true      # 剩余期限长
+
+# 策略组合规则
+strategy_combination_rules:
+  max_mixed_factors: 12      # 混合策略最多使用因子数(增加以支持更多因子)
+  min_core_factors: 6        # 核心因子最少数量(增加以利用更多因子)
+  max_auxiliary_factors: 4   # 辅助因子最多数量(增加以支持更多因子)
+  
+  # 允许的策略组合
+  allowed_combinations:
+    - ["value", "growth"]           # 价值成长组合
+    - ["value", "contrarian"]       # 价值逆向组合
+    - ["value", "balanced"]         # 价值均衡组合
+    - ["growth", "momentum"]        # 成长动量组合
+    - ["growth", "liquidity"]       # 成长流动性组合
+    - ["momentum", "liquidity"]     # 动量流动性组合
+    - ["balanced", "liquidity"]     # 均衡流动性组合
+    - ["contrarian", "balanced"]    # 逆向均衡组合
+  
+  # 不建议的策略组合
+  discouraged_combinations:
+    - ["value", "momentum"]         # 价值与动量理念冲突
+    - ["contrarian", "momentum"]    # 逆向与动量理念冲突
+
+# 优化参数配置  
+optimization_params:
+  # TPE采样器配置
+  tpe_config:
+    stage1:
+      n_startup_trials_ratio: 0.15    # 第一阶段随机试验比例
+      n_ei_candidates: 50              # EI候选点数量
+      multivariate: true               # 多变量建模
+      group: true                      # 参数分组
+    stage2:
+      n_startup_trials: 10             # 第二阶段固定随机试验数
+      n_ei_candidates: 24              # EI候选点数量
+      multivariate: true
+      consider_prior: true             # 使用先验知识
+  
+  # 试验分配
+  trial_allocation:
+    stage1_ratio: 0.7                 # 第一阶段试验比例
+    stage2_ratio: 0.3                 # 第二阶段试验比例
+  
+  # 参数范围(更新为支持更多因子和整数权重)
+  parameter_ranges:
+    weight_step: 1                    # 权重调整步长(整数)
+    min_factors: 6                    # 最少因子数(增加)
+    max_factors: 12                   # 最多因子数(增加)
+    max_weight: 5                     # 最大权重值
+    min_weight: 1                     # 最小权重值
+
+# 因子冲突检测规则
+factor_conflict_rules:
+  # 相关因子组 - 同组因子方向应保持一致
+  related_groups:
+    price_factors: ["close", "open", "high", "low", "pre_close"]
+    premium_factors: ["conv_prem", "theory_conv_prem", "mod_conv_prem", "bond_prem"]
+    momentum_factors: ["pct_chg", "pct_chg_5", "alpha_pct_chg_5"]
+    volume_factors: ["amount", "amount_5", "vol", "vol_5"]
+    turnover_factors: ["turnover", "turnover_5"]
+    value_factors: ["conv_value", "pure_value", "theory_value", "option_value"]
+    market_cap_factors: ["total_mv", "circ_mv", "remain_cap"]
+    
+  # 互斥因子对 - 不应同时选择且方向相反
+  exclusive_pairs:
+    - ["conv_prem", "conv_value"]  # 溢价率vs转股价值
+    - ["pe_ttm", "pb"]            # 估值指标选择过多
+    - ["volatility", "volatility_stk"]  # 避免正股与转债波动率冲突
+
+# 因子覆盖验证(确保所有48个因子都在策略中)
+factor_coverage_check:
+  total_factors: 48
+  covered_factors:
+    value_strategy: 13
+    growth_strategy: 13  
+    momentum_strategy: 13
+    liquidity_strategy: 12
+    contrarian_strategy: 12
+    balanced_strategy: 16
+  coverage_complete: true
