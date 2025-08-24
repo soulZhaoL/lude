@@ -18,3 +18,4 @@ __pycache__/
 /logs
 high_performance_factors.json
 *.db
+/lude.egg-info/*

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<memory>
+  <item id="mem_1756053679712_ovnfsy3gg" time="2025/08/25 00:41">
+    <content>
+      止盈逻辑CAGR计算问题修复方案：
+      1. 问题根源：原始代码在开盘价超过止盈价时使用实际开盘价计算收益（可能远超6%），而平台可能统一使用固定6%
+      2. 修复方案：创建cagr_calculator_fixed_sp.py，将第302行改为固定6%收益
+      3. 测试脚本：test_comprehensive_fix.py可以测试所有5个因子组合，对比修复效果
+      4. 关键发现：止盈触发率只有6.9%，但开盘止盈的31次平均收益达11.91%，这可能是误差的来源
+      5. 原始CAGR系统性偏低12%，而不是偏高，说明还可能有其他细节问题
+    </content>
+    <tags>#其他</tags>
+  </item>
+</memory>

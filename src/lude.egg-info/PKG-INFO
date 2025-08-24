@@ -13,6 +13,8 @@ Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: flake8; extra == "dev"
 Requires-Dist: mypy; extra == "dev"
+Provides-Extra: monitoring
+Requires-Dist: psutil; extra == "monitoring"
 
 # 可转债多因子优化系统
 

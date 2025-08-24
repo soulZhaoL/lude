@@ -29,7 +29,8 @@
       "Bash(chmod:*)",
       "mcp__promptx__promptx_remember",
       "Read(//Users/zhaolei/Downloads/**)",
-      "mcp__promptx__promptx_recall"
+      "mcp__promptx__promptx_recall",
+      "Bash(./compile_test.sh)"
     ],
     "deny": []
   },
