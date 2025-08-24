@@ -2,6 +2,88 @@ import os
 import pandas as pd
 from lude.config.paths import DATA_DIR
 
+def get_date_range_info(df):
+    """
+    获取数据集的日期范围信息
+    
+    参数:
+        df: pandas DataFrame
+    
+    返回:
+        dict: 包含开始日期、结束日期等信息
+    """
+    date_info = {}
+    
+    # 检查索引是否包含日期信息
+    if hasattr(df.index, 'levels'):  # MultiIndex
+        for level_idx, level in enumerate(df.index.levels):
+            if pd.api.types.is_datetime64_any_dtype(level):
+                dates = level
+                date_info[f'index_level_{level_idx}'] = {
+                    'start_date': dates.min(),
+                    'end_date': dates.max(),
+                    'level_name': df.index.names[level_idx]
+                }
+                break
+    elif pd.api.types.is_datetime64_any_dtype(df.index):  # Single datetime index
+        date_info['index'] = {
+            'start_date': df.index.min(),
+            'end_date': df.index.max(),
+            'level_name': df.index.name
+        }
+    
+    # 检查是否有日期相关的列
+    date_columns = []
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            date_columns.append(col)
+            date_info[f'column_{col}'] = {
+                'start_date': df[col].min(),
+                'end_date': df[col].max(),
+                'level_name': col
+            }
+    
+    # 检查可能的日期字符串列（如'date', 'trade_date'等）
+    potential_date_cols = [col for col in df.columns if any(term in col.lower() for term in ['date', 'time', '日期'])]
+    for col in potential_date_cols:
+        if col not in date_columns:  # 避免重复处理
+            try:
+                # 尝试转换为日期类型并获取范围
+                temp_dates = pd.to_datetime(df[col], errors='coerce')
+                if not temp_dates.isna().all():
+                    date_info[f'column_{col}'] = {
+                        'start_date': temp_dates.min(),
+                        'end_date': temp_dates.max(),
+                        'level_name': col
+                    }
+            except:
+                pass
+    
+    return date_info
+
+def print_date_range_info(date_info):
+    """打印日期范围信息"""
+    if not date_info:
+        print("\n未找到日期信息")
+        return
+    
+    print("\n数据集日期范围信息:")
+    print("=" * 50)
+    
+    for key, info in date_info.items():
+        source_type = "索引" if "index" in key else "列"
+        level_name = info['level_name'] or "未命名"
+        
+        print(f"\n{source_type}: {level_name}")
+        print("-" * 30)
+        print(f"开始日期: {info['start_date']}")
+        print(f"结束日期: {info['end_date']}")
+        
+        # 计算时间跨度
+        if pd.notna(info['start_date']) and pd.notna(info['end_date']):
+            duration = info['end_date'] - info['start_date']
+            print(f"时间跨度: {duration.days} 天")
+
 def show_parquet_columns(file_path):
     """
     显示 parquet 文件的所有列名和索引信息
@@ -17,6 +99,9 @@ def show_parquet_columns(file_path):
     # 读取 parquet 文件
     df = pd.read_parquet(file_path)
     
+    # 获取日期范围信息
+    date_info = get_date_range_info(df)
+    
     print(df.head())
     print(df['amount'])
     print("conv_prem")
@@ -30,6 +115,9 @@ def show_parquet_columns(file_path):
     print("=" * 50)
     print(f"文件: {file_path}")
     print("=" * 50)
+    
+    # 打印日期范围信息
+    print_date_range_info(date_info)
     
     # 打印索引信息
     print("\n索引信息:")
