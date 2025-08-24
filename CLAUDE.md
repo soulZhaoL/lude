@@ -102,385 +102,131 @@ python test_fix_validation.py
 # 🚨 重要：代码质量检查也必须在lude环境中运行
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude
 
-# 代码规范检查 (来自pyproject.toml的dev依赖)
-flake8 src/
+### 项目原则
+1. **禁止默认配置**: 所有配置必须来自配置文件，不允许硬编码默认值
+2. **错误处理**: 分析根本原因，禁止用try-except掩盖bug
+3. **路径配置**: 使用 `source set_env.sh` 设置LUDE_PROJECT_ROOT
 
-# 类型检查
-mypy src/
+## 核心架构
 
-# 运行单个测试文件
-pytest tests/test_cagr_calculator.py -v
+### 系统概述
+可转债多因子优化系统，使用贝叶斯优化（Optuna + TPE）寻找最优因子组合。
 
-# 运行特定测试方法
-pytest tests/test_cagr_calculator.py::test_specific_method -v
-```
+### 关键组件
+1. **CAGR计算器** (`src/lude/core/cagr_calculator.py`)
+   - 止盈逻辑在284-310行
 
-## 关键命令
 
-### 环境管理
+2. **优化引擎** (`src/lude/optimization/`)
+   - `unified_optimizer.py`: 统一入口
+   - `strategies/multistage.py`: 语义化多阶段优化
+   - 6大投资策略，51个因子
+
+3. **数据结构**
+   - MultiIndex DataFrame: (trade_date, code)
+   - Parquet格式存储: `cb_data.pq`
+   - 因子评分模式: `rank(ascending) * weight`
+
+## 常用命令
+
+### 日常开发
 ```bash
-# 设置项目环境变量
-source set_env.sh
-
-# 开发模式安装（推荐）
+# 安装
 ./install_dev.sh
 
-# 手动安装
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude
-pip install -e .
-```
+# 运行测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && pytest tests/
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && pytest tests/test_cagr_calculator.py -v
 
-### Redis 服务管理
-```bash
-# 启动Redis（高并发优化时需要）
-./redis/start_redis.sh dev     # 开发环境
-./redis/start_redis.sh prod    # 生产环境
-./redis/start_redis.sh stop    # 停止服务
-./redis/start_redis.sh status  # 查看状态
-
-# 测试Redis连接
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_redis_connection.py
+# 代码质量
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && flake8 src/
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && mypy src/
 ```
 
 ### 运行优化
 ```bash
-# 单次优化运行
-./run_optimizer.sh -m single --trials 500
-
-# 持续优化
-./run_optimizer.sh -m continuous --trials 200
-
-# 完整优化带特定参数
-./run_optimizer.sh -m continuous --method tpe --strategy multistage \
-  --start 20220729 --end 20240607 --min 100 --max 150 \
-  --jobs 5 --trials 3000 --hold 15 --factors 3
-
-# 后台运行优化
-./run_optimizer.sh -m continuous -b -l optimization.log
-
-# 停止后台优化进程
-./run_optimizer.sh --stop
-
-# 检查优化进程状态
-./run_optimizer.sh --status
-
-# 获取帮助
-./run_optimizer.sh --help
-```
-
-### 查看结果
-```bash
-# 查看最佳模型
-./view_model.sh
-
-# 列出所有模型
-./view_model.sh --list
-
-# 按索引查看特定模型
-./view_model.sh --index 1
-
-# 查看模型详情
-./view_model.sh --detailed
-
-# 查看模型内部结构
-./view_model.sh --inspect --depth 5
-```
-
-## 架构
-
-### 核心组件
-
-1. **配置系统** (`src/lude/config/`)
-   - `config_loader.py`: 加载YAML配置文件
-   - `optimization_config.yaml`: 主要优化参数和阈值
-   - `paths.py`: 集中路径管理
-
-2. **优化引擎** (`src/lude/optimization/`)
-   - `unified_optimizer.py`: 统一优化器入口，支持多种运行模式
-   - `engine.py`: 主要优化协调器
-   - `continuous_optimizer.py`: 持续优化逻辑
-   - `strategies/multistage.py`: 多阶段优化策略核心实现
-   - `strategies/strategy_runner.py`: 策略运行器
-
-3. **核心计算** (`src/lude/core/`)
-   - `cagr_calculator.py`: CAGR计算核心引擎
-   - `overfitting_detector.py`: 过拟合检测器
-   - `cal_factor_util.py`: 因子计算工具
-   - `daily_analysis_helper.py`: 日度分析辅助工具
-
-4. **数据处理** (`src/lude/data/`)
-   - 可转债数据的Parquet文件 (`cb_data.pq`, `index.pq`)
-   - 按因子数量组织的因子性能结果 (fac4_1, fac5_1, etc.)
-   - 每个目录包含Excel性能报告和合并的因子JSON
-
-5. **工具集** (`src/lude/utils/`)
-   - `cagr_utils.py`: CAGR计算工具
-   - `performance_metrics.py`: 性能评估指标
-   - `dingtalk/`: 结果钉钉通知系统
-   - `logger.py`: 集中日志配置
-   - `filter_generator_optimized.py`: 优化的过滤条件生成器
-   - `factor_distribution_analyzer.py`: 因子分布分析工具
-   - `factor_performance_analyzer.py`: 因子性能分析器
-
-6. **模型管理** (`src/lude/models/`)
-   - `view_best_model.py`: 最佳模型查看器
-
-### 系统特性
-
-1. **分布式计算支持**
-   - 高并发（>10 jobs）时自动使用Redis分布式存储
-   - 低并发（<=10 jobs）时使用SQLite本地存储
-   - 自动连接检测和回退机制
-
-2. **智能优化策略**
-   - **domain**: 领域知识分组优化
-   - **prescreen**: 预筛选优化
-   - **multistage**: 多阶段优化（探索+精细化）
-   - **filter**: 过滤冗余因子优化
-
-3. **环境自适应**
-   - 自动检测服务器环境（autodl-tmp）vs本地环境
-   - 动态conda环境激活和管理
-   - 支持多种路径发现方式
-
-### 关键数据结构
-
-- **因子映射**: JSON文件映射英文因子名到中文名
-- **优化结果**: 存储在`optimization_results/`中，使用joblib格式
-- **性能数据**: Excel文件包含因子性能分析
-
-### 优化策略
-
-1. **领域知识**: 使用业务知识对因子进行分类和选择
-2. **预筛选**: 在组合优化前评估单个因子
-3. **多阶段**: 两阶段优化（广泛探索+精细优化）
-4. **过滤**: 基于业务规则移除冗余因子
-
-## 🚀 语义化多阶段优化策略（最新）
-
-### 概述
-
-系统已升级为语义化多阶段优化策略，将传统的无意义索引选择转换为有业务含义的投资策略选择。这是一个重大架构升级，提升了优化过程的可解释性和业务价值。
-
-### 核心特性
-
-#### 1. 语义化策略配置 (`src/lude/config/strategy_config.yaml`)
-- **6大投资策略**: value（价值）、growth（成长）、momentum（动量）、liquidity（流动性）、contrarian（逆向）、balanced（平衡）
-- **51个因子覆盖**: 所有因子都被合理分配到相应的投资策略中
-- **整数权重范围**: 统一使用[1,5]的整数权重，避免精度问题
-- **策略组合规则**: 定义了允许和不建议的策略组合
-- **因子冲突检测**: 避免相互矛盾的因子组合
-
-#### 2. 语义化目标函数 (`src/lude/optimization/strategies/semantic_objective.py`)
-```python
-# 核心函数
-create_semantic_objective_function()      # 第一阶段：语义化策略探索
-create_refined_objective_function()       # 第二阶段：平衡精调策略
-analyze_best_strategies()                 # 最佳策略分析
-StrategyConfig()                          # 策略配置管理
-```
-
-#### 3. 多阶段优化流程升级 (`src/lude/optimization/strategies/multistage.py`)
-- **第一阶段（70%试验）**: 语义化策略探索，发现最佳投资策略组合
-- **第二阶段（30%试验）**: 平衡精调策略，在探索与指导间保持30%-70%平衡
-- **结果合并**: 语义化策略信息的完整保存和展示
-
-### 关键改进
-
-#### 🎯 贝叶斯优化友好设计
-- **探索保留**: 30%的trial保持完全探索，避免过度约束
-- **软指导机制**: 使用概率权重而非硬性限制
-- **参数空间连续性**: 避免断裂的参数空间，保持TPE学习能力
-- **渐进优化**: 根据第一阶段发现动态调整第二阶段约束强度
-
-#### 📊 投资策略驱动
-- **主策略选择**: 从6个投资策略中选择核心策略
-- **混合策略支持**: 可选择次要策略形成混合投资风格
-- **因子来源追踪**: 每个因子都标记其来源策略
-- **业务逻辑验证**: 确保因子组合符合投资逻辑
-
-#### 🔧 配置文件驱动
-```yaml
-investment_strategies:
-  value:
-    name: "价值投资策略"
-    core_factors: ["conv_prem", "theory_conv_prem", "pure_value", "theory_value"]
-    weight_range: [1, 5]
-    preferred_directions:
-      conv_prem: false        # 转股溢价率越低越好
-      pure_value: true        # 纯债价值越高越好
-```
-
-### 测试验证
-
-#### 可用测试脚本
-```bash
-# 1. 语义化多阶段优化系统基础测试
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_semantic_multistage.py
-
-# 2. 精调目标函数专项测试
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_refined_objective.py
-
-# 3. 平衡精调策略验证测试
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_balanced_refinement.py
-
-# 4. 综合集成测试（推荐）
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_comprehensive_semantic_integration.py
-```
-
-#### 测试覆盖
-- ✅ 语义化策略配置完整性验证
-- ✅ 第一阶段语义化策略探索测试
-- ✅ 第二阶段平衡精调策略验证
-- ✅ 贝叶斯优化友好性确认
-- ✅ 多阶段集成流程端到端测试
-- ✅ 结果分析和展示功能验证
-
-### 使用示例
-
-#### 运行语义化多阶段优化
-```bash
-# 标准语义化多阶段优化
+# 标准多阶段优化
 ./run_optimizer.sh -m continuous --method tpe --strategy multistage \
   --start 20220729 --end 20240607 --min 100 --max 150 \
   --jobs 5 --trials 3000 --hold 15
 
-# 注意：不再需要指定--factors参数，因子选择由投资策略驱动
-```
+# 后台运行
+./run_optimizer.sh -m continuous -b -l optimization.log
 
-#### 结果解读
-```
-最佳语义化策略组合 (CAGR: 0.2845):
-🎢 投资策略:
-  主策略: value
-  次策略: growth
-📊 打分因子:
-  1. conv_prem: 权重=4, 方向=降序, 来源=value
-  2. close: 权重=3, 方向=降序, 来源=value  
-  3. pe_ttm: 权重=2, 方向=降序, 来源=growth
-```
-
-### 兼容性说明
-
-- ✅ **向后兼容**: 保留了所有排除因子相关代码，暂时不使用但不影响系统运行
-- ✅ **参数兼容**: 现有的运行脚本和参数都保持兼容
-- ✅ **存储兼容**: 使用相同的Redis/SQLite存储系统
-- ✅ **结果格式**: 输出格式保持一致，增加了语义化信息
-
-### 技术债务解决
-
-- ✅ **递归调用问题**: 修复了精调函数中的潜在无限递归
-- ✅ **参数不匹配**: 解决了函数调用参数不一致问题
-- ✅ **权重类型**: 统一使用整数权重，避免浮点精度问题
-- ✅ **因子覆盖**: 确保所有51个因子都包含在策略配置中
-
-## 重要文件
-
-- `pyproject.toml`: 项目配置及依赖（最低Python 3.11要求）
-- `requirements.txt`: 生产环境特定包版本
-- `factor_mapping.json`: 英中文因子名映射
-- `factor_mapping_filter.json`: 过滤因子映射
-- `optimization_results/best_record.json`: 最佳优化结果记录
-- `src/lude/config/optimization_config.yaml`: 优化参数和钉钉通知配置
-- `set_env.sh`: 项目环境变量设置脚本
-- `install_dev.sh`: 开发环境安装脚本
-
-## 开发注意事项
-
-- 🚨 **最重要**：所有Python相关操作都必须在conda lude环境中执行
-- 系统使用Optuna进行贝叶斯优化，采用TPE（Tree-structured Parzen Estimator）
-- 数据以Parquet格式存储以提高处理效率
-- 结果自动保存，高性能模型可触发钉钉通知
-- 代码库支持优化任务的并行处理
-- 所有因子组合在优化前都要经过业务规则验证
-
-## 常见错误和解决方案
-
-### NumPy兼容性错误
-```
-错误: "A module that was compiled using NumPy 1.x cannot be run in NumPy 2.1.3"
-错误: "AttributeError: _ARRAY_API not found"
-```
-**解决方案**: 必须使用conda lude环境
-```bash
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude
-```
-
-### 参数分布错误（已修复）
-```
-错误: "The value 5000 of parameter 'amount_val_0' isn't contained in the distribution FloatDistribution(high=1000.0, low=-1000.0)"
-```
-**修复状态**: ✅ 已通过动态分布调整解决（multistage_optimizer.py:464-479）
-
-### 排除因子冗余条件问题（已修复）
-```
-问题: 生成重复的条件组合，如：
-- amount (2个条件): 条件1: >= 10000.0, 条件2: >= 500.0 (两个都是>=)  
-- bias_5 (2个条件): 条件1: >= 0.003, 条件2: >= -0.001 (两个都是>=)
-```
-**根本原因**: `filter_strategies.py`在生成双条件时没有确保操作符逻辑互补
-
-**修复状态**: ✅ 已通过后处理逻辑解决（filter_strategies.py:398-451）
-- 保持Optuna参数空间一致性
-- 后处理检测并修正冗余操作符
-- 自动转换为互补条件（一个>=一个<=）  
-- 确保数值逻辑合理（下限值 <= 上限值）
-
-**修复效果**: 现在生成合理的范围条件：
-- amount: >= 1000 和 <= 20000
-- bias_5: >= -0.005 和 <= -0.003
-
-### 环境激活问题
-如果conda activate失败，确保conda已正确初始化：
-```bash
-conda init bash  # 或者 conda init zsh
-source ~/.bashrc  # 或者 source ~/.zshrc
-```
-
-## 日志和调试
-
-### 日志文件位置
-- `logs/lude.log`: 主程序日志
-- `logs/optimization.log`: 优化过程日志  
-- `logs/dingtalk.log`: 钉钉通知日志
-- `redis/logs/`: Redis服务日志
-
-### 常用调试命令
-```bash
-# 查看实时优化日志
-tail -f logs/optimization.log
-
-# 查看后台运行的优化进程
+# 查看状态
 ./run_optimizer.sh --status
+./run_optimizer.sh --stop
+```
 
-# 检查Redis连接
-source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_redis_connection.py
+### 结果分析
+```bash
+# 查看最佳模型
+./view_model.sh
+./view_model.sh --list
+./view_model.sh --index 1 --detailed
+
+# 对比平台结果
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python compare_daily_details_with_platform.py
+```
+
+### Redis管理（并发>10时需要）
+```bash
+./redis/start_redis.sh dev    # 开发环境
+./redis/start_redis.sh stop   # 停止
+./redis/start_redis.sh status # 状态
+```
+
+## 配置文件
+
+- `src/lude/config/optimization_config.yaml`: CAGR阈值（保存>0.40，通知>0.45）
+- `src/lude/config/strategy_config.yaml`: 6大投资策略定义，整数权重[1,5]
+- `factor_mapping.json`: 因子中英文映射
+
+## 语义化多阶段优化
+
+### 投资策略
+- **value**: 价值投资（低溢价、高纯债价值）
+- **growth**: 成长投资（强基本面、高市值）
+- **momentum**: 动量交易（技术指标、趋势）
+- **liquidity**: 流动性策略（高成交、大规模）
+- **contrarian**: 逆向投资（被低估、安全边际）
+- **balanced**: 均衡配置（多因子综合）
+
+### 优化流程
+1. **第一阶段（70%试验）**: 探索最佳策略组合
+2. **第二阶段（30%试验）**: 精调优化，30%探索+70%指导
+
+### 测试验证
+```bash
+# 语义化策略测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_semantic_multistage.py
+
+# 综合集成测试
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python test_comprehensive_semantic_integration.py
+```
+
+## 调试命令
+
+```bash
+# 查看优化日志
+tail -f logs/optimization.log
 
 # 验证路径配置
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python -c "from lude.config.paths import get_path_info; print(get_path_info())"
 
-# 查看因子分布
+# 分析因子分布
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate lude && python -m lude.utils.factor_distribution_analyzer
 ```
 
-### 性能监控
-- CAGR阈值超过0.45时自动发送钉钉通知
-- 模型保存CAGR阈值: 0.40
-- 结果自动保存到 `optimization_results/` 目录
-- 最佳模型记录在 `optimization_results/best_record.json`
+## 已解决的问题
 
-## 批量操作脚本
+1. **NumPy兼容性**: 使用conda lude环境
+2. **参数分布错误**: multistage_optimizer.py:464-479动态调整
+3. **冗余过滤条件**: filter_strategies.py:398-451后处理修正
 
-### 多环境管理
-```bash
-# 批量初始化环境
-./batch_init_env.sh
+## 性能监控
 
-# 批量服务管理
-./batch_manage_services.sh start   # 启动所有环境的Redis
-./batch_manage_services.sh stop    # 停止所有环境的Redis
-./batch_manage_services.sh status  # 查看所有环境状态
-
-# 批量运行优化
-./batch_run_opt.sh
-```
+- CAGR > 0.45: 自动钉钉通知
+- CAGR > 0.40: 自动保存模型
+- 结果目录: `optimization_results/`
+- 最佳记录: `optimization_results/best_record.json`
