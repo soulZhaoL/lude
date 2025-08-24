@@ -1,0 +1,24 @@
+[{"name": "dblow", "description": "双低", "weight": 2, "ascending": false}, 
+{"name": "debt_to_assets", "description": "资产负债率", "weight": 1, "ascending": true}, 
+{"name": "remain_size", "description": "剩余规模(亿)", "weight": 3, "ascending": false}, 
+{"name": "volatility_stk", "description": "正股年化波动率", "weight": 2, "ascending": true}] 		6%止盈对应年化收益率66.28%	
+
+[{"name": "dblow", "description": "双低", "weight": 4, "ascending": false}, 
+{"name": "list_days", "description": "上市天数", "weight": 3, "ascending": true}, 
+{"name": "option_value", "description": "期权价值", "weight": 2, "ascending": true}, 
+{"name": "ps_ttm", "description": "市销率TTM", "weight": 3, "ascending": true}]		6%止盈对应年化收益率61.14%	
+
+[{"name": "amount_5", "description": "5日成交额", "weight": 3, "ascending": true}, 
+{"name": "cap_mv_rate", "description": "转债市占比", "weight": 3, "ascending": false}, 
+{"name": "dv_ratio", "description": "股息率", "weight": 5, "ascending": false}, 
+{"name": "mod_conv_prem", "description": "修正溢价率", "weight": 2, "ascending": false}]		6%止盈对应年化收益率47.90%	
+
+[{"name": "conv_prem", "description": "转股溢价率", "weight": 1, "ascending": false}, 
+{"name": "dv_ratio", "description": "股息率", "weight": 4, "ascending": false}, 
+{"name": "issue_size", "description": "发行规模(亿)", "weight": 2, "ascending": false}, 
+{"name": "pb", "description": "市净率", "weight": 4, "ascending": true}]					6%止盈对应年化收益率45.56%	
+
+[{"name": "cap_mv_rate", "description": "转债市占比", "weight": 2, "ascending": false}, 
+{"name": "dblow", "description": "双低", "weight": 1, "ascending": false}, 
+{"name": "ps_ttm", "description": "市销率TTM", "weight": 2, "ascending": true}, 
+{"name": "total_mv", "description": "正股总市值(亿)", "weight": 1, "ascending": false}]		6%止盈对应年化收益率52.79%	
