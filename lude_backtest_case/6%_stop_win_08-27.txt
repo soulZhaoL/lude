@@ -1,0 +1,28 @@
+[{"name": "conv_prem", "description": "转股溢价率", "weight": 5, "ascending": false}, 
+{"name": "debt_to_assets", "description": "资产负债率", "weight": 4, "ascending": true}, 
+{"name": "pct_chg_5_stk", "description": "正股5日涨跌幅", "weight": 4, "ascending": true}, 
+{"name": "turnover_5", "description": "5日换手率", "weight": 5, "ascending": true}]				禄得平台回测年化收益率59.74%	, 本地回测年化收益率75.33%
+
+
+[{"name": "dblow", "description": "双低", "weight": 2, "ascending": false}, {
+"name": "debt_to_assets", "description": "资产负债率", "weight": 1, "ascending": true}, 
+{"name": "remain_size", "description": "剩余规模(亿)", "weight": 3, "ascending": false}, 
+{"name": "volatility_stk", "description": "正股年化波动率", "weight": 2, "ascending": true}]		禄得平台回测年化收益率66.39%	, 本地回测年化收益率71.63%
+
+
+[{"name": "dblow", "description": "双低", "weight": 4, "ascending": false}, 
+{"name": "list_days", "description": "上市天数", "weight": 3, "ascending": true}, 
+{"name": "option_value", "description": "期权价值", "weight": 2, "ascending": true}, 
+{"name": "ps_ttm", "description": "市销率TTM", "weight": 3, "ascending": true}]					禄得平台回测年化收益率60.70%	, 本地回测年化收益率64.72%
+
+
+[{"name": "conv_prem", "description": "转股溢价率", "weight": 4, "ascending": false}, 
+{"name": "left_years", "description": "剩余年限", "weight": 5, "ascending": false}, 
+{"name": "pb", "description": "市净率", "weight": 5, "ascending": true}, 
+{"name": "volatility_stk", "description": "正股年化波动率", "weight": 4, "ascending": true}]		禄得平台回测年化收益率48.23%	, 本地回测年化收益率63.42%
+
+
+[{"name": "conv_prem", "description": "转股溢价率", "weight": 1, "ascending": false}, 
+{"name": "list_days", "description": "上市天数", "weight": 2, "ascending": true}, 
+{"name": "ps_ttm", "description": "市销率TTM", "weight": 1, "ascending": false}, 
+{"name": "volatility_stk", "description": "正股年化波动率", "weight": 5, "ascending": true}]		禄得平台回测年化收益率49.90%	, 本地回测年化收益率63.36%
