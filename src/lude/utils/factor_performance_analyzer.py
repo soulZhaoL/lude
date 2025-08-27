@@ -291,6 +291,7 @@ def process_single_factor_combination(args):
             max_price=max_price,
             rank_factors=factors,
             threshold_num=threshold_num,
+            sp=take_profit_rate,  # 止盈比例
             filter_conditions=None,  # 暂不使用额外的筛选条件
             check_overfitting=False,  # 在外部进行过拟合检测
             verbose_overfitting=False,
@@ -735,8 +736,8 @@ if __name__ == '__main__':
     # parser.add_argument('--opt_file', type=str, help='优化结果文件路径')
     parser.add_argument('--cb_data_file', type=str, help='可转债数据文件路径')
     parser.add_argument('--output_file', type=str, help='输出文件路径')
-    parser.add_argument('--start_date', type=str, default='20220729', help='回测开始日期，格式为YYYYMMDD')
-    parser.add_argument('--end_date', type=str, default='20250824', help='回测结束日期，格式为YYYYMMDD')
+    parser.add_argument('--start_date', type=str, default='20220801', help='回测开始日期，格式为YYYYMMDD')
+    parser.add_argument('--end_date', type=str, default='20250822', help='回测结束日期，格式为YYYYMMDD')
     parser.add_argument('--hold_num', type=int, default=5, help='持有数量')
     parser.add_argument('--min_price', type=float, default=100.0, help='最低价格筛选')
     parser.add_argument('--max_price', type=float, default=200.0, help='最高价格筛选')
@@ -752,11 +753,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    path = HIGH_PERFORMANCE_FACTORS4_1_PATH
+    # path = HIGH_PERFORMANCE_FACTORS4_1_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_2_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_3_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_4_PATH
-    # path = HIGH_PERFORMANCE_FACTORS5_1_PATH
+    path = HIGH_PERFORMANCE_FACTORS5_1_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_2_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_3_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_4_PATH

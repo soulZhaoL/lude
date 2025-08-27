@@ -62,7 +62,6 @@ def calculate_overfitting_severity(warning_messages):
 warnings.filterwarnings('ignore')
 
 # 基础常量设置
-SP = 0.06  # 盘中止盈条件，6%止盈
 C_RATE = 2 / 1000  # 买卖一次花费的总佣金和滑点（双边）
 threshold_num = None  # 轮动阈值
 YEARLY_FACTOR = 245  # 交易日标准年化因子
@@ -140,7 +139,7 @@ def calculate_bonds_cagr(
     check_overfitting=True,
     verbose_overfitting=False,
     return_details=False,
-    sp=0.06,
+        sp=None,
 ):
     """
     计算可转债组合的CAGR
@@ -468,18 +467,16 @@ if __name__ == '__main__':
         logger.warning(f"警告：找不到指数数据文件: {index_data_path}")
         index = None
 
-    start_date = "20220729"
-    end_date = "20250824"
+    start_date = "20220801"
+    end_date = "20250822"
     hold_num = 5
     min_price = 100
     max_price = 200
 
-    factors = [
-        {"name": "dblow", "description": "双低", "weight": 2, "ascending": False},
-        {"name": "debt_to_assets", "description": "资产负债率", "weight": 1, "ascending": True},
-        {"name": "remain_size", "description": "剩余规模(亿)", "weight": 3, "ascending": False},
-        {"name": "volatility_stk", "description": "正股年化波动率", "weight": 2, "ascending": True},
-    ]
+    factors = [{"name": "dblow", "description": "双低", "weight": 2, "ascending": False}, {
+        "name": "debt_to_assets", "description": "资产负债率", "weight": 1, "ascending": True},
+               {"name": "remain_size", "description": "剩余规模(亿)", "weight": 3, "ascending": False},
+               {"name": "volatility_stk", "description": "正股年化波动率", "weight": 2, "ascending": True}]
 
     # 计算启用止盈情况的CAGR
     cagr = calculate_bonds_cagr(
@@ -498,5 +495,11 @@ if __name__ == '__main__':
     )
 
     # 打印CAGR结果
-    logger.info("启用止盈情况的CAGR:")
+    logger.info("计算CAGR结果:")
     logger.info(cagr)
+
+# 分组1  本地CAGR(带止盈) 71.63%        平台年化收益率66.39%	    差异5.24%
+# 分组2  本地CAGR(带止盈) 64.42%        平台年化收益率60.70%	    差异3.72%
+# 分组3  本地CAGR(带止盈) 57.53%        平台年化收益率46.27%	    差异11.26%
+# 分组4  本地CAGR(带止盈) 56.83%        平台年化收益率44.34%	    差异12.49%
+# 分组5  本地CAGR(带止盈) 57.04%        平台年化收益率52.09%	    差异4.95%
