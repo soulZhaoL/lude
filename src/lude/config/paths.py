@@ -116,13 +116,13 @@ HIGH_PERFORMANCE_FACTORS4_4_PATH = os.path.join(DATA_DIR, '100-200/fac4_4/merged
 
 HIGH_PERFORMANCE_FACTORS5_1_PATH = os.path.join(DATA_DIR, '100-200/fac5_1/merged_factors.json')
 HIGH_PERFORMANCE_FACTORS5_2_PATH = os.path.join(DATA_DIR, '100-200/fac5_2/merged_factors.json')
-HIGH_PERFORMANCE_FACTORS5_2_PATH = os.path.join(DATA_DIR, '100-200/fac5_3/merged_factors.json')
-HIGH_PERFORMANCE_FACTORS5_2_PATH = os.path.join(DATA_DIR, '100-200/fac5_4/merged_factors.json')
+HIGH_PERFORMANCE_FACTORS5_3_PATH = os.path.join(DATA_DIR, '100-200/fac5_3/merged_factors.json')
+HIGH_PERFORMANCE_FACTORS5_4_PATH = os.path.join(DATA_DIR, '100-200/fac5_4/merged_factors.json')
 
 HIGH_PERFORMANCE_FACTORS6_1_PATH = os.path.join(DATA_DIR, '100-200/fac6_1/merged_factors.json')
 HIGH_PERFORMANCE_FACTORS6_2_PATH = os.path.join(DATA_DIR, '100-200/fac6_2/merged_factors.json')
-HIGH_PERFORMANCE_FACTORS6_2_PATH = os.path.join(DATA_DIR, '100-200/fac6_3/merged_factors.json')
-HIGH_PERFORMANCE_FACTORS6_2_PATH = os.path.join(DATA_DIR, '100-200/fac6_4/merged_factors.json')
+HIGH_PERFORMANCE_FACTORS6_3_PATH = os.path.join(DATA_DIR, '100-200/fac6_3/merged_factors.json')
+HIGH_PERFORMANCE_FACTORS6_4_PATH = os.path.join(DATA_DIR, '100-200/fac6_4/merged_factors.json')
 
 # 合并工具相关路径
 MERGE_DIR = os.path.join(PROJECT_ROOT, 'src', 'lude', 'utils', 'merge')
