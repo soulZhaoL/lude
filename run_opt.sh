@@ -33,7 +33,7 @@ ITERATIONS="10"
 TRIALS="3000"
 CLEAR_RESULTS="false"
 PRICE_MIN="100"    # 价格下限（可配置）
-PRICE_MAX="200"    # 价格上限（可配置）
+PRICE_MAX="130"    # 价格上限（可配置）
 
 # 如果没有参数，显示使用方法
 if [ $# -eq 0 ]; then
@@ -128,10 +128,10 @@ echo "开始执行优化... (持仓: ${HOLD}, 因子: ${FAC}, 序号: ${NUM}, �
   --method tpe \
   --strategy multistage \
   --start 20220729 \
-  --end 20240809 \
+  --end 20240815 \
   --min 100 \
-  --max 200 \
-  --jobs 5 \
+  --max 130 \
+  --jobs 7 \
   --trials ${TRIALS} \
   --hold ${HOLD} \
   --seed-start 42 \
