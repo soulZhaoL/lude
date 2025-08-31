@@ -758,13 +758,13 @@ if __name__ == '__main__':
     # path = HIGH_PERFORMANCE_FACTORS4_3_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_4_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_1_PATH
-    # path = HIGH_PERFORMANCE_FACTORS5_2_PATH
+    path = HIGH_PERFORMANCE_FACTORS5_2_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_3_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_4_PATH
     # path = HIGH_PERFORMANCE_FACTORS6_1_PATH
     # path = HIGH_PERFORMANCE_FACTORS6_2_PATH
     # path = HIGH_PERFORMANCE_FACTORS6_3_PATH
-    path = HIGH_PERFORMANCE_FACTORS6_4_PATH
+    # path = HIGH_PERFORMANCE_FACTORS6_4_PATH
     # output_path 路径等于path 移除文件部分
     output_path = path.replace('merged_factors.json', '')
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
