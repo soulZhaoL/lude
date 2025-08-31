@@ -560,25 +560,30 @@ if __name__ == '__main__':
     # parser.add_argument('--opt_file', type=str, help='优化结果文件路径')
     parser.add_argument('--cb_data_file', type=str, help='可转债数据文件路径')
     parser.add_argument('--output_file', type=str, help='输出文件路径')
-    parser.add_argument('--start_date', type=str, default='20220729', help='回测开始日期，格式为YYYYMMDD')
-    parser.add_argument('--end_date', type=str, default='20250523', help='回测结束日期，格式为YYYYMMDD')
+    parser.add_argument('--start_date', type=str, default='20220801', help='回测开始日期，格式为YYYYMMDD')
+    parser.add_argument('--end_date', type=str, default='20250824', help='回测结束日期，格式为YYYYMMDD')
     parser.add_argument('--hold_num', type=int, default=5, help='持有数量')
     parser.add_argument('--min_price', type=float, default=100.0, help='最低价格筛选')
-    parser.add_argument('--max_price', type=float, default=150.0, help='最高价格筛选')
+    parser.add_argument('--max_price', type=float, default=200.0, help='最高价格筛选')
     parser.add_argument('--threshold_num', type=int, help='轮动阈值')
     parser.add_argument('--take_profit_rate', type=float, default=0.06, help='止盈比例，默认为0.06 (6%)')
     parser.add_argument('--max_workers', type=int, help='最大线程数，默认为CPU核心数 * 5')
 
     args = parser.parse_args()
 
-    # path = HIGH_PERFORMANCE_FACTORS4_1_PATH
+    path = HIGH_PERFORMANCE_FACTORS4_1_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_2_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_3_PATH
     # path = HIGH_PERFORMANCE_FACTORS4_4_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_1_PATH
     # path = HIGH_PERFORMANCE_FACTORS5_2_PATH
+    # path = HIGH_PERFORMANCE_FACTORS5_3_PATH
+    # path = HIGH_PERFORMANCE_FACTORS5_4_PATH
     # path = HIGH_PERFORMANCE_FACTORS6_1_PATH
-    path = HIGH_PERFORMANCE_FACTORS6_2_PATH
+    # path = HIGH_PERFORMANCE_FACTORS6_2_PATH
+    # path = HIGH_PERFORMANCE_FACTORS6_3_PATH
+    # path = HIGH_PERFORMANCE_FACTORS6_4_PATH
+
     # output_path 路径等于path 移除文件部分
     output_path = path.replace('merged_factors.json', '')
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
