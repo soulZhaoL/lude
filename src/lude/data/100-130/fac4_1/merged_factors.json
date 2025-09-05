@@ -1,0 +1,224 @@
+{
+  "fac4_num1": {
+    "metadata": {
+      "factor_count": 4,
+      "model_number": 1
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-02 03:48:13",
+        "cagr": 0.46952267936082026,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 3,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 27042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac4_num1/lude/optimization_results/best_model_multistage_tpe_4factors_20250902_034813.joblib"
+      }
+    ]
+  },
+  "fac4_num8": {
+    "metadata": {
+      "factor_count": 4,
+      "model_number": 8
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 16:37:24",
+        "cagr": 0.469426554015969,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 17042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac4_num8/lude/optimization_results/best_model_multistage_tpe_4factors_20250901_163724.joblib"
+      }
+    ]
+  },
+  "fac4_num14": {
+    "metadata": {
+      "factor_count": 4,
+      "model_number": 14
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 06:34:27",
+        "cagr": 0.4752336810988469,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 3,
+            "ascending": true
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 8042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac4_num14/lude/optimization_results/best_model_multistage_tpe_4factors_20250901_063427.joblib"
+      },
+      {
+        "timestamp": "2025-09-02 00:29:19",
+        "cagr": 0.4752336810988469,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 3,
+            "ascending": true
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 24042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac4_num14/lude/optimization_results/best_model_multistage_tpe_4factors_20250902_002919.joblib"
+      }
+    ]
+  },
+  "fac4_num15": {
+    "metadata": {
+      "factor_count": 4,
+      "model_number": 15
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 16:38:58",
+        "cagr": 0.49165764651745714,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 2,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 3,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 17042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac4_num15/lude/optimization_results/best_model_multistage_tpe_4factors_20250901_163858.joblib"
+      }
+    ]
+  }
+}

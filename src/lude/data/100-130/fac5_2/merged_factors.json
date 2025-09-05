@@ -1,0 +1,550 @@
+{
+  "fac5_num5": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 5
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-04 08:44:09",
+        "cagr": 0.46231850978045697,
+        "factors": [
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 3,
+            "ascending": true
+          },
+          {
+            "name": "vol",
+            "description": "成交量(手)",
+            "weight": 1,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 25042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num5/lude/optimization_results/best_model_multistage_tpe_5factors_20250904_084408.joblib"
+      }
+    ]
+  },
+  "fac5_num6": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 6
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-02 15:19:45",
+        "cagr": 0.47509074229540493,
+        "factors": [
+          {
+            "name": "high",
+            "description": "最高价",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 2,
+            "ascending": false
+          },
+          {
+            "name": "remain_size",
+            "description": "剩余规模(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 4,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 28042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num6/lude/optimization_results/best_model_multistage_tpe_5factors_20250902_151944.joblib"
+      }
+    ]
+  },
+  "fac5_num7": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 7
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 07:23:35",
+        "cagr": 0.48676774835244685,
+        "factors": [
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 2,
+            "ascending": false
+          },
+          {
+            "name": "low",
+            "description": "最低价",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "remain_size",
+            "description": "剩余规模(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 2,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 6042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num7/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_072334.joblib"
+      }
+    ]
+  },
+  "fac5_num8": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 8
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-02 13:28:41",
+        "cagr": 0.4898310758535065,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "theory_value",
+            "description": "理论价值",
+            "weight": 1,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 26042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num8/lude/optimization_results/best_model_multistage_tpe_5factors_20250902_132841.joblib"
+      }
+    ]
+  },
+  "fac5_num9": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 9
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 01:28:14",
+        "cagr": 0.48231478632710334,
+        "factors": [
+          {
+            "name": "conv_prem",
+            "description": "转股溢价率",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 4,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 2042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num9/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_012813.joblib"
+      },
+      {
+        "timestamp": "2025-09-01 03:00:59",
+        "cagr": 0.4577682599628923,
+        "factors": [
+          {
+            "name": "circ_mv",
+            "description": "正股流通市值(亿)",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 2,
+            "ascending": false
+          },
+          {
+            "name": "remain_size",
+            "description": "剩余规模(亿)",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 1,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 3042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num9/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_030059.joblib"
+      }
+    ]
+  },
+  "fac5_num10": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 10
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-04 00:27:04",
+        "cagr": 0.4854585999801664,
+        "factors": [
+          {
+            "name": "amount_5",
+            "description": "5日成交额",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "conv_value",
+            "description": "转股价值",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 2,
+            "ascending": true
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 18042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num10/lude/optimization_results/best_model_multistage_tpe_5factors_20250904_002703.joblib"
+      }
+    ]
+  },
+  "fac5_num11": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 11
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 22:41:56",
+        "cagr": 0.4735438125977567,
+        "factors": [
+          {
+            "name": "close",
+            "description": "收盘价",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 3,
+            "ascending": true
+          },
+          {
+            "name": "remain_size",
+            "description": "剩余规模(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 3,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 17042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num11/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_224156.joblib"
+      }
+    ]
+  },
+  "fac5_num14": {
+    "metadata": {
+      "factor_count": 5,
+      "model_number": 14
+    },
+    "data": [
+      {
+        "timestamp": "2025-09-01 09:09:30",
+        "cagr": 0.46330925801878164,
+        "factors": [
+          {
+            "name": "bias_5",
+            "description": "5日乖离率",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "debt_to_assets",
+            "description": "资产负债率",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "list_days",
+            "description": "上市天数",
+            "weight": 5,
+            "ascending": true
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 4,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 5,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 8042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num14/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_090930.joblib"
+      },
+      {
+        "timestamp": "2025-09-01 13:38:20",
+        "cagr": 0.49291835695950437,
+        "factors": [
+          {
+            "name": "conv_prem",
+            "description": "转股溢价率",
+            "weight": 1,
+            "ascending": true
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 3,
+            "ascending": false
+          },
+          {
+            "name": "remain_cap",
+            "description": "剩余市值(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 3,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 11042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num14/lude/optimization_results/best_model_multistage_tpe_5factors_20250901_133819.joblib"
+      },
+      {
+        "timestamp": "2025-09-02 15:11:15",
+        "cagr": 0.47509074229540493,
+        "factors": [
+          {
+            "name": "high",
+            "description": "最高价",
+            "weight": 1,
+            "ascending": false
+          },
+          {
+            "name": "left_years",
+            "description": "剩余年限",
+            "weight": 2,
+            "ascending": false
+          },
+          {
+            "name": "remain_size",
+            "description": "剩余规模(亿)",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "theory_bias",
+            "description": "理论偏离度",
+            "weight": 5,
+            "ascending": false
+          },
+          {
+            "name": "turnover_5",
+            "description": "5日换手率",
+            "weight": 4,
+            "ascending": true
+          }
+        ],
+        "strategy": "multistage",
+        "start_date": "20220729",
+        "end_date": "20240815",
+        "hold_num": 5,
+        "n_trials": 5000,
+        "seed": 28042,
+        "price_range": null,
+        "model_path": "/root/autodl-tmp/lude_100_130_hold5_fac5_num14/lude/optimization_results/best_model_multistage_tpe_5factors_20250902_151114.joblib"
+      }
+    ]
+  }
+}
